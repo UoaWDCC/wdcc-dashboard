@@ -1,0 +1,26 @@
+{
+  "name": "worker",
+  "version": "1.0.0",
+  "private": true,
+  "description": "",
+  "main": "index.ts",
+  "scripts": {
+    "dev": "tsx watch index.ts",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "packageManager": "pnpm@10.10.0",
+  "dependencies": {
+    "@repo/db": "workspace:*",
+    "@repo/shared": "workspace:*",
+    "@hono/node-server": "^1.19.13",
+    "hono": "^4.12.12"
+  },
+  "devDependencies": {
+    "@types/node": "^25.5.2",
+    "tsx": "^4.21.0",
+    "typescript": "^6.0.2"
+  }
+}
