@@ -8,8 +8,16 @@ const allowedEmails = (process.env.ALLOWED_EMAILS ?? "")
   .map((e) => e.trim().toLowerCase())
   .filter(Boolean);
 
+const allowedDomains = (process.env.ALLOWED_DOMAINS ?? "")
+  .split(",")
+  .map((d) => d.trim().toLowerCase().replace(/^@/, ""))
+  .filter(Boolean);
+
 export function isAllowedEmail(email: string) {
-  return allowedEmails.includes(email.toLowerCase());
+  const normalized = email.toLowerCase();
+  if (allowedEmails.includes(normalized)) return true;
+  const domain = normalized.split("@")[1];
+  return !!domain && allowedDomains.includes(domain);
 }
 
 export const auth = betterAuth({
