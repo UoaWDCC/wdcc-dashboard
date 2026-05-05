@@ -7,12 +7,23 @@ export function normalizeEmail(email: string) {
 }
 
 export function normalizeDomain(domain: string) {
-  return domain.trim().toLowerCase().replace(/^@/, "");
+  return domain
+    .trim()
+    .toLowerCase()
+    .replace(/^[@<]+/, "")
+    .replace(/[>.]+$/, "");
+}
+
+export function assertCleanDomain(domain: string) {
+  if (/[<>]/.test(domain)) {
+    throw new Error(`Domain "${domain}" contains angle brackets; strip before passing.`);
+  }
 }
 
 export async function isAllowedEmail(email: string) {
   const normalized = normalizeEmail(email);
-  const domain = normalized.split("@")[1];
+  const rawDomain = normalized.split("@")[1];
+  const domain = rawDomain ? normalizeDomain(rawDomain) : "";
 
   const emailHit = await db
     .select({ email: allowedEmail.email })
@@ -60,6 +71,7 @@ export async function addAllowedDomain(
   domain: string,
   opts: { note?: string; createdBy?: string } = {},
 ) {
+  assertCleanDomain(domain);
   await db
     .insert(allowedDomain)
     .values({

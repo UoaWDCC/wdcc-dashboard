@@ -14,9 +14,13 @@ export default function SignInPage() {
         <CardContent>
           <Button
             className="w-full"
-            onClick={() =>
-              signIn.social({ provider: "google", callbackURL: "/" })
-            }
+            onClick={() => {
+              const params = new URLSearchParams(window.location.search);
+              const from = params.get("from");
+              const callbackURL =
+                from && from.startsWith("/") ? from : "/";
+              signIn.social({ provider: "google", callbackURL });
+            }}
           >
             Continue with Google
           </Button>

@@ -17,17 +17,20 @@ export function UserMenu({
   email,
   image,
 }: {
-  name: string;
+  name: string | null;
   email: string;
   image: string | null;
 }) {
   const router = useRouter();
-  const initials = name
-    .split(" ")
-    .map((p) => p[0])
-    .join("")
-    .slice(0, 2)
-    .toUpperCase();
+  const source = name?.trim() || email;
+  const initials =
+    source
+      .split(/\s+/)
+      .map((p) => p[0])
+      .filter(Boolean)
+      .join("")
+      .slice(0, 2)
+      .toUpperCase() || "?";
 
   return (
     <DropdownMenu>
