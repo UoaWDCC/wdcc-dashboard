@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Megaphone, Table2, Shield } from "lucide-react";
+import { LayoutDashboard, Megaphone, Table2, Shield, Cpu } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -17,9 +17,10 @@ import {
 
 const nav = [
   { href: "/", label: "Home", icon: LayoutDashboard },
-  { href: "/marketing", label: "Marketing", icon: Megaphone },
-  { href: "/projects", label: "Projects", icon: Table2 },
   { href: "/admin", label: "Admin", icon: Shield },
+  { href: "/marketing", label: "Marketing", icon: Megaphone },
+  { href: "/tech", label: "Tech", icon: Cpu },
+  { href: "/projects", label: "Projects", icon: Table2 },
 ];
 
 export function AppSidebar() {
@@ -27,7 +28,14 @@ export function AppSidebar() {
   return (
     <Sidebar>
       <SidebarHeader>
-        <div className="px-2 py-1.5 text-sm font-semibold">WDCC Dashboard</div>
+        <div className="flex items-center gap-2 px-2 py-2">
+          <div className="flex h-7 w-7 items-center justify-center rounded-md bg-brand-blue text-white text-xs font-bold">
+            W
+          </div>
+          <div className="text-sm font-semibold tracking-tight">
+            WDCC <span className="text-brand-blue">Dashboard</span>
+          </div>
+        </div>
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>

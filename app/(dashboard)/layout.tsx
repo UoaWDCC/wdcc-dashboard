@@ -13,7 +13,7 @@ export default async function DashboardLayout({
     <SidebarProvider>
       <AppSidebar />
       <SidebarInset>
-        <header className="flex h-12 items-center justify-between gap-2 border-b px-3">
+        <header className="flex h-12 items-center justify-between gap-2 border-b border-b-brand-blue/20 shadow-[0_2px_0_0_var(--brand-blue)] px-3">
           <SidebarTrigger />
           <UserMenu
             name={session.user.name}

@@ -7,9 +7,9 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-sans);
-  --font-mono: var(--font-geist-mono);
-  --font-heading: var(--font-sans);
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+  --font-heading: var(--font-figtree), var(--font-geist-sans), sans-serif;
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -39,6 +39,15 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
+
+  /* WDCC brand palette */
+  --color-brand-blue: var(--brand-blue);
+  --color-brand-blue-fg: var(--brand-blue-fg);
+  --color-brand-orange: var(--brand-orange);
+  --color-brand-pink: var(--brand-pink);
+  --color-brand-purple: var(--brand-purple);
+  --color-brand-green: var(--brand-green);
+
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -49,72 +58,96 @@
 }
 
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  /* WDCC brand */
+  --brand-blue: #3884ff;
+  --brand-blue-fg: #ffffff;
+  --brand-orange: #fa8500;
+  --brand-pink: #c4005c;
+  --brand-purple: #7309b9;
+  --brand-green: #29a385;
+
+  /* Surfaces */
+  --background: #ffffff;
+  --foreground: #2e2b3b;
+  --card: #ffffff;
+  --card-foreground: #2e2b3b;
+  --popover: #ffffff;
+  --popover-foreground: #2e2b3b;
+
+  /* Primary = WDCC brand blue */
+  --primary: #3884ff;
+  --primary-foreground: #ffffff;
+
+  /* Cool gray scale matched to WDCC */
+  --secondary: #f1f0f4;
+  --secondary-foreground: #2e2b3b;
+  --muted: #f9f9fb;
+  --muted-foreground: #5f5c70;
+  --accent: #f1f0f4;
+  --accent-foreground: #2e2b3b;
+
+  --destructive: #c4005c;
+  --border: #e3e2e9;
+  --input: #e3e2e9;
+  --ring: #3884ff;
+
+  /* Charts use WDCC accent palette */
+  --chart-1: #3884ff;
+  --chart-2: #fa8500;
+  --chart-3: #29a385;
+  --chart-4: #7309b9;
+  --chart-5: #c4005c;
+
+  --radius: 0.75rem;
+
+  /* Sidebar — soft off-white surface */
+  --sidebar: #f9f9fb;
+  --sidebar-foreground: #2e2b3b;
+  --sidebar-primary: #3884ff;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #3884ff;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: #e3e2e9;
+  --sidebar-ring: #3884ff;
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --background: #17161d;
+  --foreground: #f1f0f4;
+  --card: #2e2b3b;
+  --card-foreground: #f1f0f4;
+  --popover: #2e2b3b;
+  --popover-foreground: #f1f0f4;
+
+  --primary: #3884ff;
+  --primary-foreground: #ffffff;
+
+  --secondary: #2e2b3b;
+  --secondary-foreground: #f1f0f4;
+  --muted: #2e2b3b;
+  --muted-foreground: #adabba;
+  --accent: #052861;
+  --accent-foreground: #cfe0fc;
+
+  --destructive: #fda5d5;
+  --border: #2e2b3b;
+  --input: #2e2b3b;
+  --ring: #3884ff;
+
+  --chart-1: #3884ff;
+  --chart-2: #fa8500;
+  --chart-3: #66ccb3;
+  --chart-4: #c89bf5;
+  --chart-5: #fda5d5;
+
+  --sidebar: #111121;
+  --sidebar-foreground: #f1f0f4;
+  --sidebar-primary: #3884ff;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #052861;
+  --sidebar-accent-foreground: #cfe0fc;
+  --sidebar-border: #2e2b3b;
+  --sidebar-ring: #3884ff;
 }
 
 @layer base {
@@ -122,9 +155,15 @@
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-sans;
+    font-feature-settings: "ss01", "cv11";
   }
   html {
     @apply font-sans;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-heading);
+    letter-spacing: -0.02em;
+    font-weight: 600;
   }
 }
