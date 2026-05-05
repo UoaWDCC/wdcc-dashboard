@@ -2,23 +2,9 @@ import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { db } from "@/lib/db";
 import * as schema from "@/lib/db/schema";
+import { isAllowedEmail } from "@/lib/allowlist";
 
-const allowedEmails = (process.env.ALLOWED_EMAILS ?? "")
-  .split(",")
-  .map((e) => e.trim().toLowerCase())
-  .filter(Boolean);
-
-const allowedDomains = (process.env.ALLOWED_DOMAINS ?? "")
-  .split(",")
-  .map((d) => d.trim().toLowerCase().replace(/^@/, ""))
-  .filter(Boolean);
-
-export function isAllowedEmail(email: string) {
-  const normalized = email.toLowerCase();
-  if (allowedEmails.includes(normalized)) return true;
-  const domain = normalized.split("@")[1];
-  return !!domain && allowedDomains.includes(domain);
-}
+export { isAllowedEmail };
 
 export const auth = betterAuth({
   database: drizzleAdapter(db, {
@@ -40,7 +26,7 @@ export const auth = betterAuth({
     user: {
       create: {
         before: async (user) => {
-          if (!isAllowedEmail(user.email)) {
+          if (!(await isAllowedEmail(user.email))) {
             throw new Error(`Email ${user.email} is not authorised.`);
           }
           return { data: user };

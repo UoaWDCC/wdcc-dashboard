@@ -50,3 +50,21 @@ export const verification = pgTable("verification", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
+
+export const allowedEmail = pgTable("allowed_email", {
+  email: text("email").primaryKey(),
+  note: text("note"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  createdBy: text("created_by").references(() => user.id, {
+    onDelete: "set null",
+  }),
+});
+
+export const allowedDomain = pgTable("allowed_domain", {
+  domain: text("domain").primaryKey(),
+  note: text("note"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  createdBy: text("created_by").references(() => user.id, {
+    onDelete: "set null",
+  }),
+});
