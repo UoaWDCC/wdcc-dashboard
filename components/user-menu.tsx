@@ -17,12 +17,12 @@ export function UserMenu({
   email,
   image,
 }: {
-  name: string | null;
+  name: string;
   email: string;
   image: string | null;
 }) {
   const router = useRouter();
-  const source = name?.trim() || email;
+  const source = name.trim() || email;
   const initials =
     source
       .split(/\s+/)

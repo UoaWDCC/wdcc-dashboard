@@ -1,3 +1,4 @@
+import "dotenv/config";
 import { assertCleanDomain, normalizeDomain, normalizeEmail } from "@/lib/allowlist";
 import { db, pool } from "@/lib/db";
 import { allowedDomain, allowedEmail } from "@/lib/db/schema";
