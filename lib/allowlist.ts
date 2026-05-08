@@ -16,7 +16,9 @@ export function normalizeDomain(domain: string) {
 
 export function assertCleanDomain(domain: string) {
   if (/[<>]/.test(domain)) {
-    throw new Error(`Domain "${domain}" contains angle brackets; strip before passing.`);
+    throw new Error(
+      `Domain "${domain}" contains angle brackets; strip before passing.`
+    );
   }
 }
 
@@ -51,7 +53,7 @@ export async function listAllowedDomains() {
 
 export async function addAllowedEmail(
   email: string,
-  opts: { note?: string; createdBy?: string } = {},
+  opts: { note?: string; createdBy?: string } = {}
 ) {
   await db
     .insert(allowedEmail)
@@ -64,12 +66,14 @@ export async function addAllowedEmail(
 }
 
 export async function removeAllowedEmail(email: string) {
-  await db.delete(allowedEmail).where(eq(allowedEmail.email, normalizeEmail(email)));
+  await db
+    .delete(allowedEmail)
+    .where(eq(allowedEmail.email, normalizeEmail(email)));
 }
 
 export async function addAllowedDomain(
   domain: string,
-  opts: { note?: string; createdBy?: string } = {},
+  opts: { note?: string; createdBy?: string } = {}
 ) {
   assertCleanDomain(domain);
   await db

@@ -1,4 +1,11 @@
-import { pgTable, text, timestamp, boolean, index, check } from "drizzle-orm/pg-core";
+import {
+  pgTable,
+  text,
+  timestamp,
+  boolean,
+  index,
+  check,
+} from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 
 // Better Auth tables
@@ -29,7 +36,7 @@ export const session = pgTable(
   (t) => [
     index("session_user_id_idx").on(t.userId),
     index("session_expires_at_idx").on(t.expiresAt),
-  ],
+  ]
 );
 
 export const account = pgTable(
@@ -51,7 +58,7 @@ export const account = pgTable(
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
   },
-  (t) => [index("account_user_id_idx").on(t.userId)],
+  (t) => [index("account_user_id_idx").on(t.userId)]
 );
 
 export const verification = pgTable("verification", {
@@ -73,7 +80,7 @@ export const allowedEmail = pgTable(
       onDelete: "set null",
     }),
   },
-  (t) => [check("allowed_email_lower", sql`${t.email} = lower(${t.email})`)],
+  (t) => [check("allowed_email_lower", sql`${t.email} = lower(${t.email})`)]
 );
 
 export const allowedDomain = pgTable(
@@ -86,5 +93,5 @@ export const allowedDomain = pgTable(
       onDelete: "set null",
     }),
   },
-  (t) => [check("allowed_domain_lower", sql`${t.domain} = lower(${t.domain})`)],
+  (t) => [check("allowed_domain_lower", sql`${t.domain} = lower(${t.domain})`)]
 );
