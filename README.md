@@ -1,36 +1,66 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# WDCC Dashboard
 
-## Getting Started
+Internal dashboard for WDCC. Built with Next.js, Drizzle ORM, and Better Auth.
 
-First, run the development server:
+## Stack
+
+- **Framework:** Next.js 16 (React 19)
+- **Database:** PostgreSQL (Neon) via Drizzle ORM
+- **Auth:** Better Auth with Google OAuth + email allowlist
+- **UI:** shadcn/ui, Radix UI, Tailwind CSS v4
+
+## Setup
+
+**1. Install dependencies**
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+pnpm install
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+**2. Configure environment**
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+cp .env.example .env
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Fill in `.env`:
 
-## Learn More
+| Variable | Description |
+|---|---|
+| `DATABASE_URL` | Neon PostgreSQL connection string |
+| `BETTER_AUTH_SECRET` | Random string (32+ chars) |
+| `BETTER_AUTH_URL` | App URL (e.g. `http://localhost:3000`) |
+| `GOOGLE_CLIENT_ID` | Google OAuth client ID |
+| `GOOGLE_CLIENT_SECRET` | Google OAuth client secret |
 
-To learn more about Next.js, take a look at the following resources:
+**3. Run migrations**
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+pnpm db:migrate
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+**4. Start dev server**
 
-## Deploy on Vercel
+```bash
+pnpm dev
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Open [http://localhost:3000](http://localhost:3000).
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Scripts
+
+| Command | Description |
+|---|---|
+| `pnpm dev` | Start dev server |
+| `pnpm build` | Production build |
+| `pnpm start` | Start production server |
+| `pnpm lint` | Run ESLint |
+| `pnpm format` | Format with Prettier |
+| `pnpm db:generate` | Generate Drizzle migrations |
+| `pnpm db:migrate` | Run migrations |
+| `pnpm db:push` | Push schema directly (dev only) |
+| `pnpm db:studio` | Open Drizzle Studio |
+
+## Auth
+
+Sign-in via Google OAuth. Access restricted to an allowlist managed in the database via the admin page.
