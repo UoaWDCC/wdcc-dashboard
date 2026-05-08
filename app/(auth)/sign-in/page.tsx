@@ -17,8 +17,7 @@ export default function SignInPage() {
             onClick={() => {
               const params = new URLSearchParams(window.location.search);
               const from = params.get("from");
-              const callbackURL =
-                from && from.startsWith("/") ? from : "/";
+              const callbackURL = from && from.startsWith("/") ? from : "/";
               signIn.social({ provider: "google", callbackURL });
             }}
           >

@@ -28,7 +28,9 @@ export async function getSession() {
 export async function requireUser(from?: string) {
   const session = await getSession();
   if (!session) {
-    const target = from ? `/sign-in?from=${encodeURIComponent(from)}` : "/sign-in";
+    const target = from
+      ? `/sign-in?from=${encodeURIComponent(from)}`
+      : "/sign-in";
     redirect(target);
   }
   return session;

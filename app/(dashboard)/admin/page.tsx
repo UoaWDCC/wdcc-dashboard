@@ -1,7 +1,12 @@
 import { listAllowedEmails, listAllowedDomains } from "@/lib/allowlist";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { addEmailAction, removeEmailAction, addDomainAction, removeDomainAction } from "./actions";
+import {
+  addEmailAction,
+  removeEmailAction,
+  addDomainAction,
+  removeDomainAction,
+} from "./actions";
 
 export default async function AdminPage() {
   const [emails, domains] = await Promise.all([
@@ -32,11 +37,17 @@ export default async function AdminPage() {
               {emails.map((row) => (
                 <tr key={row.email} className="border-b last:border-0">
                   <td className="py-2 pr-4 font-mono">{row.email}</td>
-                  <td className="py-2 pr-4 text-muted-foreground">{row.note ?? "—"}</td>
+                  <td className="py-2 pr-4 text-muted-foreground">
+                    {row.note ?? "—"}
+                  </td>
                   <td className="py-2 text-right">
                     <form action={removeEmailAction}>
                       <input type="hidden" name="email" value={row.email} />
-                      <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-destructive hover:text-destructive"
+                      >
                         Remove
                       </Button>
                     </form>
@@ -48,7 +59,13 @@ export default async function AdminPage() {
         )}
 
         <form action={addEmailAction} className="flex gap-2">
-          <Input name="email" type="email" placeholder="name@example.com" required className="flex-1" />
+          <Input
+            name="email"
+            type="email"
+            placeholder="name@example.com"
+            required
+            className="flex-1"
+          />
           <Input name="note" placeholder="Note (optional)" className="flex-1" />
           <Button type="submit">Add</Button>
         </form>
@@ -73,11 +90,17 @@ export default async function AdminPage() {
               {domains.map((row) => (
                 <tr key={row.domain} className="border-b last:border-0">
                   <td className="py-2 pr-4 font-mono">{row.domain}</td>
-                  <td className="py-2 pr-4 text-muted-foreground">{row.note ?? "—"}</td>
+                  <td className="py-2 pr-4 text-muted-foreground">
+                    {row.note ?? "—"}
+                  </td>
                   <td className="py-2 text-right">
                     <form action={removeDomainAction}>
                       <input type="hidden" name="domain" value={row.domain} />
-                      <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-destructive hover:text-destructive"
+                      >
                         Remove
                       </Button>
                     </form>
@@ -89,7 +112,12 @@ export default async function AdminPage() {
         )}
 
         <form action={addDomainAction} className="flex gap-2">
-          <Input name="domain" placeholder="example.com" required className="flex-1" />
+          <Input
+            name="domain"
+            placeholder="example.com"
+            required
+            className="flex-1"
+          />
           <Input name="note" placeholder="Note (optional)" className="flex-1" />
           <Button type="submit">Add</Button>
         </form>
