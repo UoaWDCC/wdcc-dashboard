@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Megaphone, Table2, Shield, Cpu } from "lucide-react";
+import { LayoutDashboard, Megaphone, Table2, Shield, Cpu, Link2 } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -21,6 +21,7 @@ const nav = [
   { href: "/marketing", label: "Marketing", icon: Megaphone },
   { href: "/tech", label: "Tech", icon: Cpu },
   { href: "/projects", label: "Projects", icon: Table2 },
+  { href: "/linktree", label: "Linktree", icon: Link2 },
 ];
 
 export function AppSidebar() {
