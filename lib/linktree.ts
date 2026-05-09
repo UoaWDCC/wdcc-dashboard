@@ -1,4 +1,4 @@
-import { eq, asc } from "drizzle-orm";
+import { eq, asc, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { goLink, goRedirect } from "@/lib/db/schema";
 
@@ -6,7 +6,12 @@ export async function listGoLinks() {
   return db
     .select()
     .from(goLink)
-    .orderBy(asc(goLink.isPermanent), asc(goLink.sortOrder));
+    .orderBy(
+      // Expired events sink to the bottom
+      sql`CASE WHEN ${goLink.eventDate} IS NOT NULL AND ${goLink.eventDate} < CURRENT_DATE THEN 1 ELSE 0 END`,
+      asc(goLink.isPermanent),
+      asc(goLink.sortOrder)
+    );
 }
 
 export async function addGoLink(
@@ -19,6 +24,7 @@ export async function addGoLink(
     hidden?: boolean;
     sortOrder?: number;
     team?: string | null;
+    eventDate?: string | null;
   },
   userId: string
 ) {
@@ -31,6 +37,7 @@ export async function addGoLink(
     hidden: data.hidden ?? false,
     sortOrder: data.sortOrder ?? 0,
     team: data.team ?? null,
+    eventDate: data.eventDate ?? null,
     createdBy: userId,
     updatedBy: userId,
   });
