@@ -2,6 +2,7 @@ import {
   pgTable,
   text,
   integer,
+  date,
   timestamp,
   boolean,
   index,
@@ -109,6 +110,7 @@ export const goLink = pgTable("go_link", {
   hidden: boolean("hidden").notNull().default(false),
   sortOrder: integer("sort_order").notNull().default(0),
   team: text("team"),
+  eventDate: date("event_date"),
   createdBy: text("created_by").references(() => user.id, {
     onDelete: "set null",
   }),

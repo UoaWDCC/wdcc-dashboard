@@ -22,8 +22,9 @@ export async function addGoLinkAction(formData: FormData) {
   const isPermanent = formData.get("isPermanent") === "on";
   const sortOrder =
     parseInt((formData.get("sortOrder") as string | null) ?? "0", 10) || 0;
+  const eventDate = (formData.get("eventDate") as string | null)?.trim() || null;
   await addGoLink(
-    { label, link, hoverHint, iconUrl, team, isPermanent, sortOrder },
+    { label, link, hoverHint, iconUrl, team, isPermanent, sortOrder, eventDate },
     session.user.id
   );
   revalidatePath("/linktree");
