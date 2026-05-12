@@ -551,7 +551,7 @@ function TaskEditDialog({
 		onOpenChange(false);
 	}
 
-	const assigneesDisabled = task?.status !== "active";
+	const assigneesDisabled = task?.status === "done";
 
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
@@ -620,7 +620,7 @@ function TaskEditDialog({
 							Assignees
 							{assigneesDisabled && (
 								<span className="text-muted-foreground ml-2 text-xs font-normal">
-									(only for active tasks)
+									(not available for done tasks)
 								</span>
 							)}
 						</Label>
@@ -808,7 +808,26 @@ export default function TasksPage() {
 	}
 
 	function updateTask(updated: Task) {
-		setTasks((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
+		setTasks((prev) => {
+			const old = prev.find((t) => t.id === updated.id);
+			let next = updated;
+			if (
+				old &&
+				old.status === "backlog" &&
+				updated.status === "backlog" &&
+				updated.assignees.length > 0
+			) {
+				const positions: Record<string, number> = {};
+				for (const m of updated.assignees) {
+					const colId = memberCol(m);
+					positions[colId] = prev.filter((t) =>
+						t.id !== updated.id && belongsTo(t, colId)
+					).length;
+				}
+				next = { ...updated, status: "active", positions };
+			}
+			return prev.map((t) => (t.id === updated.id ? next : t));
+		});
 	}
 
 	function deleteTask(id: string) {
