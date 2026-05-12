@@ -6,7 +6,7 @@ import {
   removeEmailAction,
   addDomainAction,
   removeDomainAction,
-} from "./actions";
+} from "@/server/admin/actions";
 
 export default async function AdminPage() {
   const [emails, domains] = await Promise.all([
