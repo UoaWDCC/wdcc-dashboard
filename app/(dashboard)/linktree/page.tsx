@@ -10,7 +10,7 @@ import {
   addGoRedirectAction,
   removeGoRedirectAction,
   toggleGoRedirectHiddenAction,
-} from "./actions";
+} from "@/server/linktree/actions";
 
 export default async function LinktreePage() {
   const [links, redirects] = await Promise.all([
