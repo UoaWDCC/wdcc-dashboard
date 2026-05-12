@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
 	DndContext,
 	DragEndEvent,
@@ -18,8 +18,20 @@ import {
 	verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { Pencil, X } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+	Dialog,
+	DialogContent,
+	DialogFooter,
+	DialogHeader,
+	DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 
 type Task = {
@@ -101,20 +113,22 @@ const accentMap = {
 function TaskCard({
 	task,
 	dragging = false,
+	onEdit,
 }: {
 	task: Task;
 	dragging?: boolean;
+	onEdit?: () => void;
 }) {
 	return (
 		<Card
 			size="sm"
 			className={cn(
-				"cursor-grab select-none active:cursor-grabbing",
+				"group relative cursor-grab select-none active:cursor-grabbing",
 				dragging && "opacity-50"
 			)}
 		>
 			<CardHeader>
-				<CardTitle>{task.title}</CardTitle>
+				<CardTitle className="pr-6">{task.title}</CardTitle>
 			</CardHeader>
 			{(task.description || task.tags?.length) && (
 				<CardContent className="flex flex-col gap-2">
@@ -132,11 +146,33 @@ function TaskCard({
 					) : null}
 				</CardContent>
 			)}
+			{onEdit && (
+				<button
+					type="button"
+					aria-label="Edit task"
+					onPointerDown={(e) => e.stopPropagation()}
+					onClick={(e) => {
+						e.stopPropagation();
+						onEdit();
+					}}
+					className="absolute right-1.5 top-1.5 rounded p-1 text-muted-foreground opacity-0 transition hover:bg-foreground/10 hover:text-foreground group-hover:opacity-100 focus:opacity-100 focus:outline-none"
+				>
+					<Pencil className="size-3.5" />
+				</button>
+			)}
 		</Card>
 	);
 }
 
-function SortableTask({ task, columnId }: { task: Task; columnId: string }) {
+function SortableTask({
+	task,
+	columnId,
+	onEdit,
+}: {
+	task: Task;
+	columnId: string;
+	onEdit: (task: Task) => void;
+}) {
 	const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
 		useSortable({ id: task.id, data: { type: "task", columnId } });
 
@@ -150,7 +186,7 @@ function SortableTask({ task, columnId }: { task: Task; columnId: string }) {
 			{...attributes}
 			{...listeners}
 		>
-			<TaskCard task={task} dragging={isDragging} />
+			<TaskCard task={task} dragging={isDragging} onEdit={() => onEdit(task)} />
 		</div>
 	);
 }
@@ -159,10 +195,12 @@ function KanbanColumn({
 	meta,
 	tasks,
 	className,
+	onEditTask,
 }: {
 	meta: ColumnMeta;
 	tasks: Task[];
 	className?: string;
+	onEditTask: (task: Task) => void;
 }) {
 	const { setNodeRef, isOver } = useDroppable({
 		id: meta.id,
@@ -199,7 +237,12 @@ function KanbanColumn({
 			<SortableContext items={taskIds} strategy={verticalListSortingStrategy}>
 				<div className="flex flex-col gap-2 p-2 min-h-24">
 					{tasks.map((t) => (
-						<SortableTask key={t.id} task={t} columnId={meta.id} />
+						<SortableTask
+							key={t.id}
+							task={t}
+							columnId={meta.id}
+							onEdit={onEditTask}
+						/>
 					))}
 				</div>
 			</SortableContext>
@@ -207,9 +250,267 @@ function KanbanColumn({
 	);
 }
 
+function TagInput({
+	id,
+	tags,
+	onChange,
+	suggestions = [],
+}: {
+	id?: string;
+	tags: string[];
+	onChange: (tags: string[]) => void;
+	suggestions?: string[];
+}) {
+	const [draft, setDraft] = useState("");
+	const [highlight, setHighlight] = useState(0);
+	const [open, setOpen] = useState(false);
+
+	const matches = useMemo(() => {
+		const q = draft.trim().toLowerCase();
+		const selected = new Set(tags);
+		const pool = suggestions.filter((s) => !selected.has(s));
+		if (!q) return pool.slice(0, 8);
+		return pool.filter((s) => s.toLowerCase().includes(q)).slice(0, 8);
+	}, [draft, tags, suggestions]);
+
+	useEffect(() => {
+		setHighlight(0);
+	}, [draft, matches.length]);
+
+	function commit(raw: string) {
+		const v = raw.trim();
+		if (!v) return;
+		if (tags.includes(v)) {
+			setDraft("");
+			return;
+		}
+		onChange([...tags, v]);
+		setDraft("");
+	}
+
+	function removeAt(idx: number) {
+		onChange(tags.filter((_, i) => i !== idx));
+	}
+
+	return (
+		<div className="relative">
+			<div className="border-input focus-within:ring-ring/40 flex flex-wrap items-center gap-1 rounded-md border bg-transparent px-2 py-1.5 text-sm focus-within:ring-2">
+				{tags.map((t, i) => (
+					<Badge key={`${t}-${i}`} variant="secondary" className="gap-1 pr-1">
+						{t}
+						<button
+							type="button"
+							aria-label={`Remove ${t}`}
+							onClick={() => removeAt(i)}
+							className="hover:bg-foreground/15 rounded-sm p-0.5"
+						>
+							<X className="size-3" />
+						</button>
+					</Badge>
+				))}
+				<input
+					id={id}
+					value={draft}
+					onFocus={() => setOpen(true)}
+					onBlur={() => {
+						setTimeout(() => setOpen(false), 100);
+						commit(draft);
+					}}
+					onChange={(e) => {
+						setDraft(e.target.value);
+						setOpen(true);
+					}}
+					onKeyDown={(e) => {
+						if (e.key === "ArrowDown" && matches.length) {
+							e.preventDefault();
+							setOpen(true);
+							setHighlight((h) => (h + 1) % matches.length);
+						} else if (e.key === "ArrowUp" && matches.length) {
+							e.preventDefault();
+							setOpen(true);
+							setHighlight((h) => (h - 1 + matches.length) % matches.length);
+						} else if (e.key === "Enter") {
+							e.preventDefault();
+							if (open && matches[highlight]) commit(matches[highlight]);
+							else commit(draft);
+						} else if (e.key === ",") {
+							e.preventDefault();
+							commit(draft);
+						} else if (e.key === "Escape") {
+							setOpen(false);
+						} else if (e.key === "Backspace" && !draft && tags.length) {
+							e.preventDefault();
+							removeAt(tags.length - 1);
+						}
+					}}
+					placeholder={tags.length ? "" : "Type and press Enter"}
+					className="placeholder:text-muted-foreground min-w-[8ch] flex-1 bg-transparent outline-none"
+				/>
+			</div>
+			{open && matches.length > 0 && (
+				<ul className="bg-popover text-popover-foreground absolute z-50 mt-1 max-h-48 w-full overflow-auto rounded-md border p-1 shadow-md">
+					{matches.map((s, i) => (
+						<li key={s}>
+							<button
+								type="button"
+								onMouseDown={(e) => {
+									e.preventDefault();
+									commit(s);
+								}}
+								onMouseEnter={() => setHighlight(i)}
+								className={cn(
+									"w-full rounded-sm px-2 py-1 text-left text-sm",
+									i === highlight && "bg-accent text-accent-foreground"
+								)}
+							>
+								{s}
+							</button>
+						</li>
+					))}
+				</ul>
+			)}
+		</div>
+	);
+}
+
+function TaskEditDialog({
+	task,
+	open,
+	onOpenChange,
+	onSave,
+	onDelete,
+	tagSuggestions,
+}: {
+	task: Task | null;
+	open: boolean;
+	onOpenChange: (open: boolean) => void;
+	onSave: (task: Task) => void;
+	onDelete: (id: string) => void;
+	tagSuggestions: string[];
+}) {
+	const [title, setTitle] = useState("");
+	const [description, setDescription] = useState("");
+	const [tags, setTags] = useState<string[]>([]);
+
+	useEffect(() => {
+		if (task) {
+			setTitle(task.title);
+			setDescription(task.description ?? "");
+			setTags(task.tags ?? []);
+		}
+	}, [task]);
+
+	function handleSave() {
+		if (!task) return;
+		const trimmed = title.trim();
+		if (!trimmed) return;
+		onSave({
+			id: task.id,
+			title: trimmed,
+			description: description.trim() || undefined,
+			tags: tags.length ? tags : undefined,
+		});
+		onOpenChange(false);
+	}
+
+	function handleDelete() {
+		if (!task) return;
+		onDelete(task.id);
+		onOpenChange(false);
+	}
+
+	return (
+		<Dialog open={open} onOpenChange={onOpenChange}>
+			<DialogContent>
+				<DialogHeader>
+					<DialogTitle>Edit task</DialogTitle>
+				</DialogHeader>
+				<div className="flex flex-col gap-3">
+					<div className="flex flex-col gap-1.5">
+						<Label htmlFor="task-title">Title</Label>
+						<Input
+							id="task-title"
+							value={title}
+							onChange={(e) => setTitle(e.target.value)}
+						/>
+					</div>
+					<div className="flex flex-col gap-1.5">
+						<Label htmlFor="task-desc">Description</Label>
+						<Textarea
+							id="task-desc"
+							rows={3}
+							value={description}
+							onChange={(e) => setDescription(e.target.value)}
+						/>
+					</div>
+					<div className="flex flex-col gap-1.5">
+						<Label htmlFor="task-tags">Tags</Label>
+						<TagInput
+							id="task-tags"
+							tags={tags}
+							onChange={setTags}
+							suggestions={tagSuggestions}
+						/>
+					</div>
+				</div>
+				<DialogFooter className="sm:justify-between">
+					<Button variant="destructive" onClick={handleDelete}>
+						Delete
+					</Button>
+					<div className="flex gap-2">
+						<Button variant="outline" onClick={() => onOpenChange(false)}>
+							Cancel
+						</Button>
+						<Button onClick={handleSave} disabled={!title.trim()}>
+							Save
+						</Button>
+					</div>
+				</DialogFooter>
+			</DialogContent>
+		</Dialog>
+	);
+}
+
 export default function KanbanPage() {
 	const [columns, setColumns] = useState<Record<string, Task[]>>(initialState);
 	const [activeId, setActiveId] = useState<string | null>(null);
+	const [editing, setEditing] = useState<{ colId: string; task: Task } | null>(
+		null
+	);
+	const [dialogOpen, setDialogOpen] = useState(false);
+
+	const tagSuggestions = useMemo(() => {
+		const set = new Set<string>();
+		for (const list of Object.values(columns)) {
+			for (const t of list) for (const tag of t.tags ?? []) set.add(tag);
+		}
+		return Array.from(set).sort();
+	}, [columns]);
+
+	function openEdit(task: Task) {
+		const colId = findColumn(task.id);
+		if (!colId) return;
+		setEditing({ colId, task });
+		setDialogOpen(true);
+	}
+
+	function updateTask(updated: Task) {
+		if (!editing) return;
+		const colId = editing.colId;
+		setColumns((prev) => ({
+			...prev,
+			[colId]: prev[colId].map((t) => (t.id === updated.id ? updated : t)),
+		}));
+	}
+
+	function deleteTask(id: string) {
+		if (!editing) return;
+		const colId = editing.colId;
+		setColumns((prev) => ({
+			...prev,
+			[colId]: prev[colId].filter((t) => t.id !== id),
+		}));
+	}
 
 	const sensors = useSensors(
 		useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
@@ -300,6 +601,7 @@ export default function KanbanPage() {
 						meta={backlogMeta}
 						tasks={columns[backlogMeta.id]}
 						className="w-64 shrink-0"
+						onEditTask={openEdit}
 					/>
 					<section className="flex min-w-0 flex-1 flex-col rounded-lg ring-1 ring-brand-blue/15 bg-brand-blue/[0.03]">
 						<div className="flex items-center justify-between px-3 py-2.5 border-b border-brand-blue/15">
@@ -317,6 +619,7 @@ export default function KanbanPage() {
 										key={m.id}
 										meta={m}
 										tasks={columns[m.id] ?? []}
+										onEditTask={openEdit}
 									/>
 								))}
 							</div>
@@ -326,12 +629,21 @@ export default function KanbanPage() {
 						meta={doneMeta}
 						tasks={columns[doneMeta.id]}
 						className="w-64 shrink-0"
+						onEditTask={openEdit}
 					/>
 				</div>
 				<DragOverlay>
 					{activeTask ? <TaskCard task={activeTask} /> : null}
 				</DragOverlay>
 			</DndContext>
+			<TaskEditDialog
+				task={editing?.task ?? null}
+				open={dialogOpen}
+				onOpenChange={setDialogOpen}
+				onSave={updateTask}
+				onDelete={deleteTask}
+				tagSuggestions={tagSuggestions}
+			/>
 		</div>
 	);
 }
