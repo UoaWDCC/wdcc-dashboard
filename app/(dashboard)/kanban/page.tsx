@@ -18,7 +18,7 @@ import {
 	verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { Pencil, X } from "lucide-react";
+import { Pencil, Plus, X } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -31,14 +31,51 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
+
+type Priority = "low" | "med" | "high";
+type Team = "Admin" | "Projects" | "Tech" | "Marketing" | "Industry" | "Social";
+type Status = "backlog" | "active" | "done";
 
 type Task = {
 	id: string;
 	title: string;
 	description?: string;
 	tags?: string[];
+	links?: string[];
+	priority?: Priority;
+	team?: Team;
+	status: Status;
+	assignees: string[];
+	positions: Record<string, number>;
+};
+
+const PRIORITIES: Priority[] = ["low", "med", "high"];
+const TEAMS: Team[] = [
+	"Admin",
+	"Projects",
+	"Tech",
+	"Marketing",
+	"Industry",
+	"Social",
+];
+const priorityDot: Record<Priority, string> = {
+	low: "bg-emerald-500",
+	med: "bg-amber-500",
+	high: "bg-red-500",
+};
+const priorityLabel: Record<Priority, string> = {
+	low: "Low priority",
+	med: "Medium priority",
+	high: "High priority",
 };
 
 type ColumnMeta = {
@@ -48,43 +85,29 @@ type ColumnMeta = {
 };
 
 const members = ["Alex", "Bea", "Chen", "Dani", "Evan"];
+const memberCol = (m: string) => `member-${m}`;
+const memberFromCol = (colId: string) =>
+	colId.startsWith("member-") ? colId.slice("member-".length) : null;
 
-const initialState: Record<string, Task[]> = {
-	backlog: [
-		{ id: "t1", title: "Design auth flow", tags: ["design"] },
-		{ id: "t2", title: "Set up CI", tags: ["infra"] },
-		{ id: "t3", title: "Write onboarding doc", tags: ["docs"] },
-		{ id: "t4", title: "Sprint planning notes" },
-	],
-	"member-Alex": [
-		{ id: "a1", title: "Kanban layout", tags: ["frontend"] },
-		{ id: "a2", title: "Sidebar polish", tags: ["frontend"] },
-	],
-	"member-Bea": [{ id: "b1", title: "RBAC review", tags: ["backend"] }],
-	"member-Chen": [
-		{ id: "c1", title: "DB migrations", tags: ["db"] },
-		{ id: "c2", title: "Schema cleanup", tags: ["db"] },
-	],
-	"member-Dani": [{ id: "d1", title: "Marketing page copy", tags: ["content"] }],
-	"member-Evan": [],
-	done: [
-		{ id: "x1", title: "Repo bootstrap" },
-		{ id: "x2", title: "Login w/ Google", tags: ["auth"] },
-	],
-};
+const initialTasks: Task[] = [
+	{ id: "t1", title: "Design auth flow", tags: ["design"], status: "backlog", assignees: [], positions: { backlog: 0 } },
+	{ id: "t2", title: "Set up CI", tags: ["infra"], status: "backlog", assignees: [], positions: { backlog: 1 } },
+	{ id: "t3", title: "Write onboarding doc", tags: ["docs"], status: "backlog", assignees: [], positions: { backlog: 2 } },
+	{ id: "t4", title: "Sprint planning notes", status: "backlog", assignees: [], positions: { backlog: 3 } },
+	{ id: "a1", title: "Kanban layout", tags: ["frontend"], status: "active", assignees: ["Alex"], positions: { "member-Alex": 0 } },
+	{ id: "a2", title: "Sidebar polish", tags: ["frontend"], status: "active", assignees: ["Alex"], positions: { "member-Alex": 1 } },
+	{ id: "b1", title: "RBAC review", tags: ["backend"], status: "active", assignees: ["Bea"], positions: { "member-Bea": 0 } },
+	{ id: "c1", title: "DB migrations", tags: ["db"], status: "active", assignees: ["Chen"], positions: { "member-Chen": 0 } },
+	{ id: "c2", title: "Schema cleanup", tags: ["db"], status: "active", assignees: ["Chen"], positions: { "member-Chen": 1 } },
+	{ id: "d1", title: "Marketing page copy", tags: ["content"], status: "active", assignees: ["Dani"], positions: { "member-Dani": 0 } },
+	{ id: "x1", title: "Repo bootstrap", status: "done", assignees: [], positions: { done: 0 } },
+	{ id: "x2", title: "Login w/ Google", tags: ["auth"], status: "done", assignees: [], positions: { done: 1 } },
+];
 
-const backlogMeta: ColumnMeta = {
-	id: "backlog",
-	label: "Backlog",
-	accent: "blue",
-};
-const doneMeta: ColumnMeta = {
-	id: "done",
-	label: "Done",
-	accent: "blue-strong",
-};
+const backlogMeta: ColumnMeta = { id: "backlog", label: "Backlog", accent: "blue" };
+const doneMeta: ColumnMeta = { id: "done", label: "Done", accent: "blue-strong" };
 const memberMeta: ColumnMeta[] = members.map((m) => ({
-	id: `member-${m}`,
+	id: memberCol(m),
 	label: m,
 	accent: "neutral",
 }));
@@ -110,15 +133,45 @@ const accentMap = {
 	},
 } as const;
 
+function belongsTo(task: Task, colId: string): boolean {
+	if (colId === "backlog") return task.status === "backlog";
+	if (colId === "done") return task.status === "done";
+	const m = memberFromCol(colId);
+	if (m) return task.status === "active" && task.assignees.includes(m);
+	return false;
+}
+
+function colTasks(tasks: Task[], colId: string): Task[] {
+	return tasks
+		.filter((t) => belongsTo(t, colId))
+		.sort(
+			(a, b) =>
+				(a.positions[colId] ?? Infinity) - (b.positions[colId] ?? Infinity)
+		);
+}
+
+const sortableId = (colId: string, taskId: string) => `${colId}::${taskId}`;
+const parseSortableId = (id: string): { colId: string; taskId: string } => {
+	const idx = id.indexOf("::");
+	return { colId: id.slice(0, idx), taskId: id.slice(idx + 2) };
+};
+
 function TaskCard({
 	task,
+	columnId,
 	dragging = false,
 	onEdit,
 }: {
 	task: Task;
+	columnId?: string;
 	dragging?: boolean;
 	onEdit?: () => void;
 }) {
+	const otherAssignees =
+		columnId && memberFromCol(columnId)
+			? task.assignees.filter((a) => a !== memberFromCol(columnId))
+			: [];
+
 	return (
 		<Card
 			size="sm"
@@ -128,22 +181,50 @@ function TaskCard({
 			)}
 		>
 			<CardHeader>
-				<CardTitle className="pr-6">{task.title}</CardTitle>
+				<CardTitle className="flex items-center gap-2 pr-6">
+					{task.priority && (
+						<span
+							aria-label={priorityLabel[task.priority]}
+							title={priorityLabel[task.priority]}
+							className={cn(
+								"inline-block size-2 shrink-0 rounded-full",
+								priorityDot[task.priority]
+							)}
+						/>
+					)}
+					<span className="min-w-0 truncate">{task.title}</span>
+				</CardTitle>
 			</CardHeader>
-			{(task.description || task.tags?.length) && (
+			{(task.description ||
+				task.tags?.length ||
+				task.team ||
+				otherAssignees.length > 0) && (
 				<CardContent className="flex flex-col gap-2">
 					{task.description && (
 						<p className="text-muted-foreground text-xs">{task.description}</p>
 					)}
-					{task.tags?.length ? (
+					{(task.tags?.length || task.team || otherAssignees.length > 0) && (
 						<div className="flex flex-wrap gap-1">
-							{task.tags.map((t) => (
+							{task.team && (
+								<Badge variant="outline" className="text-[10px]">
+									{task.team}
+								</Badge>
+							)}
+							{task.tags?.map((t) => (
 								<Badge key={t} variant="secondary" className="text-[10px]">
 									{t}
 								</Badge>
 							))}
+							{otherAssignees.map((a) => (
+								<Badge
+									key={`assignee-${a}`}
+									className="bg-brand-blue/15 text-brand-blue text-[10px]"
+								>
+									+{a}
+								</Badge>
+							))}
 						</div>
-					) : null}
+					)}
 				</CardContent>
 			)}
 			{onEdit && (
@@ -174,7 +255,10 @@ function SortableTask({
 	onEdit: (task: Task) => void;
 }) {
 	const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
-		useSortable({ id: task.id, data: { type: "task", columnId } });
+		useSortable({
+			id: sortableId(columnId, task.id),
+			data: { type: "task", columnId, taskId: task.id },
+		});
 
 	return (
 		<div
@@ -186,7 +270,12 @@ function SortableTask({
 			{...attributes}
 			{...listeners}
 		>
-			<TaskCard task={task} dragging={isDragging} onEdit={() => onEdit(task)} />
+			<TaskCard
+				task={task}
+				columnId={columnId}
+				dragging={isDragging}
+				onEdit={() => onEdit(task)}
+			/>
 		</div>
 	);
 }
@@ -207,7 +296,10 @@ function KanbanColumn({
 		data: { type: "column", columnId: meta.id },
 	});
 	const styles = accentMap[meta.accent];
-	const taskIds = useMemo(() => tasks.map((t) => t.id), [tasks]);
+	const taskIds = useMemo(
+		() => tasks.map((t) => sortableId(meta.id, t.id)),
+		[tasks, meta.id]
+	);
 
 	return (
 		<div
@@ -238,7 +330,7 @@ function KanbanColumn({
 				<div className="flex flex-col gap-2 p-2 min-h-24">
 					{tasks.map((t) => (
 						<SortableTask
-							key={t.id}
+							key={sortableId(meta.id, t.id)}
 							task={t}
 							columnId={meta.id}
 							onEdit={onEditTask}
@@ -391,24 +483,58 @@ function TaskEditDialog({
 	const [title, setTitle] = useState("");
 	const [description, setDescription] = useState("");
 	const [tags, setTags] = useState<string[]>([]);
+	const [links, setLinks] = useState<string[]>([]);
+	const [linkDraft, setLinkDraft] = useState("");
+	const [priority, setPriority] = useState<Priority | "">("");
+	const [team, setTeam] = useState<Team | "">("");
+	const [assignees, setAssignees] = useState<string[]>([]);
 
 	useEffect(() => {
 		if (task) {
 			setTitle(task.title);
 			setDescription(task.description ?? "");
 			setTags(task.tags ?? []);
+			setLinks(task.links ?? []);
+			setLinkDraft("");
+			setPriority(task.priority ?? "");
+			setTeam(task.team ?? "");
+			setAssignees(task.assignees ?? []);
 		}
 	}, [task]);
+
+	function addLink() {
+		const v = linkDraft.trim();
+		if (!v) return;
+		if (links.includes(v)) {
+			setLinkDraft("");
+			return;
+		}
+		setLinks([...links, v]);
+		setLinkDraft("");
+	}
+
+	function toggleAssignee(name: string) {
+		setAssignees((cur) =>
+			cur.includes(name) ? cur.filter((n) => n !== name) : [...cur, name]
+		);
+	}
 
 	function handleSave() {
 		if (!task) return;
 		const trimmed = title.trim();
 		if (!trimmed) return;
+		const pendingLink = linkDraft.trim();
+		const finalLinks =
+			pendingLink && !links.includes(pendingLink) ? [...links, pendingLink] : links;
 		onSave({
-			id: task.id,
+			...task,
 			title: trimmed,
 			description: description.trim() || undefined,
 			tags: tags.length ? tags : undefined,
+			links: finalLinks.length ? finalLinks : undefined,
+			priority: priority || undefined,
+			team: team || undefined,
+			assignees,
 		});
 		onOpenChange(false);
 	}
@@ -419,13 +545,15 @@ function TaskEditDialog({
 		onOpenChange(false);
 	}
 
+	const assigneesDisabled = task?.status !== "active";
+
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
-			<DialogContent>
+			<DialogContent className="sm:max-w-2xl">
 				<DialogHeader>
 					<DialogTitle>Edit task</DialogTitle>
 				</DialogHeader>
-				<div className="flex flex-col gap-3">
+				<div className="flex max-h-[70vh] flex-col gap-4 overflow-y-auto pr-1">
 					<div className="flex flex-col gap-1.5">
 						<Label htmlFor="task-title">Title</Label>
 						<Input
@@ -438,10 +566,79 @@ function TaskEditDialog({
 						<Label htmlFor="task-desc">Description</Label>
 						<Textarea
 							id="task-desc"
-							rows={3}
+							rows={8}
 							value={description}
 							onChange={(e) => setDescription(e.target.value)}
 						/>
+					</div>
+					<div className="grid grid-cols-2 gap-3">
+						<div className="flex flex-col gap-1.5">
+							<Label htmlFor="task-priority">Priority</Label>
+							<Select
+								value={priority || undefined}
+								onValueChange={(v) => setPriority(v as Priority)}
+							>
+								<SelectTrigger id="task-priority">
+									<SelectValue placeholder="None" />
+								</SelectTrigger>
+								<SelectContent>
+									{PRIORITIES.map((p) => (
+										<SelectItem key={p} value={p}>
+											{p}
+										</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
+						</div>
+						<div className="flex flex-col gap-1.5">
+							<Label htmlFor="task-team">Team</Label>
+							<Select
+								value={team || undefined}
+								onValueChange={(v) => setTeam(v as Team)}
+							>
+								<SelectTrigger id="task-team">
+									<SelectValue placeholder="None" />
+								</SelectTrigger>
+								<SelectContent>
+									{TEAMS.map((t) => (
+										<SelectItem key={t} value={t}>
+											{t}
+										</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
+						</div>
+					</div>
+					<div className="flex flex-col gap-1.5">
+						<Label>
+							Assignees
+							{assigneesDisabled && (
+								<span className="text-muted-foreground ml-2 text-xs font-normal">
+									(only for active tasks)
+								</span>
+							)}
+						</Label>
+						<div className="flex flex-wrap gap-1.5">
+							{members.map((m) => {
+								const active = assignees.includes(m);
+								return (
+									<button
+										key={m}
+										type="button"
+										disabled={assigneesDisabled}
+										onClick={() => toggleAssignee(m)}
+										className={cn(
+											"rounded-full border px-3 py-1 text-xs transition disabled:cursor-not-allowed disabled:opacity-50",
+											active
+												? "bg-brand-blue text-brand-blue-fg border-transparent"
+												: "border-input hover:bg-accent"
+										)}
+									>
+										{m}
+									</button>
+								);
+							})}
+						</div>
 					</div>
 					<div className="flex flex-col gap-1.5">
 						<Label htmlFor="task-tags">Tags</Label>
@@ -451,6 +648,62 @@ function TaskEditDialog({
 							onChange={setTags}
 							suggestions={tagSuggestions}
 						/>
+					</div>
+					<div className="flex flex-col gap-1.5">
+						<Label htmlFor="task-link">Links</Label>
+						<div className="flex gap-2">
+							<Input
+								id="task-link"
+								type="url"
+								placeholder="https://..."
+								value={linkDraft}
+								onChange={(e) => setLinkDraft(e.target.value)}
+								onKeyDown={(e) => {
+									if (e.key === "Enter") {
+										e.preventDefault();
+										addLink();
+									}
+								}}
+							/>
+							<Button
+								type="button"
+								variant="outline"
+								size="icon"
+								onClick={addLink}
+								aria-label="Add link"
+							>
+								<Plus className="size-4" />
+							</Button>
+						</div>
+						{links.length > 0 && (
+							<ul className="flex flex-col gap-1">
+								{links.map((l, i) => (
+									<li
+										key={`${l}-${i}`}
+										className="bg-muted/50 flex items-center gap-2 rounded-md px-2 py-1 text-xs"
+									>
+										<a
+											href={l}
+											target="_blank"
+											rel="noreferrer"
+											className="text-brand-blue min-w-0 flex-1 truncate hover:underline"
+										>
+											{l}
+										</a>
+										<button
+											type="button"
+											aria-label={`Remove ${l}`}
+											onClick={() =>
+												setLinks(links.filter((_, idx) => idx !== i))
+											}
+											className="hover:bg-foreground/10 rounded p-0.5"
+										>
+											<X className="size-3" />
+										</button>
+									</li>
+								))}
+							</ul>
+						)}
 					</div>
 				</div>
 				<DialogFooter className="sm:justify-between">
@@ -471,135 +724,169 @@ function TaskEditDialog({
 	);
 }
 
-export default function KanbanPage() {
-	const [columns, setColumns] = useState<Record<string, Task[]>>(initialState);
-	const [activeId, setActiveId] = useState<string | null>(null);
-	const [editing, setEditing] = useState<{ colId: string; task: Task } | null>(
-		null
+function applyDrag(
+	tasks: Task[],
+	taskId: string,
+	fromCol: string,
+	toCol: string,
+	overTaskId: string | null
+): Task[] {
+	const task = tasks.find((t) => t.id === taskId);
+	if (!task) return tasks;
+
+	let status = task.status;
+	let assignees = task.assignees;
+
+	if (toCol === "backlog") {
+		status = "backlog";
+		assignees = [];
+	} else if (toCol === "done") {
+		status = "done";
+	} else {
+		const newMember = memberFromCol(toCol);
+		if (newMember) {
+			status = "active";
+			const oldMember = memberFromCol(fromCol);
+			if (oldMember && oldMember !== newMember) {
+				const without = assignees.filter((m) => m !== oldMember);
+				assignees = without.includes(newMember) ? without : [...without, newMember];
+			} else if (!oldMember) {
+				assignees = [newMember];
+			}
+		}
+	}
+
+	const mutated = tasks.map((t) =>
+		t.id === taskId ? { ...t, status, assignees } : t
 	);
+	const movedTask = mutated.find((t) => t.id === taskId)!;
+
+	const destOrdered = mutated
+		.filter((t) => t.id !== taskId && belongsTo(t, toCol))
+		.sort(
+			(a, b) =>
+				(a.positions[toCol] ?? Infinity) - (b.positions[toCol] ?? Infinity)
+		);
+	let insertIdx = destOrdered.length;
+	if (overTaskId && overTaskId !== taskId) {
+		const idx = destOrdered.findIndex((t) => t.id === overTaskId);
+		if (idx >= 0) insertIdx = idx;
+	}
+	destOrdered.splice(insertIdx, 0, movedTask);
+
+	const newPositions = new Map<string, number>();
+	destOrdered.forEach((t, i) => newPositions.set(t.id, i));
+
+	return mutated.map((t) => {
+		const pos = newPositions.get(t.id);
+		if (pos === undefined) return t;
+		return { ...t, positions: { ...t.positions, [toCol]: pos } };
+	});
+}
+
+export default function KanbanPage() {
+	const [tasks, setTasks] = useState<Task[]>(initialTasks);
+	const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
+	const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
 	const [dialogOpen, setDialogOpen] = useState(false);
 
 	const tagSuggestions = useMemo(() => {
 		const set = new Set<string>();
-		for (const list of Object.values(columns)) {
-			for (const t of list) for (const tag of t.tags ?? []) set.add(tag);
-		}
+		for (const t of tasks) for (const tag of t.tags ?? []) set.add(tag);
 		return Array.from(set).sort();
-	}, [columns]);
+	}, [tasks]);
 
 	function openEdit(task: Task) {
-		const colId = findColumn(task.id);
-		if (!colId) return;
-		setEditing({ colId, task });
+		setEditingTaskId(task.id);
 		setDialogOpen(true);
 	}
 
 	function updateTask(updated: Task) {
-		if (!editing) return;
-		const colId = editing.colId;
-		setColumns((prev) => ({
-			...prev,
-			[colId]: prev[colId].map((t) => (t.id === updated.id ? updated : t)),
-		}));
+		setTasks((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
 	}
 
 	function deleteTask(id: string) {
-		if (!editing) return;
-		const colId = editing.colId;
-		setColumns((prev) => ({
-			...prev,
-			[colId]: prev[colId].filter((t) => t.id !== id),
-		}));
+		setTasks((prev) => prev.filter((t) => t.id !== id));
 	}
 
 	const sensors = useSensors(
 		useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
 	);
 
-	const findColumn = (id: string): string | null => {
-		if (id in columns) return id;
-		for (const colId of Object.keys(columns)) {
-			if (columns[colId].some((t) => t.id === id)) return colId;
-		}
-		return null;
-	};
+	const editingTask = useMemo(
+		() => tasks.find((t) => t.id === editingTaskId) ?? null,
+		[tasks, editingTaskId]
+	);
 
-	const activeTask: Task | null = useMemo(() => {
-		if (!activeId) return null;
-		for (const list of Object.values(columns)) {
-			const t = list.find((x) => x.id === activeId);
-			if (t) return t;
-		}
-		return null;
-	}, [activeId, columns]);
+	const activeTask = useMemo(
+		() => (activeTaskId ? tasks.find((t) => t.id === activeTaskId) ?? null : null),
+		[activeTaskId, tasks]
+	);
 
 	function handleDragStart(e: DragStartEvent) {
-		setActiveId(String(e.active.id));
+		const data = e.active.data.current as
+			| { type: "task"; taskId: string }
+			| undefined;
+		if (data?.taskId) setActiveTaskId(data.taskId);
 	}
 
 	function handleDragEnd(e: DragEndEvent) {
 		const { active, over } = e;
-		setActiveId(null);
+		setActiveTaskId(null);
 		if (!over) return;
 
-		const activeIdStr = String(active.id);
-		const overIdStr = String(over.id);
-		const fromCol = findColumn(activeIdStr);
-		const toCol = findColumn(overIdStr);
-		if (!fromCol || !toCol) return;
+		const aData = active.data.current as
+			| { type: "task"; columnId: string; taskId: string }
+			| undefined;
+		if (!aData) return;
 
-		setColumns((prev) => {
-			const next = { ...prev };
-			const fromList = [...next[fromCol]];
-			const fromIdx = fromList.findIndex((t) => t.id === activeIdStr);
-			if (fromIdx < 0) return prev;
-			const [moved] = fromList.splice(fromIdx, 1);
+		const oData = over.data.current as
+			| { type: "task"; columnId: string; taskId: string }
+			| { type: "column"; columnId: string }
+			| undefined;
 
-			if (fromCol === toCol) {
-				// reorder within column
-				const overIdx =
-					overIdStr === toCol
-						? fromList.length
-						: fromList.findIndex((t) => t.id === overIdStr);
-				const insertAt = overIdx < 0 ? fromList.length : overIdx;
-				fromList.splice(insertAt, 0, moved);
-				next[fromCol] = fromList;
-			} else {
-				const toList = [...next[toCol]];
-				const overIdx =
-					overIdStr === toCol
-						? toList.length
-						: toList.findIndex((t) => t.id === overIdStr);
-				const insertAt = overIdx < 0 ? toList.length : overIdx;
-				toList.splice(insertAt, 0, moved);
-				next[fromCol] = fromList;
-				next[toCol] = toList;
-			}
-			return next;
-		});
+		const toCol =
+			oData?.type === "task"
+				? oData.columnId
+				: oData?.type === "column"
+					? oData.columnId
+					: String(over.id);
+
+		const overTaskId = oData?.type === "task" ? oData.taskId : null;
+
+		setTasks((prev) =>
+			applyDrag(prev, aData.taskId, aData.columnId, toCol, overTaskId)
+		);
 	}
 
-	const totalTasks = Object.values(columns).reduce((n, l) => n + l.length, 0);
+	const backlogTasks = useMemo(() => colTasks(tasks, "backlog"), [tasks]);
+	const doneTasksList = useMemo(() => colTasks(tasks, "done"), [tasks]);
+	const memberTasksByCol = useMemo(() => {
+		const m: Record<string, Task[]> = {};
+		for (const meta of memberMeta) m[meta.id] = colTasks(tasks, meta.id);
+		return m;
+	}, [tasks]);
 
 	return (
 		<div className="flex h-full flex-col gap-4">
 			<div className="flex items-baseline justify-between">
 				<h1 className="text-2xl font-semibold">Kanban</h1>
 				<p className="text-muted-foreground text-xs">
-					{totalTasks} tasks · {members.length} members
+					{tasks.length} tasks · {members.length} members
 				</p>
 			</div>
 			<DndContext
+				id="kanban"
 				sensors={sensors}
 				collisionDetection={closestCorners}
 				onDragStart={handleDragStart}
 				onDragEnd={handleDragEnd}
-				onDragCancel={() => setActiveId(null)}
+				onDragCancel={() => setActiveTaskId(null)}
 			>
 				<div className="flex flex-1 min-h-0 gap-3">
 					<KanbanColumn
 						meta={backlogMeta}
-						tasks={columns[backlogMeta.id]}
+						tasks={backlogTasks}
 						className="w-64 shrink-0"
 						onEditTask={openEdit}
 					/>
@@ -618,7 +905,7 @@ export default function KanbanPage() {
 									<KanbanColumn
 										key={m.id}
 										meta={m}
-										tasks={columns[m.id] ?? []}
+										tasks={memberTasksByCol[m.id] ?? []}
 										onEditTask={openEdit}
 									/>
 								))}
@@ -627,7 +914,7 @@ export default function KanbanPage() {
 					</section>
 					<KanbanColumn
 						meta={doneMeta}
-						tasks={columns[doneMeta.id]}
+						tasks={doneTasksList}
 						className="w-64 shrink-0"
 						onEditTask={openEdit}
 					/>
@@ -637,7 +924,7 @@ export default function KanbanPage() {
 				</DragOverlay>
 			</DndContext>
 			<TaskEditDialog
-				task={editing?.task ?? null}
+				task={editingTask}
 				open={dialogOpen}
 				onOpenChange={setDialogOpen}
 				onSave={updateTask}
