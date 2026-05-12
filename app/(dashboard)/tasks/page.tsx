@@ -18,7 +18,7 @@ import {
 	verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { Pencil, Plus, X } from "lucide-react";
+import { Link2, Plus, X } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -166,17 +166,15 @@ function TaskCard({
 	task,
 	columnId,
 	dragging = false,
-	onEdit,
 }: {
 	task: Task;
 	columnId?: string;
 	dragging?: boolean;
-	onEdit?: () => void;
 }) {
-	const otherAssignees =
-		columnId && memberFromCol(columnId)
-			? task.assignees.filter((a) => a !== memberFromCol(columnId))
-			: [];
+	const colMember = columnId ? memberFromCol(columnId) : null;
+	const shownAssignees = colMember
+		? task.assignees.filter((a) => a !== colMember)
+		: task.assignees;
 
 	return (
 		<Card
@@ -204,13 +202,17 @@ function TaskCard({
 			{(task.description ||
 				task.tags?.length ||
 				task.team ||
-				otherAssignees.length > 0) && (
+				task.links?.length ||
+				shownAssignees.length > 0) && (
 				<CardContent className="flex flex-col gap-2">
 					{task.description && (
 						<p className="text-muted-foreground text-xs">{task.description}</p>
 					)}
-					{(task.tags?.length || task.team || otherAssignees.length > 0) && (
-						<div className="flex flex-wrap gap-1">
+					{(task.tags?.length ||
+						task.team ||
+						task.links?.length ||
+						shownAssignees.length > 0) && (
+						<div className="flex flex-wrap items-center gap-1">
 							{task.team && (
 								<Badge variant="outline" className="text-[10px]">
 									{task.team}
@@ -221,7 +223,7 @@ function TaskCard({
 									{t}
 								</Badge>
 							))}
-							{otherAssignees.map((a) => (
+							{shownAssignees.map((a) => (
 								<Badge
 									key={`assignee-${a}`}
 									className="bg-brand-blue/15 text-brand-blue text-[10px]"
@@ -229,23 +231,18 @@ function TaskCard({
 									+{a}
 								</Badge>
 							))}
+							{task.links?.length ? (
+								<span
+									title={`${task.links.length} link${task.links.length === 1 ? "" : "s"}`}
+									className="text-muted-foreground inline-flex items-center gap-0.5 text-[10px]"
+								>
+									<Link2 className="size-3" />
+									{task.links.length}
+								</span>
+							) : null}
 						</div>
 					)}
 				</CardContent>
-			)}
-			{onEdit && (
-				<button
-					type="button"
-					aria-label="Edit task"
-					onPointerDown={(e) => e.stopPropagation()}
-					onClick={(e) => {
-						e.stopPropagation();
-						onEdit();
-					}}
-					className="absolute right-1.5 top-1.5 rounded p-1 text-muted-foreground opacity-0 transition hover:bg-foreground/10 hover:text-foreground group-hover:opacity-100 focus:opacity-100 focus:outline-none"
-				>
-					<Pencil className="size-3.5" />
-				</button>
 			)}
 		</Card>
 	);
@@ -275,13 +272,18 @@ function SortableTask({
 			}}
 			{...attributes}
 			{...listeners}
+			onClick={() => {
+				if (isDragging) return;
+				onEdit(task);
+			}}
+			onKeyDown={(e) => {
+				if (e.key === "Enter" || e.key === " ") {
+					e.preventDefault();
+					onEdit(task);
+				}
+			}}
 		>
-			<TaskCard
-				task={task}
-				columnId={columnId}
-				dragging={isDragging}
-				onEdit={() => onEdit(task)}
-			/>
+			<TaskCard task={task} columnId={columnId} dragging={isDragging} />
 		</div>
 	);
 }
@@ -741,31 +743,33 @@ function applyDrag(
 	if (!task) return tasks;
 
 	let status = task.status;
-	let assignees = task.assignees;
+	let assignees = [...task.assignees];
+	const oldMember = memberFromCol(fromCol);
+	const newMember = memberFromCol(toCol);
 
 	if (toCol === "backlog") {
-		status = "backlog";
-		assignees = [];
+		if (oldMember) {
+			assignees = assignees.filter((m) => m !== oldMember);
+			if (assignees.length === 0) status = "backlog";
+		} else {
+			status = "backlog";
+			assignees = [];
+		}
 	} else if (toCol === "done") {
 		status = "done";
-	} else {
-		const newMember = memberFromCol(toCol);
-		if (newMember) {
-			status = "active";
-			const oldMember = memberFromCol(fromCol);
-			if (oldMember && oldMember !== newMember) {
-				const without = assignees.filter((m) => m !== oldMember);
-				assignees = without.includes(newMember) ? without : [...without, newMember];
-			} else if (!oldMember) {
-				assignees = [newMember];
-			}
+	} else if (newMember) {
+		status = "active";
+		if (oldMember && oldMember !== newMember) {
+			assignees = assignees.filter((m) => m !== oldMember);
 		}
+		if (!assignees.includes(newMember)) assignees.push(newMember);
 	}
 
 	const mutated = tasks.map((t) =>
 		t.id === taskId ? { ...t, status, assignees } : t
 	);
 	const movedTask = mutated.find((t) => t.id === taskId)!;
+	const taskBelongsToDest = belongsTo(movedTask, toCol);
 
 	const destOrdered = mutated
 		.filter((t) => t.id !== taskId && belongsTo(t, toCol))
@@ -778,15 +782,43 @@ function applyDrag(
 		const idx = destOrdered.findIndex((t) => t.id === overTaskId);
 		if (idx >= 0) insertIdx = idx;
 	}
-	destOrdered.splice(insertIdx, 0, movedTask);
+	if (taskBelongsToDest) destOrdered.splice(insertIdx, 0, movedTask);
 
-	const newPositions = new Map<string, number>();
-	destOrdered.forEach((t, i) => newPositions.set(t.id, i));
+	const destPositions = new Map<string, number>();
+	destOrdered.forEach((t, i) => destPositions.set(t.id, i));
+
+	const sourcePositions = new Map<string, number>();
+	if (fromCol !== toCol) {
+		const sourceOrdered = mutated
+			.filter((t) => t.id !== taskId && belongsTo(t, fromCol))
+			.sort(
+				(a, b) =>
+					(a.positions[fromCol] ?? Infinity) -
+					(b.positions[fromCol] ?? Infinity)
+			);
+		sourceOrdered.forEach((t, i) => sourcePositions.set(t.id, i));
+	}
 
 	return mutated.map((t) => {
-		const pos = newPositions.get(t.id);
-		if (pos === undefined) return t;
-		return { ...t, positions: { ...t.positions, [toCol]: pos } };
+		if (t.id === taskId) {
+			const positions: Record<string, number> = {};
+			for (const [colId, pos] of Object.entries(t.positions)) {
+				if (colId !== toCol && colId !== fromCol && belongsTo(t, colId)) {
+					positions[colId] = pos;
+				}
+			}
+			if (taskBelongsToDest) {
+				positions[toCol] = destPositions.get(t.id) ?? 0;
+			}
+			return { ...t, positions };
+		}
+		const destPos = destPositions.get(t.id);
+		const srcPos = sourcePositions.get(t.id);
+		if (destPos === undefined && srcPos === undefined) return t;
+		const positions = { ...t.positions };
+		if (destPos !== undefined) positions[toCol] = destPos;
+		if (srcPos !== undefined) positions[fromCol] = srcPos;
+		return { ...t, positions };
 	});
 }
 
@@ -835,7 +867,7 @@ export default function TasksPage() {
 	}
 
 	const sensors = useSensors(
-		useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
+		useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
 	);
 
 	const editingTask = useMemo(
