@@ -9,7 +9,7 @@ import {
   Shield,
   Cpu,
   Link2,
-  KanbanSquare,
+  ListTodo,
 } from "lucide-react";
 import {
   Sidebar,
@@ -28,7 +28,7 @@ const nav = [
   { href: "/admin", label: "Admin", icon: Shield },
   { href: "/marketing", label: "Marketing", icon: Megaphone },
   { href: "/tech", label: "Tech", icon: Cpu },
-  { href: "/kanban", label: "Kanban", icon: KanbanSquare },
+  { href: "/tasks", label: "Tasks", icon: ListTodo },
   { href: "/projects", label: "Projects", icon: Table2 },
   { href: "/linktree", label: "Linktree", icon: Link2 },
 ];

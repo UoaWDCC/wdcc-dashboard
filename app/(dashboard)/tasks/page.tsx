@@ -81,7 +81,7 @@ const priorityLabel: Record<Priority, string> = {
 type ColumnMeta = {
 	id: string;
 	label: string;
-	accent: "neutral" | "blue" | "blue-strong";
+	accent: "neutral" | "blue" | "orange" | "green";
 };
 
 const members = ["Alex", "Bea", "Chen", "Dani", "Evan"];
@@ -105,7 +105,7 @@ const initialTasks: Task[] = [
 ];
 
 const backlogMeta: ColumnMeta = { id: "backlog", label: "Backlog", accent: "blue" };
-const doneMeta: ColumnMeta = { id: "done", label: "Done", accent: "blue-strong" };
+const doneMeta: ColumnMeta = { id: "done", label: "Done", accent: "green" };
 const memberMeta: ColumnMeta[] = members.map((m) => ({
 	id: memberCol(m),
 	label: m,
@@ -114,22 +114,28 @@ const memberMeta: ColumnMeta[] = members.map((m) => ({
 
 const accentMap = {
 	neutral: {
-		wrap: "bg-muted ring-foreground/15",
-		header: "border-foreground/10",
+		wrap: "bg-foreground/8 ring-foreground/20",
+		header: "border-foreground/15",
 		title: "",
 		count: "text-muted-foreground",
 	},
 	blue: {
-		wrap: "bg-brand-blue/5 ring-brand-blue/25",
-		header: "border-brand-blue/20",
-		title: "text-brand-blue",
-		count: "bg-brand-blue/15 text-brand-blue rounded-md px-1.5 py-0.5",
+		wrap: "bg-brand-pink/10 ring-brand-pink/50",
+		header: "border-brand-pink/30",
+		title: "text-brand-pink",
+		count: "bg-brand-pink text-white rounded-md px-1.5 py-0.5",
 	},
-	"blue-strong": {
-		wrap: "bg-brand-blue/10 ring-brand-blue/40",
-		header: "border-brand-blue/30",
-		title: "text-brand-blue",
-		count: "bg-brand-blue text-brand-blue-fg rounded-md px-1.5 py-0.5",
+	orange: {
+		wrap: "bg-brand-orange/10 ring-brand-orange/50",
+		header: "border-brand-orange/30",
+		title: "text-brand-orange",
+		count: "bg-brand-orange text-white rounded-md px-1.5 py-0.5",
+	},
+	green: {
+		wrap: "bg-brand-green/10 ring-brand-green/50",
+		header: "border-brand-green/30",
+		title: "text-brand-green",
+		count: "bg-brand-green text-white rounded-md px-1.5 py-0.5",
 	},
 } as const;
 
@@ -176,7 +182,7 @@ function TaskCard({
 		<Card
 			size="sm"
 			className={cn(
-				"group relative cursor-grab select-none active:cursor-grabbing",
+				"group relative cursor-grab select-none shadow-sm ring-foreground/15 active:cursor-grabbing",
 				dragging && "opacity-50"
 			)}
 		>
@@ -280,7 +286,7 @@ function SortableTask({
 	);
 }
 
-function KanbanColumn({
+function TaskColumn({
 	meta,
 	tasks,
 	className,
@@ -784,7 +790,7 @@ function applyDrag(
 	});
 }
 
-export default function KanbanPage() {
+export default function TasksPage() {
 	const [tasks, setTasks] = useState<Task[]>(initialTasks);
 	const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
 	const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
@@ -870,13 +876,13 @@ export default function KanbanPage() {
 	return (
 		<div className="flex h-full flex-col gap-4">
 			<div className="flex items-baseline justify-between">
-				<h1 className="text-2xl font-semibold">Kanban</h1>
+				<h1 className="text-2xl font-semibold">Tasks</h1>
 				<p className="text-muted-foreground text-xs">
 					{tasks.length} tasks · {members.length} members
 				</p>
 			</div>
 			<DndContext
-				id="kanban"
+				id="tasks"
 				sensors={sensors}
 				collisionDetection={closestCorners}
 				onDragStart={handleDragStart}
@@ -884,25 +890,25 @@ export default function KanbanPage() {
 				onDragCancel={() => setActiveTaskId(null)}
 			>
 				<div className="flex flex-1 min-h-0 gap-3">
-					<KanbanColumn
+					<TaskColumn
 						meta={backlogMeta}
 						tasks={backlogTasks}
 						className="w-64 shrink-0"
 						onEditTask={openEdit}
 					/>
-					<section className="flex min-w-0 flex-1 flex-col rounded-lg ring-1 ring-brand-blue/15 bg-brand-blue/[0.03]">
-						<div className="flex items-center justify-between px-3 py-2.5 border-b border-brand-blue/15">
+					<section className="flex min-w-0 flex-1 flex-col rounded-lg ring-1 ring-brand-blue/50 bg-brand-blue/10">
+						<div className="flex items-center justify-between px-3 py-2.5 border-b border-brand-blue/30">
 							<h2 className="text-sm font-semibold tracking-tight text-brand-blue">
 								Ongoing Tasks
 							</h2>
-							<span className="text-muted-foreground text-xs tabular-nums">
+							<span className="bg-brand-blue text-white text-xs tabular-nums rounded-md px-1.5 py-0.5">
 								{members.length}
 							</span>
 						</div>
 						<div className="flex-1 overflow-y-auto p-2">
 							<div className="grid gap-2 grid-cols-[repeat(auto-fit,minmax(180px,1fr))]">
 								{memberMeta.map((m) => (
-									<KanbanColumn
+									<TaskColumn
 										key={m.id}
 										meta={m}
 										tasks={memberTasksByCol[m.id] ?? []}
@@ -912,7 +918,7 @@ export default function KanbanPage() {
 							</div>
 						</div>
 					</section>
-					<KanbanColumn
+					<TaskColumn
 						meta={doneMeta}
 						tasks={doneTasksList}
 						className="w-64 shrink-0"
