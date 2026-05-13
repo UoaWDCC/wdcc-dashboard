@@ -10,6 +10,7 @@ import {
   taskTag,
   tag,
   user,
+  userTeam,
 } from "@/lib/db/schema";
 import { requireUser } from "@/lib/rbac";
 
@@ -150,11 +151,28 @@ export async function listTasks(): Promise<TaskView[]> {
   }));
 }
 
-export async function listMembers() {
+export type Team =
+  | "Admin"
+  | "Projects"
+  | "Tech"
+  | "Marketing"
+  | "Industry"
+  | "Social";
+
+export async function listMembers(team?: Team) {
   await requireUser();
+  if (team) {
+    return db
+      .select({ id: user.id, name: user.name, image: user.image })
+      .from(user)
+      .innerJoin(userTeam, eq(userTeam.userId, user.id))
+      .where(and(eq(user.active, true), eq(userTeam.team, team)))
+      .orderBy(asc(user.name));
+  }
   return db
     .select({ id: user.id, name: user.name, image: user.image })
     .from(user)
+    .where(eq(user.active, true))
     .orderBy(asc(user.name));
 }
 
