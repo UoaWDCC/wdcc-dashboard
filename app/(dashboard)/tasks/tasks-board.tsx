@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
 	DndContext,
@@ -403,6 +403,12 @@ function TagInput({
 		return pool.filter((s) => s.toLowerCase().includes(q)).slice(0, 8);
 	}, [draft, tags, suggestions]);
 
+	const draftLower = draft.trim().toLowerCase();
+	const noMatch =
+		draftLower.length > 0 &&
+		matches.length === 0 &&
+		!suggestions.includes(draftLower);
+
 	useEffect(() => {
 		setHighlight(0);
 	}, [draft, matches.length]);
@@ -497,6 +503,11 @@ function TagInput({
 						</li>
 					))}
 				</ul>
+			)}
+			{open && noMatch && (
+				<div className="bg-popover text-muted-foreground absolute z-50 mt-1 w-full rounded-md border px-2 py-1 text-xs shadow-md">
+					No matching tag — ask an admin to create &ldquo;{draftLower}&rdquo;.
+				</div>
 			)}
 		</div>
 	);
@@ -732,7 +743,7 @@ function TaskEditDialog({
 										<a
 											href={l.url}
 											target="_blank"
-											rel="noreferrer"
+											rel="noopener noreferrer"
 											className="text-brand-blue min-w-0 flex-1 truncate hover:underline"
 										>
 											{l.url}
@@ -878,10 +889,30 @@ export default function TasksBoard({
 	const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
 	const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
 	const [dialogOpen, setDialogOpen] = useState(false);
+	// In-flight mutation counter. router.refresh() pushes new initialTasks while
+	// optimistic state for a later drag may still be settling — applying server
+	// state then clobbers it. Defer the reset until mutations drain.
+	const pendingMutations = useRef(0);
+	const pendingRefresh = useRef(false);
 
 	useEffect(() => {
+		if (pendingMutations.current > 0) {
+			pendingRefresh.current = true;
+			return;
+		}
 		setTasks(fromServer(initialTasks));
 	}, [initialTasks]);
+
+	function trackMutation<T>(fn: () => Promise<T>): Promise<T> {
+		pendingMutations.current += 1;
+		return fn().finally(() => {
+			pendingMutations.current -= 1;
+			if (pendingMutations.current === 0 && pendingRefresh.current) {
+				pendingRefresh.current = false;
+				router.refresh();
+			}
+		});
+	}
 
 	const userById = useMemo(
 		() => new Map(users.map((m) => [m.id, m])),
@@ -931,38 +962,45 @@ export default function TasksBoard({
 					: t
 			)
 		);
-		startTransition(async () => {
-			try {
-				await updateTask(next.id, {
-					title: next.title,
-					description: next.description,
-					priority: next.priority,
-					team: next.team,
-					tagIds: next.tags
-						.map((name) => tagIdByName.get(name))
-						.filter((id): id is string => !!id),
-					links: next.links.map((l) => ({ url: l.url, title: l.title })),
-					assigneeUserIds: newAssigneeIds,
-				});
-				router.refresh();
-			} catch (e) {
-				console.error("updateTask failed", e);
-				setTasks((all) => all.map((t) => (t.id === prev.id ? prev : t)));
-			}
+		startTransition(() => {
+			trackMutation(async () => {
+				try {
+					await updateTask(next.id, {
+						title: next.title,
+						description: next.description,
+						priority: next.priority,
+						team: next.team,
+						tagIds: next.tags
+							.map((name) => tagIdByName.get(name))
+							.filter((id): id is string => !!id),
+						links: next.links.map((l) => ({ url: l.url, title: l.title })),
+						assigneeUserIds: newAssigneeIds,
+					});
+					router.refresh();
+				} catch (e) {
+					console.error("updateTask failed", e);
+					setTasks((all) => all.map((t) => (t.id === prev.id ? prev : t)));
+				}
+			});
 		});
 	}
 
 	function persistDelete(id: string) {
-		const snapshot = tasks;
+		const deleted = tasks.find((t) => t.id === id);
+		if (!deleted) return;
 		setTasks((all) => all.filter((t) => t.id !== id));
-		startTransition(async () => {
-			try {
-				await softDeleteTask(id);
-				router.refresh();
-			} catch (e) {
-				console.error("softDeleteTask failed", e);
-				setTasks(snapshot);
-			}
+		startTransition(() => {
+			trackMutation(async () => {
+				try {
+					await softDeleteTask(id);
+					router.refresh();
+				} catch (e) {
+					console.error("softDeleteTask failed", e);
+					setTasks((all) =>
+						all.some((t) => t.id === id) ? all : [...all, deleted]
+					);
+				}
+			});
 		});
 	}
 
@@ -1018,20 +1056,24 @@ export default function TasksBoard({
 
 		const { beforeId, afterId } = neighborsOf(next, aData.taskId, toCol);
 
-		startTransition(async () => {
-			try {
-				await moveTask({
-					taskId: aData.taskId,
-					from: colIdToColumnId(aData.columnId),
-					to: colIdToColumnId(toCol),
-					beforeId,
-					afterId,
-				});
-				router.refresh();
-			} catch (err) {
-				console.error("moveTask failed", err);
-				setTasks(snapshot);
-			}
+		startTransition(() => {
+			trackMutation(async () => {
+				try {
+					await moveTask({
+						taskId: aData.taskId,
+						from: colIdToColumnId(aData.columnId),
+						to: colIdToColumnId(toCol),
+						beforeId,
+						afterId,
+					});
+					// Optimistic state already matches server ordering. Skip
+					// router.refresh() here — it can clobber subsequent in-flight
+					// drags. The next mutation (or focus return) re-syncs.
+				} catch (err) {
+					console.error("moveTask failed", err);
+					setTasks(snapshot);
+				}
+			});
 		});
 	}
 
