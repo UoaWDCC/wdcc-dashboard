@@ -1,7 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { and, asc, eq, inArray, isNull, sql } from "drizzle-orm";
+import { and, asc, eq, gte, inArray, isNull, or, sql } from "drizzle-orm";
+import { z } from "zod";
 import { db } from "@/lib/db";
 import {
   task,
@@ -13,6 +14,8 @@ import {
   userTeam,
 } from "@/lib/db/schema";
 import { requireUser } from "@/lib/rbac";
+
+type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
 export type ColumnId =
   | { kind: "backlog" }
@@ -64,6 +67,22 @@ export type TaskView = {
 };
 
 const POSITION_GAP_MIN = 1e-6;
+const ALLOWED_LINK_SCHEMES = new Set(["http:", "https:", "mailto:"]);
+const DONE_RETENTION_DAYS = 30;
+const HEX_COLOR_RE = /^#[0-9a-fA-F]{6}$/;
+
+function validateLinkUrl(raw: string): string {
+  let parsed: URL;
+  try {
+    parsed = new URL(raw);
+  } catch {
+    throw new Error(`Invalid link URL: ${raw}`);
+  }
+  if (!ALLOWED_LINK_SCHEMES.has(parsed.protocol)) {
+    throw new Error(`Unsupported link scheme: ${parsed.protocol}`);
+  }
+  return parsed.toString();
+}
 
 function midpoint(before: number | null, after: number | null): number {
   if (before === null && after === null) return 1;
@@ -72,13 +91,125 @@ function midpoint(before: number | null, after: number | null): number {
   return (before + after) / 2;
 }
 
+const teamEnum = z.enum([
+  "Admin",
+  "Projects",
+  "Tech",
+  "Marketing",
+  "Industry",
+  "Social",
+]);
+const priorityEnum = z.enum(["low", "med", "high"]);
+const dateStr = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, "Expected YYYY-MM-DD");
+
+const createTaskSchema = z.object({
+  title: z.string().trim().min(1, "Title required"),
+  description: z.string().optional(),
+  priority: priorityEnum.optional(),
+  team: teamEnum.optional(),
+  dueDate: dateStr.optional(),
+  startDate: dateStr.optional(),
+  estimateHours: z.number().int().nonnegative().optional(),
+  tagIds: z.array(z.string().min(1)).optional(),
+  links: z
+    .array(z.object({ url: z.string().min(1), title: z.string().optional() }))
+    .optional(),
+  assigneeUserIds: z.array(z.string().min(1)).optional(),
+});
+
+const updateTaskSchema = z.object({
+  title: z.string().trim().min(1).optional(),
+  description: z.string().nullable().optional(),
+  priority: priorityEnum.nullable().optional(),
+  team: teamEnum.nullable().optional(),
+  dueDate: dateStr.nullable().optional(),
+  startDate: dateStr.nullable().optional(),
+  estimateHours: z.number().int().nonnegative().nullable().optional(),
+  tagIds: z.array(z.string().min(1)).optional(),
+  links: z
+    .array(
+      z.object({
+        url: z.string().min(1),
+        title: z.string().nullish(),
+      })
+    )
+    .optional(),
+  assigneeUserIds: z.array(z.string().min(1)).optional(),
+});
+
+const dedupe = <T>(xs: T[] | undefined): T[] =>
+  xs ? [...new Set(xs)] : [];
+
+async function ensureCanMutateTask(
+  tx: Tx,
+  userId: string,
+  taskId: string
+): Promise<void> {
+  const rows = await tx
+    .select({ createdBy: task.createdBy, team: task.team })
+    .from(task)
+    .where(eq(task.id, taskId))
+    .limit(1);
+  const t = rows[0];
+  if (!t) throw new Error("Task not found");
+  if (t.createdBy === userId) return;
+  const a = await tx
+    .select({ userId: taskAssignee.userId })
+    .from(taskAssignee)
+    .where(
+      and(eq(taskAssignee.taskId, taskId), eq(taskAssignee.userId, userId))
+    )
+    .limit(1);
+  if (a[0]) return;
+  if (t.team) {
+    const m = await tx
+      .select({ userId: userTeam.userId })
+      .from(userTeam)
+      .where(and(eq(userTeam.userId, userId), eq(userTeam.team, t.team)))
+      .limit(1);
+    if (m[0]) return;
+  }
+  throw new Error("Forbidden");
+}
+
+function columnLockKey(col: ColumnId): number {
+  const s = col.kind === "user" ? `user:${col.userId}` : col.kind;
+  // djb2-ish 32-bit hash; pg_advisory_xact_lock takes int8
+  let h = 5381;
+  for (let i = 0; i < s.length; i++) h = ((h * 33) ^ s.charCodeAt(i)) | 0;
+  return h;
+}
+
+async function lockColumns(tx: Tx, a: ColumnId, b: ColumnId): Promise<void> {
+  const ka = columnLockKey(a);
+  const kb = columnLockKey(b);
+  const [first, second] = ka <= kb ? [ka, kb] : [kb, ka];
+  await tx.execute(sql`SELECT pg_advisory_xact_lock(${first})`);
+  if (second !== first) {
+    await tx.execute(sql`SELECT pg_advisory_xact_lock(${second})`);
+  }
+}
+
 export async function listTasks(): Promise<TaskView[]> {
   await requireUser();
 
+  const doneCutoff = new Date(
+    Date.now() - DONE_RETENTION_DAYS * 24 * 60 * 60 * 1000
+  );
   const rows = await db
     .select()
     .from(task)
-    .where(isNull(task.deletedAt))
+    .where(
+      and(
+        isNull(task.deletedAt),
+        or(
+          sql`${task.status} <> 'done'`,
+          gte(task.completedAt, doneCutoff)
+        )
+      )
+    )
     .orderBy(asc(task.position));
 
   if (rows.length === 0) return [];
@@ -189,6 +320,9 @@ export async function createTag(input: { name: string; color?: string }) {
   const session = await requireUser();
   const name = input.name.trim().toLowerCase();
   if (!name) throw new Error("Tag name required");
+  if (input.color !== undefined && !HEX_COLOR_RE.test(input.color)) {
+    throw new Error("Tag color must be #RRGGBB hex");
+  }
   const [created] = await db
     .insert(tag)
     .values({ name, color: input.color, createdBy: session.user.id })
@@ -218,11 +352,12 @@ export type CreateTaskInput = {
 
 export async function createTask(input: CreateTaskInput) {
   const session = await requireUser();
-  const trimmed = input.title.trim();
-  if (!trimmed) throw new Error("Title required");
+  const data = createTaskSchema.parse(input);
+  const tagIds = dedupe(data.tagIds);
+  const assigneeUserIds = dedupe(data.assigneeUserIds);
 
   const result = await db.transaction(async (tx) => {
-    const status = input.assigneeUserIds?.length ? "active" : "backlog";
+    const status = assigneeUserIds.length ? "active" : "backlog";
 
     const tailRow = await tx
       .select({ max: sql<number>`coalesce(max(${task.position}), 0)` })
@@ -233,51 +368,50 @@ export async function createTask(input: CreateTaskInput) {
     const [inserted] = await tx
       .insert(task)
       .values({
-        title: trimmed,
-        description: input.description?.trim() || null,
+        title: data.title,
+        description: data.description?.trim() || null,
         status,
-        priority: input.priority,
-        team: input.team,
-        dueDate: input.dueDate,
-        startDate: input.startDate,
-        estimateHours: input.estimateHours,
+        priority: data.priority,
+        team: data.team,
+        dueDate: data.dueDate,
+        startDate: data.startDate,
+        estimateHours: data.estimateHours,
         position: newPosition,
         createdBy: session.user.id,
         updatedBy: session.user.id,
       })
       .returning();
 
-    if (input.tagIds?.length) {
+    if (tagIds.length) {
       await tx
         .insert(taskTag)
-        .values(input.tagIds.map((tagId) => ({ taskId: inserted.id, tagId })));
+        .values(tagIds.map((tagId) => ({ taskId: inserted.id, tagId })));
     }
-    if (input.links?.length) {
+    if (data.links?.length) {
       await tx.insert(taskLink).values(
-        input.links.map((l) => ({
+        data.links.map((l) => ({
           taskId: inserted.id,
-          url: l.url,
+          url: validateLinkUrl(l.url),
           title: l.title,
         }))
       );
     }
-    if (input.assigneeUserIds?.length) {
-      const assigneeValues = await Promise.all(
-        input.assigneeUserIds.map(async (userId, i) => {
-          const tail = await tx
-            .select({
-              max: sql<number>`coalesce(max(${taskAssignee.position}), 0)`,
-            })
-            .from(taskAssignee)
-            .where(eq(taskAssignee.userId, userId));
-          return {
-            taskId: inserted.id,
-            userId,
-            position: (tail[0]?.max ?? 0) + 1 + i,
-            assignedBy: session.user.id,
-          };
+    if (assigneeUserIds.length) {
+      const maxRows = await tx
+        .select({
+          userId: taskAssignee.userId,
+          max: sql<number>`coalesce(max(${taskAssignee.position}), 0)`,
         })
-      );
+        .from(taskAssignee)
+        .where(inArray(taskAssignee.userId, assigneeUserIds))
+        .groupBy(taskAssignee.userId);
+      const maxByUser = new Map(maxRows.map((r) => [r.userId, Number(r.max)]));
+      const assigneeValues = assigneeUserIds.map((userId, i) => ({
+        taskId: inserted.id,
+        userId,
+        position: (maxByUser.get(userId) ?? 0) + 1 + i,
+        assignedBy: session.user.id,
+      }));
       await tx.insert(taskAssignee).values(assigneeValues);
     }
 
@@ -310,52 +444,57 @@ export type UpdateTaskInput = {
 
 export async function updateTask(id: string, patch: UpdateTaskInput) {
   const session = await requireUser();
+  const data = updateTaskSchema.parse(patch);
 
   await db.transaction(async (tx) => {
+    await ensureCanMutateTask(tx, session.user.id, id);
+
     const fields: Partial<typeof task.$inferInsert> = {
       updatedBy: session.user.id,
     };
-    if (patch.title !== undefined) fields.title = patch.title.trim();
-    if (patch.description !== undefined)
-      fields.description = patch.description?.trim() || null;
-    if (patch.priority !== undefined) fields.priority = patch.priority;
-    if (patch.team !== undefined) fields.team = patch.team;
-    if (patch.dueDate !== undefined) fields.dueDate = patch.dueDate;
-    if (patch.startDate !== undefined) fields.startDate = patch.startDate;
-    if (patch.estimateHours !== undefined)
-      fields.estimateHours = patch.estimateHours;
+    if (data.title !== undefined) fields.title = data.title;
+    if (data.description !== undefined)
+      fields.description = data.description?.trim() || null;
+    if (data.priority !== undefined) fields.priority = data.priority;
+    if (data.team !== undefined) fields.team = data.team;
+    if (data.dueDate !== undefined) fields.dueDate = data.dueDate;
+    if (data.startDate !== undefined) fields.startDate = data.startDate;
+    if (data.estimateHours !== undefined)
+      fields.estimateHours = data.estimateHours;
 
     await tx.update(task).set(fields).where(eq(task.id, id));
 
-    if (patch.tagIds !== undefined) {
+    if (data.tagIds !== undefined) {
+      const tagIds = dedupe(data.tagIds);
       await tx.delete(taskTag).where(eq(taskTag.taskId, id));
-      if (patch.tagIds.length) {
+      if (tagIds.length) {
         await tx
           .insert(taskTag)
-          .values(patch.tagIds.map((tagId) => ({ taskId: id, tagId })));
+          .values(tagIds.map((tagId) => ({ taskId: id, tagId })));
       }
     }
 
-    if (patch.links !== undefined) {
+    if (data.links !== undefined) {
       await tx.delete(taskLink).where(eq(taskLink.taskId, id));
-      if (patch.links.length) {
+      if (data.links.length) {
         await tx.insert(taskLink).values(
-          patch.links.map((l) => ({
+          data.links.map((l) => ({
             taskId: id,
-            url: l.url,
+            url: validateLinkUrl(l.url),
             title: l.title ?? null,
           }))
         );
       }
     }
 
-    if (patch.assigneeUserIds !== undefined) {
+    if (data.assigneeUserIds !== undefined) {
+      const targetList = dedupe(data.assigneeUserIds);
       const existing = await tx
         .select({ userId: taskAssignee.userId })
         .from(taskAssignee)
         .where(eq(taskAssignee.taskId, id));
       const existingIds = new Set(existing.map((e) => e.userId));
-      const targetIds = new Set(patch.assigneeUserIds);
+      const targetIds = new Set(targetList);
 
       const toRemove = [...existingIds].filter((u) => !targetIds.has(u));
       const toAdd = [...targetIds].filter((u) => !existingIds.has(u));
@@ -370,19 +509,24 @@ export async function updateTask(id: string, patch: UpdateTaskInput) {
             )
           );
       }
-      for (const userId of toAdd) {
-        const tail = await tx
+      if (toAdd.length) {
+        const maxRows = await tx
           .select({
+            userId: taskAssignee.userId,
             max: sql<number>`coalesce(max(${taskAssignee.position}), 0)`,
           })
           .from(taskAssignee)
-          .where(eq(taskAssignee.userId, userId));
-        await tx.insert(taskAssignee).values({
-          taskId: id,
-          userId,
-          position: (tail[0]?.max ?? 0) + 1,
-          assignedBy: session.user.id,
-        });
+          .where(inArray(taskAssignee.userId, toAdd))
+          .groupBy(taskAssignee.userId);
+        const maxByUser = new Map(maxRows.map((r) => [r.userId, Number(r.max)]));
+        await tx.insert(taskAssignee).values(
+          toAdd.map((userId) => ({
+            taskId: id,
+            userId,
+            position: (maxByUser.get(userId) ?? 0) + 1,
+            assignedBy: session.user.id,
+          }))
+        );
       }
 
       const finalCount = targetIds.size;
@@ -404,11 +548,15 @@ export async function updateTask(id: string, patch: UpdateTaskInput) {
 }
 
 export async function softDeleteTask(id: string) {
-  await requireUser();
-  await db
-    .update(task)
-    .set({ deletedAt: new Date() })
-    .where(eq(task.id, id));
+  const session = await requireUser();
+  await db.transaction(async (tx) => {
+    await ensureCanMutateTask(tx, session.user.id, id);
+    await tx.delete(taskAssignee).where(eq(taskAssignee.taskId, id));
+    await tx
+      .update(task)
+      .set({ deletedAt: new Date(), updatedBy: session.user.id })
+      .where(eq(task.id, id));
+  });
   revalidatePath("/tasks");
 }
 
@@ -425,6 +573,9 @@ export async function moveTask(input: MoveTaskInput) {
   const { taskId, to, from, beforeId, afterId } = input;
 
   await db.transaction(async (tx) => {
+    await ensureCanMutateTask(tx, session.user.id, taskId);
+    await lockColumns(tx, from, to);
+
     const current = await tx
       .select()
       .from(task)
@@ -432,7 +583,10 @@ export async function moveTask(input: MoveTaskInput) {
       .limit(1);
     if (!current[0]) throw new Error("Task not found");
 
-    let nextStatus: "backlog" | "active" | "done" = current[0].status;
+    const prevStatus = current[0].status;
+    const prevCompletedAt = current[0].completedAt;
+    let nextStatus: "backlog" | "active" | "done" = prevStatus;
+    let assigneeExists = false;
 
     if (to.kind === "backlog") {
       if (from.kind === "user") {
@@ -448,8 +602,10 @@ export async function moveTask(input: MoveTaskInput) {
           .select({ count: sql<number>`count(*)::int` })
           .from(taskAssignee)
           .where(eq(taskAssignee.taskId, taskId));
-        if ((remaining[0]?.count ?? 0) === 0) nextStatus = "backlog";
+        nextStatus = (remaining[0]?.count ?? 0) === 0 ? "backlog" : "active";
       } else {
+        // Backlog invariant: zero assignees. Wipe all when dropping in from
+        // non-user columns (e.g. done → backlog) to keep status/assignee in sync.
         await tx.delete(taskAssignee).where(eq(taskAssignee.taskId, taskId));
         nextStatus = "backlog";
       }
@@ -477,14 +633,28 @@ export async function moveTask(input: MoveTaskInput) {
           )
         )
         .limit(1);
-      if (!exists[0]) {
-        await tx.insert(taskAssignee).values({
-          taskId,
-          userId: to.userId,
-          position: 0,
-          assignedBy: session.user.id,
-        });
-      }
+      assigneeExists = !!exists[0];
+    }
+
+    const isDone = nextStatus === "done";
+    const wasDone = prevStatus === "done";
+    const completedAt =
+      isDone && !wasDone
+        ? new Date()
+        : !isDone && wasDone
+          ? null
+          : prevCompletedAt;
+
+    // Dropped on backlog but other assignees keep the task active: the visual
+    // effect is "remove me from this user column". No backlog-relative position
+    // computation; do not write task.position (it'd pollute the active task
+    // with a backlog midpoint).
+    if (to.kind === "backlog" && nextStatus === "active") {
+      await tx
+        .update(task)
+        .set({ status: nextStatus, completedAt, updatedBy: session.user.id })
+        .where(eq(task.id, taskId));
+      return;
     }
 
     const beforePos = beforeId
@@ -504,33 +674,42 @@ export async function moveTask(input: MoveTaskInput) {
     }
 
     if (to.kind === "user") {
+      if (assigneeExists) {
+        await tx
+          .update(taskAssignee)
+          .set({ position: newPos })
+          .where(
+            and(
+              eq(taskAssignee.taskId, taskId),
+              eq(taskAssignee.userId, to.userId)
+            )
+          );
+      } else {
+        await tx.insert(taskAssignee).values({
+          taskId,
+          userId: to.userId,
+          position: newPos,
+          assignedBy: session.user.id,
+        });
+      }
+      // Clear stale task.position carried from prior backlog/done column.
+      // task.position is meaningless for active rows (ordered via taskAssignee).
       await tx
-        .update(taskAssignee)
-        .set({ position: newPos })
-        .where(
-          and(
-            eq(taskAssignee.taskId, taskId),
-            eq(taskAssignee.userId, to.userId)
-          )
-        );
+        .update(task)
+        .set({
+          status: nextStatus,
+          position: 0,
+          completedAt,
+          updatedBy: session.user.id,
+        })
+        .where(eq(task.id, taskId));
     } else {
       await tx
         .update(task)
         .set({
           position: newPos,
           status: nextStatus,
-          completedAt: nextStatus === "done" ? new Date() : null,
-          updatedBy: session.user.id,
-        })
-        .where(eq(task.id, taskId));
-    }
-
-    if (to.kind === "user" && nextStatus !== current[0].status) {
-      await tx
-        .update(task)
-        .set({
-          status: nextStatus,
-          completedAt: null,
+          completedAt,
           updatedBy: session.user.id,
         })
         .where(eq(task.id, taskId));
@@ -541,7 +720,7 @@ export async function moveTask(input: MoveTaskInput) {
 }
 
 async function getNeighborPosition(
-  tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
+  tx: Tx,
   neighborTaskId: string,
   col: ColumnId
 ): Promise<number | null> {
@@ -555,6 +734,7 @@ async function getNeighborPosition(
           eq(taskAssignee.userId, col.userId)
         )
       )
+      .for("update")
       .limit(1);
     return r[0]?.position ?? null;
   }
@@ -562,12 +742,13 @@ async function getNeighborPosition(
     .select({ position: task.position })
     .from(task)
     .where(eq(task.id, neighborTaskId))
+    .for("update")
     .limit(1);
   return r[0]?.position ?? null;
 }
 
 async function rebalanceColumn(
-  tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
+  tx: Tx,
   col: ColumnId,
   movingTaskId: string,
   beforeId: string | null,
