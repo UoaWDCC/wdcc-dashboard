@@ -17,7 +17,7 @@ import { requireUser } from "@/lib/rbac";
 export type ColumnId =
   | { kind: "backlog" }
   | { kind: "done" }
-  | { kind: "member"; userId: string };
+  | { kind: "user"; userId: string };
 
 export type TaskAssigneeView = {
   userId: string;
@@ -159,7 +159,7 @@ export type Team =
   | "Industry"
   | "Social";
 
-export async function listMembers(team?: Team) {
+export async function listUsers(team?: Team) {
   await requireUser();
   if (team) {
     return db
@@ -435,7 +435,7 @@ export async function moveTask(input: MoveTaskInput) {
     let nextStatus: "backlog" | "active" | "done" = current[0].status;
 
     if (to.kind === "backlog") {
-      if (from.kind === "member") {
+      if (from.kind === "user") {
         await tx
           .delete(taskAssignee)
           .where(
@@ -457,7 +457,7 @@ export async function moveTask(input: MoveTaskInput) {
       nextStatus = "done";
     } else {
       nextStatus = "active";
-      if (from.kind === "member" && from.userId !== to.userId) {
+      if (from.kind === "user" && from.userId !== to.userId) {
         await tx
           .delete(taskAssignee)
           .where(
@@ -503,7 +503,7 @@ export async function moveTask(input: MoveTaskInput) {
       newPos = await rebalanceColumn(tx, to, taskId, beforeId, afterId);
     }
 
-    if (to.kind === "member") {
+    if (to.kind === "user") {
       await tx
         .update(taskAssignee)
         .set({ position: newPos })
@@ -525,7 +525,7 @@ export async function moveTask(input: MoveTaskInput) {
         .where(eq(task.id, taskId));
     }
 
-    if (to.kind === "member" && nextStatus !== current[0].status) {
+    if (to.kind === "user" && nextStatus !== current[0].status) {
       await tx
         .update(task)
         .set({
@@ -545,7 +545,7 @@ async function getNeighborPosition(
   neighborTaskId: string,
   col: ColumnId
 ): Promise<number | null> {
-  if (col.kind === "member") {
+  if (col.kind === "user") {
     const r = await tx
       .select({ position: taskAssignee.position })
       .from(taskAssignee)
@@ -573,7 +573,7 @@ async function rebalanceColumn(
   beforeId: string | null,
   afterId: string | null
 ): Promise<number> {
-  if (col.kind === "member") {
+  if (col.kind === "user") {
     const rows = await tx
       .select({ taskId: taskAssignee.taskId, position: taskAssignee.position })
       .from(taskAssignee)
