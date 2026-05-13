@@ -15,6 +15,13 @@
       "when": 1778591319439,
       "tag": "0001_cool_hellcat",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1778645956505,
+      "tag": "0002_remarkable_kinsey_walden",
+      "breakpoints": true
     }
   ]
 }
