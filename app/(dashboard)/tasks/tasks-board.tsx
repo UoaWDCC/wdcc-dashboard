@@ -53,7 +53,7 @@ type Priority = "low" | "med" | "high";
 type Team = "Admin" | "Projects" | "Tech" | "Marketing" | "Industry" | "Social";
 type Status = "backlog" | "active" | "done";
 
-type Member = { id: string; name: string; image: string | null };
+type BoardUser = { id: string; name: string; image: string | null };
 type TagOption = { id: string; name: string; color: string | null };
 
 type ClientAssignee = { userId: string; position: number };
@@ -98,15 +98,15 @@ type ColumnMeta = {
 	accent: "neutral" | "blue" | "orange" | "green";
 };
 
-const memberColId = (userId: string) => `member-${userId}`;
-const memberFromCol = (colId: string) =>
-	colId.startsWith("member-") ? colId.slice("member-".length) : null;
+const userColId = (userId: string) => `user-${userId}`;
+const userFromCol = (colId: string) =>
+	colId.startsWith("user-") ? colId.slice("user-".length) : null;
 
 function colIdToColumnId(colId: string): ColumnId {
 	if (colId === "backlog") return { kind: "backlog" };
 	if (colId === "done") return { kind: "done" };
-	const userId = memberFromCol(colId);
-	if (userId) return { kind: "member", userId };
+	const userId = userFromCol(colId);
+	if (userId) return { kind: "user", userId };
 	throw new Error(`Unknown column id: ${colId}`);
 }
 
@@ -158,7 +158,7 @@ function fromServer(tasks: TaskView[]): ClientTask[] {
 function belongsTo(task: ClientTask, colId: string): boolean {
 	if (colId === "backlog") return task.status === "backlog";
 	if (colId === "done") return task.status === "done";
-	const userId = memberFromCol(colId);
+	const userId = userFromCol(colId);
 	if (userId)
 		return (
 			task.status === "active" &&
@@ -169,7 +169,7 @@ function belongsTo(task: ClientTask, colId: string): boolean {
 
 function colTasks(tasks: ClientTask[], colId: string): ClientTask[] {
 	const list = tasks.filter((t) => belongsTo(t, colId));
-	const userId = memberFromCol(colId);
+	const userId = userFromCol(colId);
 	if (userId) {
 		return list.sort((a, b) => {
 			const ap = a.assignees.find((x) => x.userId === userId)?.position ?? 0;
@@ -186,16 +186,16 @@ function TaskCard({
 	task,
 	columnId,
 	dragging = false,
-	memberById,
+	userById,
 }: {
 	task: ClientTask;
 	columnId?: string;
 	dragging?: boolean;
-	memberById: Map<string, Member>;
+	userById: Map<string, BoardUser>;
 }) {
-	const colMember = columnId ? memberFromCol(columnId) : null;
-	const shownAssignees = colMember
-		? task.assignees.filter((a) => a.userId !== colMember)
+	const colUserId = columnId ? userFromCol(columnId) : null;
+	const shownAssignees = colUserId
+		? task.assignees.filter((a) => a.userId !== colUserId)
 		: task.assignees;
 
 	return (
@@ -250,7 +250,7 @@ function TaskCard({
 									key={`assignee-${a.userId}`}
 									className="bg-brand-blue/15 text-brand-blue text-[10px]"
 								>
-									+{memberById.get(a.userId)?.name ?? a.userId}
+									+{userById.get(a.userId)?.name ?? a.userId}
 								</Badge>
 							))}
 							{task.links.length ? (
@@ -273,12 +273,12 @@ function TaskCard({
 function SortableTask({
 	task,
 	columnId,
-	memberById,
+	userById,
 	onEdit,
 }: {
 	task: ClientTask;
 	columnId: string;
-	memberById: Map<string, Member>;
+	userById: Map<string, BoardUser>;
 	onEdit: (task: ClientTask) => void;
 }) {
 	const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
@@ -311,7 +311,7 @@ function SortableTask({
 				task={task}
 				columnId={columnId}
 				dragging={isDragging}
-				memberById={memberById}
+				userById={userById}
 			/>
 		</div>
 	);
@@ -321,13 +321,13 @@ function TaskColumn({
 	meta,
 	tasks,
 	className,
-	memberById,
+	userById,
 	onEditTask,
 }: {
 	meta: ColumnMeta;
 	tasks: ClientTask[];
 	className?: string;
-	memberById: Map<string, Member>;
+	userById: Map<string, BoardUser>;
 	onEditTask: (task: ClientTask) => void;
 }) {
 	const { setNodeRef, isOver } = useDroppable({
@@ -370,7 +370,7 @@ function TaskColumn({
 							key={sortableId(meta.id, t.id)}
 							task={t}
 							columnId={meta.id}
-							memberById={memberById}
+							userById={userById}
 							onEdit={onEditTask}
 						/>
 					))}
@@ -509,7 +509,7 @@ function TaskEditDialog({
 	onSave,
 	onDelete,
 	tagSuggestions,
-	members,
+	users,
 }: {
 	task: ClientTask | null;
 	open: boolean;
@@ -517,7 +517,7 @@ function TaskEditDialog({
 	onSave: (task: ClientTask) => void;
 	onDelete: (id: string) => void;
 	tagSuggestions: string[];
-	members: Member[];
+	users: BoardUser[];
 }) {
 	const [title, setTitle] = useState("");
 	const [description, setDescription] = useState("");
@@ -666,7 +666,7 @@ function TaskEditDialog({
 							)}
 						</Label>
 						<div className="flex flex-wrap gap-1.5">
-							{members.map((m) => {
+							{users.map((m) => {
 								const active = assigneeIds.includes(m.id);
 								return (
 									<button
@@ -783,12 +783,12 @@ function applyDragLocal(
 
 	let status = t.status;
 	let assignees = [...t.assignees];
-	const oldMember = memberFromCol(fromCol);
-	const newMember = memberFromCol(toCol);
+	const oldUserId = userFromCol(fromCol);
+	const newUserId = userFromCol(toCol);
 
 	if (toCol === "backlog") {
-		if (oldMember) {
-			assignees = assignees.filter((a) => a.userId !== oldMember);
+		if (oldUserId) {
+			assignees = assignees.filter((a) => a.userId !== oldUserId);
 			if (assignees.length === 0) status = "backlog";
 		} else {
 			status = "backlog";
@@ -796,13 +796,13 @@ function applyDragLocal(
 		}
 	} else if (toCol === "done") {
 		status = "done";
-	} else if (newMember) {
+	} else if (newUserId) {
 		status = "active";
-		if (oldMember && oldMember !== newMember) {
-			assignees = assignees.filter((a) => a.userId !== oldMember);
+		if (oldUserId && oldUserId !== newUserId) {
+			assignees = assignees.filter((a) => a.userId !== oldUserId);
 		}
-		if (!assignees.some((a) => a.userId === newMember)) {
-			assignees.push({ userId: newMember, position: 0 });
+		if (!assignees.some((a) => a.userId === newUserId)) {
+			assignees.push({ userId: newUserId, position: 0 });
 		}
 	}
 
@@ -830,11 +830,11 @@ function applyDragLocal(
 		if (toCol === "backlog" || toCol === "done") {
 			return { ...x, position: newPos };
 		}
-		const memberId = memberFromCol(toCol)!;
+		const assigneeId = userFromCol(toCol)!;
 		return {
 			...x,
 			assignees: x.assignees.map((a) =>
-				a.userId === memberId ? { ...a, position: newPos } : a
+				a.userId === assigneeId ? { ...a, position: newPos } : a
 			),
 		};
 	});
@@ -842,7 +842,7 @@ function applyDragLocal(
 
 function positionFor(task: ClientTask, colId: string): number {
 	if (colId === "backlog" || colId === "done") return task.position;
-	const m = memberFromCol(colId);
+	const m = userFromCol(colId);
 	if (!m) return 0;
 	return task.assignees.find((a) => a.userId === m)?.position ?? 0;
 }
@@ -865,11 +865,11 @@ function neighborsOf(
 
 export default function TasksBoard({
 	initialTasks,
-	members,
+	users,
 	tags,
 }: {
 	initialTasks: TaskView[];
-	members: Member[];
+	users: BoardUser[];
 	tags: TagOption[];
 }) {
 	const router = useRouter();
@@ -883,9 +883,9 @@ export default function TasksBoard({
 		setTasks(fromServer(initialTasks));
 	}, [initialTasks]);
 
-	const memberById = useMemo(
-		() => new Map(members.map((m) => [m.id, m])),
-		[members]
+	const userById = useMemo(
+		() => new Map(users.map((m) => [m.id, m])),
+		[users]
 	);
 	const tagIdByName = useMemo(
 		() => new Map(tags.map((t) => [t.name, t.id])),
@@ -893,14 +893,14 @@ export default function TasksBoard({
 	);
 	const tagSuggestions = useMemo(() => tags.map((t) => t.name), [tags]);
 
-	const memberMeta: ColumnMeta[] = useMemo(
+	const userMeta: ColumnMeta[] = useMemo(
 		() =>
-			members.map((m) => ({
-				id: memberColId(m.id),
+			users.map((m) => ({
+				id: userColId(m.id),
 				label: m.name,
 				accent: "neutral" as const,
 			})),
-		[members]
+		[users]
 	);
 	const backlogMeta: ColumnMeta = {
 		id: "backlog",
@@ -1037,18 +1037,18 @@ export default function TasksBoard({
 
 	const backlogTasks = useMemo(() => colTasks(tasks, "backlog"), [tasks]);
 	const doneTasksList = useMemo(() => colTasks(tasks, "done"), [tasks]);
-	const memberTasksByCol = useMemo(() => {
+	const userTasksByCol = useMemo(() => {
 		const m: Record<string, ClientTask[]> = {};
-		for (const meta of memberMeta) m[meta.id] = colTasks(tasks, meta.id);
+		for (const meta of userMeta) m[meta.id] = colTasks(tasks, meta.id);
 		return m;
-	}, [tasks, memberMeta]);
+	}, [tasks, userMeta]);
 
 	return (
 		<div className="flex h-full flex-col gap-4">
 			<div className="flex items-baseline justify-between">
 				<h1 className="text-2xl font-semibold">Tasks</h1>
 				<p className="text-muted-foreground text-xs">
-					{tasks.length} tasks · {members.length} members
+					{tasks.length} tasks · {users.length} users
 				</p>
 			</div>
 			<DndContext
@@ -1064,7 +1064,7 @@ export default function TasksBoard({
 						meta={backlogMeta}
 						tasks={backlogTasks}
 						className="w-64 shrink-0"
-						memberById={memberById}
+						userById={userById}
 						onEditTask={openEdit}
 					/>
 					<section className="flex min-w-0 flex-1 flex-col rounded-lg ring-1 ring-brand-blue/50 bg-brand-blue/10">
@@ -1073,17 +1073,17 @@ export default function TasksBoard({
 								Ongoing Tasks
 							</h2>
 							<span className="bg-brand-blue text-white text-xs tabular-nums rounded-md px-1.5 py-0.5">
-								{members.length}
+								{users.length}
 							</span>
 						</div>
 						<div className="flex-1 overflow-y-auto p-2">
 							<div className="grid gap-2 grid-cols-[repeat(auto-fit,minmax(180px,1fr))]">
-								{memberMeta.map((m) => (
+								{userMeta.map((m) => (
 									<TaskColumn
 										key={m.id}
 										meta={m}
-										tasks={memberTasksByCol[m.id] ?? []}
-										memberById={memberById}
+										tasks={userTasksByCol[m.id] ?? []}
+										userById={userById}
 										onEditTask={openEdit}
 									/>
 								))}
@@ -1094,13 +1094,13 @@ export default function TasksBoard({
 						meta={doneMeta}
 						tasks={doneTasksList}
 						className="w-64 shrink-0"
-						memberById={memberById}
+						userById={userById}
 						onEditTask={openEdit}
 					/>
 				</div>
 				<DragOverlay>
 					{activeTask ? (
-						<TaskCard task={activeTask} memberById={memberById} />
+						<TaskCard task={activeTask} userById={userById} />
 					) : null}
 				</DragOverlay>
 			</DndContext>
@@ -1114,7 +1114,7 @@ export default function TasksBoard({
 				}}
 				onDelete={persistDelete}
 				tagSuggestions={tagSuggestions}
-				members={members}
+				users={users}
 			/>
 		</div>
 	);

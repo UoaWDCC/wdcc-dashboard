@@ -1,11 +1,11 @@
-import { listMembers, listTags, listTasks } from "@/server/tasks/actions";
+import { listUsers, listTags, listTasks } from "@/server/tasks/actions";
 import TasksBoard from "./tasks-board";
 
 export default async function TasksPage() {
-	const [tasks, members, tags] = await Promise.all([
+	const [tasks, users, tags] = await Promise.all([
 		listTasks(),
-		listMembers(),
+		listUsers(),
 		listTags(),
 	]);
-	return <TasksBoard initialTasks={tasks} members={members} tags={tags} />;
+	return <TasksBoard initialTasks={tasks} users={users} tags={tags} />;
 }
