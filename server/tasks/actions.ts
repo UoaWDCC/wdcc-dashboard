@@ -142,38 +142,6 @@ const updateTaskSchema = z.object({
 const dedupe = <T>(xs: T[] | undefined): T[] =>
   xs ? [...new Set(xs)] : [];
 
-async function ensureCanMutateTask(
-  tx: Tx,
-  userId: string,
-  taskId: string
-): Promise<void> {
-  const rows = await tx
-    .select({ createdBy: task.createdBy, team: task.team })
-    .from(task)
-    .where(eq(task.id, taskId))
-    .limit(1);
-  const t = rows[0];
-  if (!t) throw new Error("Task not found");
-  if (t.createdBy === userId) return;
-  const a = await tx
-    .select({ userId: taskAssignee.userId })
-    .from(taskAssignee)
-    .where(
-      and(eq(taskAssignee.taskId, taskId), eq(taskAssignee.userId, userId))
-    )
-    .limit(1);
-  if (a[0]) return;
-  if (t.team) {
-    const m = await tx
-      .select({ userId: userTeam.userId })
-      .from(userTeam)
-      .where(and(eq(userTeam.userId, userId), eq(userTeam.team, t.team)))
-      .limit(1);
-    if (m[0]) return;
-  }
-  throw new Error("Forbidden");
-}
-
 function columnLockKey(col: ColumnId): number {
   const s = col.kind === "user" ? `user:${col.userId}` : col.kind;
   // djb2-ish 32-bit hash; pg_advisory_xact_lock takes int8
@@ -447,7 +415,6 @@ export async function updateTask(id: string, patch: UpdateTaskInput) {
   const data = updateTaskSchema.parse(patch);
 
   await db.transaction(async (tx) => {
-    await ensureCanMutateTask(tx, session.user.id, id);
 
     const fields: Partial<typeof task.$inferInsert> = {
       updatedBy: session.user.id,
@@ -550,7 +517,6 @@ export async function updateTask(id: string, patch: UpdateTaskInput) {
 export async function softDeleteTask(id: string) {
   const session = await requireUser();
   await db.transaction(async (tx) => {
-    await ensureCanMutateTask(tx, session.user.id, id);
     await tx.delete(taskAssignee).where(eq(taskAssignee.taskId, id));
     await tx
       .update(task)
@@ -573,7 +539,6 @@ export async function moveTask(input: MoveTaskInput) {
   const { taskId, to, from, beforeId, afterId } = input;
 
   await db.transaction(async (tx) => {
-    await ensureCanMutateTask(tx, session.user.id, taskId);
     await lockColumns(tx, from, to);
 
     const current = await tx
