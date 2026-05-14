@@ -1,10 +1,13 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { and, eq, isNull, sql } from "drizzle-orm";
+import { db } from "@/lib/db";
+import { profile, task, taskAssignee } from "@/lib/db/schema";
 import { requireUser } from "@/lib/rbac";
 import {
   upsertProfile,
-  removeProfile,
+  normalizeEmail,
   type Team,
   type ProfileKind,
 } from "@/lib/profile";
@@ -49,8 +52,22 @@ export async function upsertProfileAction(formData: FormData) {
 
 export async function removeProfileAction(formData: FormData) {
   await requireUser("/admin");
-  const email = formData.get("email") as string;
-  await removeProfile(email);
+  const raw = formData.get("email");
+  if (typeof raw !== "string" || !raw.trim()) return;
+  const email = normalizeEmail(raw);
+  await db.transaction(async (tx) => {
+    await tx.delete(profile).where(eq(profile.email, email));
+    await tx
+      .update(task)
+      .set({ status: "backlog" })
+      .where(
+        and(
+          eq(task.status, "active"),
+          isNull(task.deletedAt),
+          sql`NOT EXISTS (SELECT 1 FROM ${taskAssignee} WHERE ${taskAssignee.taskId} = ${task.id})`
+        )
+      );
+  });
   revalidatePath("/admin");
   revalidatePath("/tasks");
 }
