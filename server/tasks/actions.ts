@@ -11,7 +11,7 @@ import {
   taskTag,
   tag,
   user,
-  userTeam,
+  profile,
 } from "@/lib/db/schema";
 import { requireUser } from "@/lib/rbac";
 
@@ -189,10 +189,11 @@ export async function listTasks(): Promise<TaskView[]> {
         taskId: taskAssignee.taskId,
         userId: taskAssignee.userId,
         position: taskAssignee.position,
-        name: user.name,
+        name: sql<string>`coalesce(${profile.name}, ${user.name})`,
       })
       .from(taskAssignee)
       .innerJoin(user, eq(user.id, taskAssignee.userId))
+      .leftJoin(profile, eq(profile.email, user.email))
       .where(inArray(taskAssignee.taskId, ids))
       .orderBy(asc(taskAssignee.position)),
     db
@@ -260,19 +261,17 @@ export type Team =
 
 export async function listUsers(team?: Team) {
   await requireUser();
-  if (team) {
-    return db
-      .select({ id: user.id, name: user.name, image: user.image })
-      .from(user)
-      .innerJoin(userTeam, eq(userTeam.userId, user.id))
-      .where(and(eq(user.active, true), eq(userTeam.team, team)))
-      .orderBy(asc(user.name));
-  }
-  return db
-    .select({ id: user.id, name: user.name, image: user.image })
+  const nameExpr = sql<string>`coalesce(${profile.name}, ${user.name})`;
+  const base = db
+    .select({ id: user.id, name: nameExpr, image: user.image })
     .from(user)
-    .where(eq(user.active, true))
-    .orderBy(asc(user.name));
+    .leftJoin(profile, eq(profile.email, user.email));
+  if (team) {
+    return base
+      .where(and(eq(user.active, true), eq(user.team, team)))
+      .orderBy(asc(nameExpr));
+  }
+  return base.where(eq(user.active, true)).orderBy(asc(nameExpr));
 }
 
 export async function listTags() {
