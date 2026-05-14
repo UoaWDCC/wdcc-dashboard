@@ -10,3 +10,4 @@ export const taskTeam = pgEnum("task_team", [
   "Industry",
   "Social",
 ]);
+export const profileKind = pgEnum("profile_kind", ["personal", "shared"]);

@@ -6,10 +6,21 @@ const PROFILES: Array<{
   email: string;
   name: string;
   team: "Admin" | "Projects" | "Tech" | "Marketing" | "Industry" | "Social";
+  kind: "personal" | "shared";
   note?: string;
 }> = [
-  { email: "koutaroyumiba@gmail.com", name: "Kot", team: "Tech" },
-  { email: "tech@wdcc.co.nz", name: "WDCC Tech", team: "Tech" },
+  {
+    email: "koutaroyumiba@gmail.com",
+    name: "Kot",
+    team: "Tech",
+    kind: "personal",
+  },
+  {
+    email: "tech@wdcc.co.nz",
+    name: "WDCC Tech",
+    team: "Tech",
+    kind: "shared",
+  },
 ];
 
 const TAGS = [
@@ -67,6 +78,7 @@ async function main() {
         email: p.email.toLowerCase(),
         name: p.name,
         team: p.team,
+        kind: p.kind,
         note: p.note ?? null,
       })
       .onConflictDoNothing({ target: profile.email });

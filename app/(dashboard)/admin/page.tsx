@@ -1,4 +1,4 @@
-import { listProfiles, type Team } from "@/lib/profile";
+import { listProfiles, type Team, type ProfileKind } from "@/lib/profile";
 import { ProfileRow, AddProfileRow } from "./ProfileRow";
 
 export default async function AdminPage() {
@@ -17,6 +17,7 @@ export default async function AdminPage() {
               <th className="pb-2 font-medium">Email</th>
               <th className="pb-2 font-medium">Name</th>
               <th className="pb-2 font-medium">Team</th>
+              <th className="pb-2 font-medium">Kind</th>
               <th className="pb-2 font-medium">Note</th>
               <th className="pb-2" />
             </tr>
@@ -25,7 +26,7 @@ export default async function AdminPage() {
             {profiles.length === 0 ? (
               <tr>
                 <td
-                  colSpan={5}
+                  colSpan={6}
                   className="py-4 text-sm text-muted-foreground text-center"
                 >
                   No members yet.
@@ -38,6 +39,7 @@ export default async function AdminPage() {
                   email={row.email}
                   name={row.name}
                   team={row.team as Team | null}
+                  kind={row.kind as ProfileKind}
                   note={row.note}
                 />
               ))
