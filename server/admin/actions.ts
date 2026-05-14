@@ -2,41 +2,44 @@
 
 import { revalidatePath } from "next/cache";
 import { requireUser } from "@/lib/rbac";
-import {
-  addAllowedEmail,
-  removeAllowedEmail,
-  addAllowedDomain,
-  removeAllowedDomain,
-} from "@/lib/allowlist";
+import { upsertProfile, removeProfile, type Team } from "@/lib/profile";
 
-export async function addEmailAction(formData: FormData) {
+const TEAMS: readonly Team[] = [
+  "Admin",
+  "Projects",
+  "Tech",
+  "Marketing",
+  "Industry",
+  "Social",
+];
+
+function parseTeam(raw: string | null): Team | null {
+  if (!raw) return null;
+  return (TEAMS as readonly string[]).includes(raw) ? (raw as Team) : null;
+}
+
+export async function upsertProfileAction(formData: FormData) {
   const session = await requireUser("/admin");
   const email = (formData.get("email") as string | null)?.trim();
-  if (!email) return;
-  const note = (formData.get("note") as string | null)?.trim() || undefined;
-  await addAllowedEmail(email, { note, createdBy: session.user.id });
+  const name = (formData.get("name") as string | null)?.trim();
+  if (!email || !name) return;
+  const team = parseTeam(formData.get("team") as string | null);
+  const note = (formData.get("note") as string | null)?.trim() || null;
+  await upsertProfile({
+    email,
+    name,
+    team,
+    note,
+    createdBy: session.user.id,
+  });
   revalidatePath("/admin");
+  revalidatePath("/tasks");
 }
 
-export async function removeEmailAction(formData: FormData) {
+export async function removeProfileAction(formData: FormData) {
   await requireUser("/admin");
   const email = formData.get("email") as string;
-  await removeAllowedEmail(email);
+  await removeProfile(email);
   revalidatePath("/admin");
-}
-
-export async function addDomainAction(formData: FormData) {
-  const session = await requireUser("/admin");
-  const domain = (formData.get("domain") as string | null)?.trim();
-  if (!domain) return;
-  const note = (formData.get("note") as string | null)?.trim() || undefined;
-  await addAllowedDomain(domain, { note, createdBy: session.user.id });
-  revalidatePath("/admin");
-}
-
-export async function removeDomainAction(formData: FormData) {
-  await requireUser("/admin");
-  const domain = formData.get("domain") as string;
-  await removeAllowedDomain(domain);
-  revalidatePath("/admin");
+  revalidatePath("/tasks");
 }
