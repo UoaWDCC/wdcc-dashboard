@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { profile, user } from "@/lib/db/schema";
+import { profile } from "@/lib/db/schema";
 
 export type Team =
   | "Admin"
@@ -9,6 +9,8 @@ export type Team =
   | "Marketing"
   | "Industry"
   | "Social";
+
+export type ProfileKind = "personal" | "shared";
 
 export function normalizeEmail(email: string) {
   return email.trim().toLowerCase();
@@ -41,6 +43,7 @@ export async function upsertProfile(input: {
   email: string;
   name: string;
   team: Team | null;
+  kind: ProfileKind;
   note?: string | null;
   createdBy?: string | null;
 }) {
@@ -49,6 +52,7 @@ export async function upsertProfile(input: {
     email,
     name: input.name.trim(),
     team: input.team,
+    kind: input.kind,
     note: input.note?.trim() || null,
     createdBy: input.createdBy ?? null,
   };
@@ -57,14 +61,13 @@ export async function upsertProfile(input: {
     .values(values)
     .onConflictDoUpdate({
       target: profile.email,
-      set: { name: values.name, team: values.team, note: values.note },
+      set: {
+        name: values.name,
+        team: values.team,
+        kind: values.kind,
+        note: values.note,
+      },
     });
-
-  // Propagate to existing user row (if user already signed in).
-  await db
-    .update(user)
-    .set({ name: values.name, team: values.team })
-    .where(eq(user.email, email));
 }
 
 export async function removeProfile(email: string) {

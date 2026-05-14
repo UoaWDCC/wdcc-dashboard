@@ -11,6 +11,7 @@ import {
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { user } from "./auth";
+import { profile } from "./profile";
 import { taskStatus, taskPriority, taskTeam } from "./enums";
 
 export { taskStatus, taskPriority, taskTeam };
@@ -57,9 +58,12 @@ export const taskAssignee = pgTable(
     taskId: text("task_id")
       .notNull()
       .references(() => task.id, { onDelete: "cascade" }),
-    userId: text("user_id")
+    profileEmail: text("profile_email")
       .notNull()
-      .references(() => user.id, { onDelete: "cascade" }),
+      .references(() => profile.email, {
+        onDelete: "cascade",
+        onUpdate: "cascade",
+      }),
     position: doublePrecision("position").notNull().default(0),
     assignedAt: timestamp("assigned_at").notNull().defaultNow(),
     assignedBy: text("assigned_by").references(() => user.id, {
@@ -67,8 +71,8 @@ export const taskAssignee = pgTable(
     }),
   },
   (t) => [
-    primaryKey({ columns: [t.taskId, t.userId] }),
-    index("task_assignee_user_pos_idx").on(t.userId, t.position),
+    primaryKey({ columns: [t.taskId, t.profileEmail] }),
+    index("task_assignee_profile_pos_idx").on(t.profileEmail, t.position),
   ]
 );
 

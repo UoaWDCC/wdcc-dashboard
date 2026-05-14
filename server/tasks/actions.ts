@@ -20,10 +20,10 @@ type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 export type ColumnId =
   | { kind: "backlog" }
   | { kind: "done" }
-  | { kind: "user"; userId: string };
+  | { kind: "user"; profileEmail: string };
 
 export type TaskAssigneeView = {
-  userId: string;
+  profileEmail: string;
   name: string;
   position: number;
 };
@@ -116,7 +116,7 @@ const createTaskSchema = z.object({
   links: z
     .array(z.object({ url: z.string().min(1), title: z.string().optional() }))
     .optional(),
-  assigneeUserIds: z.array(z.string().min(1)).optional(),
+  assigneeEmails: z.array(z.string().min(1)).optional(),
 });
 
 const updateTaskSchema = z.object({
@@ -136,14 +136,14 @@ const updateTaskSchema = z.object({
       })
     )
     .optional(),
-  assigneeUserIds: z.array(z.string().min(1)).optional(),
+  assigneeEmails: z.array(z.string().min(1)).optional(),
 });
 
 const dedupe = <T>(xs: T[] | undefined): T[] =>
   xs ? [...new Set(xs)] : [];
 
 function columnLockKey(col: ColumnId): number {
-  const s = col.kind === "user" ? `user:${col.userId}` : col.kind;
+  const s = col.kind === "user" ? `user:${col.profileEmail}` : col.kind;
   // djb2-ish 32-bit hash; pg_advisory_xact_lock takes int8
   let h = 5381;
   for (let i = 0; i < s.length; i++) h = ((h * 33) ^ s.charCodeAt(i)) | 0;
@@ -187,13 +187,12 @@ export async function listTasks(): Promise<TaskView[]> {
     db
       .select({
         taskId: taskAssignee.taskId,
-        userId: taskAssignee.userId,
+        profileEmail: taskAssignee.profileEmail,
         position: taskAssignee.position,
-        name: sql<string>`coalesce(${profile.name}, ${user.name})`,
+        name: profile.name,
       })
       .from(taskAssignee)
-      .innerJoin(user, eq(user.id, taskAssignee.userId))
-      .leftJoin(profile, eq(profile.email, user.email))
+      .innerJoin(profile, eq(profile.email, taskAssignee.profileEmail))
       .where(inArray(taskAssignee.taskId, ids))
       .orderBy(asc(taskAssignee.position)),
     db
@@ -215,7 +214,11 @@ export async function listTasks(): Promise<TaskView[]> {
   const assigneesByTask = new Map<string, TaskAssigneeView[]>();
   for (const a of assigneeRows) {
     const list = assigneesByTask.get(a.taskId) ?? [];
-    list.push({ userId: a.userId, name: a.name, position: a.position });
+    list.push({
+      profileEmail: a.profileEmail,
+      name: a.name,
+      position: a.position,
+    });
     assigneesByTask.set(a.taskId, list);
   }
   const tagsByTask = new Map<string, TaskTagView[]>();
@@ -261,17 +264,20 @@ export type Team =
 
 export async function listUsers(team?: Team) {
   await requireUser();
-  const nameExpr = sql<string>`coalesce(${profile.name}, ${user.name})`;
   const base = db
-    .select({ id: user.id, name: nameExpr, image: user.image })
-    .from(user)
-    .leftJoin(profile, eq(profile.email, user.email));
+    .select({
+      email: profile.email,
+      name: profile.name,
+      image: user.image,
+    })
+    .from(profile)
+    .leftJoin(user, eq(user.email, profile.email));
   if (team) {
     return base
-      .where(and(eq(user.active, true), eq(user.team, team)))
-      .orderBy(asc(nameExpr));
+      .where(and(eq(profile.kind, "personal"), eq(profile.team, team)))
+      .orderBy(asc(profile.name));
   }
-  return base.where(eq(user.active, true)).orderBy(asc(nameExpr));
+  return base.where(eq(profile.kind, "personal")).orderBy(asc(profile.name));
 }
 
 export async function listTags() {
@@ -314,17 +320,19 @@ export type CreateTaskInput = {
   estimateHours?: number;
   tagIds?: string[];
   links?: { url: string; title?: string }[];
-  assigneeUserIds?: string[];
+  assigneeEmails?: string[];
 };
 
 export async function createTask(input: CreateTaskInput) {
   const session = await requireUser();
   const data = createTaskSchema.parse(input);
   const tagIds = dedupe(data.tagIds);
-  const assigneeUserIds = dedupe(data.assigneeUserIds);
+  const assigneeEmails = dedupe(data.assigneeEmails).map((e) =>
+    e.trim().toLowerCase()
+  );
 
   const result = await db.transaction(async (tx) => {
-    const status = assigneeUserIds.length ? "active" : "backlog";
+    const status = assigneeEmails.length ? "active" : "backlog";
 
     const tailRow = await tx
       .select({ max: sql<number>`coalesce(max(${task.position}), 0)` })
@@ -363,20 +371,22 @@ export async function createTask(input: CreateTaskInput) {
         }))
       );
     }
-    if (assigneeUserIds.length) {
+    if (assigneeEmails.length) {
       const maxRows = await tx
         .select({
-          userId: taskAssignee.userId,
+          profileEmail: taskAssignee.profileEmail,
           max: sql<number>`coalesce(max(${taskAssignee.position}), 0)`,
         })
         .from(taskAssignee)
-        .where(inArray(taskAssignee.userId, assigneeUserIds))
-        .groupBy(taskAssignee.userId);
-      const maxByUser = new Map(maxRows.map((r) => [r.userId, Number(r.max)]));
-      const assigneeValues = assigneeUserIds.map((userId, i) => ({
+        .where(inArray(taskAssignee.profileEmail, assigneeEmails))
+        .groupBy(taskAssignee.profileEmail);
+      const maxByEmail = new Map(
+        maxRows.map((r) => [r.profileEmail, Number(r.max)])
+      );
+      const assigneeValues = assigneeEmails.map((email, i) => ({
         taskId: inserted.id,
-        userId,
-        position: (maxByUser.get(userId) ?? 0) + 1 + i,
+        profileEmail: email,
+        position: (maxByEmail.get(email) ?? 0) + 1 + i,
         assignedBy: session.user.id,
       }));
       await tx.insert(taskAssignee).values(assigneeValues);
@@ -406,7 +416,7 @@ export type UpdateTaskInput = {
   estimateHours?: number | null;
   tagIds?: string[];
   links?: { url: string; title?: string | null }[];
-  assigneeUserIds?: string[];
+  assigneeEmails?: string[];
 };
 
 export async function updateTask(id: string, patch: UpdateTaskInput) {
@@ -453,17 +463,21 @@ export async function updateTask(id: string, patch: UpdateTaskInput) {
       }
     }
 
-    if (data.assigneeUserIds !== undefined) {
-      const targetList = dedupe(data.assigneeUserIds);
+    if (data.assigneeEmails !== undefined) {
+      const targetList = dedupe(data.assigneeEmails).map((e) =>
+        e.trim().toLowerCase()
+      );
       const existing = await tx
-        .select({ userId: taskAssignee.userId })
+        .select({ profileEmail: taskAssignee.profileEmail })
         .from(taskAssignee)
         .where(eq(taskAssignee.taskId, id));
-      const existingIds = new Set(existing.map((e) => e.userId));
-      const targetIds = new Set(targetList);
+      const existingEmails = new Set(existing.map((e) => e.profileEmail));
+      const targetEmails = new Set(targetList);
 
-      const toRemove = [...existingIds].filter((u) => !targetIds.has(u));
-      const toAdd = [...targetIds].filter((u) => !existingIds.has(u));
+      const toRemove = [...existingEmails].filter(
+        (u) => !targetEmails.has(u)
+      );
+      const toAdd = [...targetEmails].filter((u) => !existingEmails.has(u));
 
       if (toRemove.length) {
         await tx
@@ -471,31 +485,33 @@ export async function updateTask(id: string, patch: UpdateTaskInput) {
           .where(
             and(
               eq(taskAssignee.taskId, id),
-              inArray(taskAssignee.userId, toRemove)
+              inArray(taskAssignee.profileEmail, toRemove)
             )
           );
       }
       if (toAdd.length) {
         const maxRows = await tx
           .select({
-            userId: taskAssignee.userId,
+            profileEmail: taskAssignee.profileEmail,
             max: sql<number>`coalesce(max(${taskAssignee.position}), 0)`,
           })
           .from(taskAssignee)
-          .where(inArray(taskAssignee.userId, toAdd))
-          .groupBy(taskAssignee.userId);
-        const maxByUser = new Map(maxRows.map((r) => [r.userId, Number(r.max)]));
+          .where(inArray(taskAssignee.profileEmail, toAdd))
+          .groupBy(taskAssignee.profileEmail);
+        const maxByEmail = new Map(
+          maxRows.map((r) => [r.profileEmail, Number(r.max)])
+        );
         await tx.insert(taskAssignee).values(
-          toAdd.map((userId) => ({
+          toAdd.map((email) => ({
             taskId: id,
-            userId,
-            position: (maxByUser.get(userId) ?? 0) + 1,
+            profileEmail: email,
+            position: (maxByEmail.get(email) ?? 0) + 1,
             assignedBy: session.user.id,
           }))
         );
       }
 
-      const finalCount = targetIds.size;
+      const finalCount = targetEmails.size;
       const current = await tx
         .select({ status: task.status })
         .from(task)
@@ -559,7 +575,7 @@ export async function moveTask(input: MoveTaskInput) {
           .where(
             and(
               eq(taskAssignee.taskId, taskId),
-              eq(taskAssignee.userId, from.userId)
+              eq(taskAssignee.profileEmail, from.profileEmail)
             )
           );
         const remaining = await tx
@@ -577,23 +593,23 @@ export async function moveTask(input: MoveTaskInput) {
       nextStatus = "done";
     } else {
       nextStatus = "active";
-      if (from.kind === "user" && from.userId !== to.userId) {
+      if (from.kind === "user" && from.profileEmail !== to.profileEmail) {
         await tx
           .delete(taskAssignee)
           .where(
             and(
               eq(taskAssignee.taskId, taskId),
-              eq(taskAssignee.userId, from.userId)
+              eq(taskAssignee.profileEmail, from.profileEmail)
             )
           );
       }
       const exists = await tx
-        .select({ userId: taskAssignee.userId })
+        .select({ profileEmail: taskAssignee.profileEmail })
         .from(taskAssignee)
         .where(
           and(
             eq(taskAssignee.taskId, taskId),
-            eq(taskAssignee.userId, to.userId)
+            eq(taskAssignee.profileEmail, to.profileEmail)
           )
         )
         .limit(1);
@@ -645,13 +661,13 @@ export async function moveTask(input: MoveTaskInput) {
           .where(
             and(
               eq(taskAssignee.taskId, taskId),
-              eq(taskAssignee.userId, to.userId)
+              eq(taskAssignee.profileEmail, to.profileEmail)
             )
           );
       } else {
         await tx.insert(taskAssignee).values({
           taskId,
-          userId: to.userId,
+          profileEmail: to.profileEmail,
           position: newPos,
           assignedBy: session.user.id,
         });
@@ -695,7 +711,7 @@ async function getNeighborPosition(
       .where(
         and(
           eq(taskAssignee.taskId, neighborTaskId),
-          eq(taskAssignee.userId, col.userId)
+          eq(taskAssignee.profileEmail, col.profileEmail)
         )
       )
       .for("update")
@@ -722,7 +738,7 @@ async function rebalanceColumn(
     const rows = await tx
       .select({ taskId: taskAssignee.taskId, position: taskAssignee.position })
       .from(taskAssignee)
-      .where(eq(taskAssignee.userId, col.userId))
+      .where(eq(taskAssignee.profileEmail, col.profileEmail))
       .orderBy(asc(taskAssignee.position));
     return assignSpacedPositions(rows, movingTaskId, beforeId, afterId, async (taskId, position) => {
       await tx
@@ -731,7 +747,7 @@ async function rebalanceColumn(
         .where(
           and(
             eq(taskAssignee.taskId, taskId),
-            eq(taskAssignee.userId, col.userId)
+            eq(taskAssignee.profileEmail, col.profileEmail)
           )
         );
     });

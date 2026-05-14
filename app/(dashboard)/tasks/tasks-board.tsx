@@ -53,10 +53,10 @@ type Priority = "low" | "med" | "high";
 type Team = "Admin" | "Projects" | "Tech" | "Marketing" | "Industry" | "Social";
 type Status = "backlog" | "active" | "done";
 
-type BoardUser = { id: string; name: string; image: string | null };
+type BoardUser = { email: string; name: string; image: string | null };
 type TagOption = { id: string; name: string; color: string | null };
 
-type ClientAssignee = { userId: string; position: number };
+type ClientAssignee = { profileEmail: string; position: number };
 
 type ClientTask = {
 	id: string;
@@ -98,15 +98,15 @@ type ColumnMeta = {
 	accent: "neutral" | "blue" | "orange" | "green";
 };
 
-const userColId = (userId: string) => `user-${userId}`;
+const userColId = (email: string) => `user-${email}`;
 const userFromCol = (colId: string) =>
 	colId.startsWith("user-") ? colId.slice("user-".length) : null;
 
 function colIdToColumnId(colId: string): ColumnId {
 	if (colId === "backlog") return { kind: "backlog" };
 	if (colId === "done") return { kind: "done" };
-	const userId = userFromCol(colId);
-	if (userId) return { kind: "user", userId };
+	const profileEmail = userFromCol(colId);
+	if (profileEmail) return { kind: "user", profileEmail };
 	throw new Error(`Unknown column id: ${colId}`);
 }
 
@@ -148,7 +148,7 @@ function fromServer(tasks: TaskView[]): ClientTask[] {
 		tags: t.tags.map((tg) => tg.name),
 		links: t.links.map((l) => ({ id: l.id, url: l.url, title: l.title })),
 		assignees: t.assignees
-			.map((a) => ({ userId: a.userId, position: a.position }))
+			.map((a) => ({ profileEmail: a.profileEmail, position: a.position }))
 			.sort((a, b) => a.position - b.position),
 		position: t.position,
 		dueDate: t.dueDate,
@@ -158,22 +158,22 @@ function fromServer(tasks: TaskView[]): ClientTask[] {
 function belongsTo(task: ClientTask, colId: string): boolean {
 	if (colId === "backlog") return task.status === "backlog";
 	if (colId === "done") return task.status === "done";
-	const userId = userFromCol(colId);
-	if (userId)
+	const email = userFromCol(colId);
+	if (email)
 		return (
 			task.status === "active" &&
-			task.assignees.some((a) => a.userId === userId)
+			task.assignees.some((a) => a.profileEmail === email)
 		);
 	return false;
 }
 
 function colTasks(tasks: ClientTask[], colId: string): ClientTask[] {
 	const list = tasks.filter((t) => belongsTo(t, colId));
-	const userId = userFromCol(colId);
-	if (userId) {
+	const email = userFromCol(colId);
+	if (email) {
 		return list.sort((a, b) => {
-			const ap = a.assignees.find((x) => x.userId === userId)?.position ?? 0;
-			const bp = b.assignees.find((x) => x.userId === userId)?.position ?? 0;
+			const ap = a.assignees.find((x) => x.profileEmail === email)?.position ?? 0;
+			const bp = b.assignees.find((x) => x.profileEmail === email)?.position ?? 0;
 			return ap - bp;
 		});
 	}
@@ -193,9 +193,9 @@ function TaskCard({
 	dragging?: boolean;
 	userById: Map<string, BoardUser>;
 }) {
-	const colUserId = columnId ? userFromCol(columnId) : null;
-	const shownAssignees = colUserId
-		? task.assignees.filter((a) => a.userId !== colUserId)
+	const colEmail = columnId ? userFromCol(columnId) : null;
+	const shownAssignees = colEmail
+		? task.assignees.filter((a) => a.profileEmail !== colEmail)
 		: task.assignees;
 
 	return (
@@ -247,10 +247,10 @@ function TaskCard({
 							))}
 							{shownAssignees.map((a) => (
 								<Badge
-									key={`assignee-${a.userId}`}
+									key={`assignee-${a.profileEmail}`}
 									className="bg-brand-blue/15 text-brand-blue text-[10px]"
 								>
-									+{userById.get(a.userId)?.name ?? a.userId}
+									+{userById.get(a.profileEmail)?.name ?? a.profileEmail}
 								</Badge>
 							))}
 							{task.links.length ? (
@@ -539,7 +539,7 @@ function TaskEditDialog({
 	const [linkDraft, setLinkDraft] = useState("");
 	const [priority, setPriority] = useState<Priority | "">("");
 	const [team, setTeam] = useState<Team | "">("");
-	const [assigneeIds, setAssigneeIds] = useState<string[]>([]);
+	const [assigneeEmails, setAssigneeEmails] = useState<string[]>([]);
 
 	useEffect(() => {
 		if (task) {
@@ -550,7 +550,7 @@ function TaskEditDialog({
 			setLinkDraft("");
 			setPriority(task.priority ?? "");
 			setTeam(task.team ?? "");
-			setAssigneeIds(task.assignees.map((a) => a.userId));
+			setAssigneeEmails(task.assignees.map((a) => a.profileEmail));
 		}
 	}, [task]);
 
@@ -565,9 +565,9 @@ function TaskEditDialog({
 		setLinkDraft("");
 	}
 
-	function toggleAssignee(userId: string) {
-		setAssigneeIds((cur) =>
-			cur.includes(userId) ? cur.filter((u) => u !== userId) : [...cur, userId]
+	function toggleAssignee(email: string) {
+		setAssigneeEmails((cur) =>
+			cur.includes(email) ? cur.filter((u) => u !== email) : [...cur, email]
 		);
 	}
 
@@ -588,10 +588,11 @@ function TaskEditDialog({
 			links: finalLinks,
 			priority: priority || null,
 			team: team || null,
-			assignees: assigneeIds.map((userId, i) => ({
-				userId,
+			assignees: assigneeEmails.map((email, i) => ({
+				profileEmail: email,
 				position:
-					task.assignees.find((a) => a.userId === userId)?.position ?? i + 1,
+					task.assignees.find((a) => a.profileEmail === email)?.position ??
+					i + 1,
 			})),
 		});
 		onOpenChange(false);
@@ -678,13 +679,13 @@ function TaskEditDialog({
 						</Label>
 						<div className="flex flex-wrap gap-1.5">
 							{users.map((m) => {
-								const active = assigneeIds.includes(m.id);
+								const active = assigneeEmails.includes(m.email);
 								return (
 									<button
-										key={m.id}
+										key={m.email}
 										type="button"
 										disabled={assigneesDisabled}
-										onClick={() => toggleAssignee(m.id)}
+										onClick={() => toggleAssignee(m.email)}
 										className={cn(
 											"rounded-full border px-3 py-1 text-xs transition disabled:cursor-not-allowed disabled:opacity-50",
 											active
@@ -794,12 +795,12 @@ function applyDragLocal(
 
 	let status = t.status;
 	let assignees = [...t.assignees];
-	const oldUserId = userFromCol(fromCol);
-	const newUserId = userFromCol(toCol);
+	const oldEmail = userFromCol(fromCol);
+	const newEmail = userFromCol(toCol);
 
 	if (toCol === "backlog") {
-		if (oldUserId) {
-			assignees = assignees.filter((a) => a.userId !== oldUserId);
+		if (oldEmail) {
+			assignees = assignees.filter((a) => a.profileEmail !== oldEmail);
 			if (assignees.length === 0) status = "backlog";
 		} else {
 			status = "backlog";
@@ -807,13 +808,13 @@ function applyDragLocal(
 		}
 	} else if (toCol === "done") {
 		status = "done";
-	} else if (newUserId) {
+	} else if (newEmail) {
 		status = "active";
-		if (oldUserId && oldUserId !== newUserId) {
-			assignees = assignees.filter((a) => a.userId !== oldUserId);
+		if (oldEmail && oldEmail !== newEmail) {
+			assignees = assignees.filter((a) => a.profileEmail !== oldEmail);
 		}
-		if (!assignees.some((a) => a.userId === newUserId)) {
-			assignees.push({ userId: newUserId, position: 0 });
+		if (!assignees.some((a) => a.profileEmail === newEmail)) {
+			assignees.push({ profileEmail: newEmail, position: 0 });
 		}
 	}
 
@@ -841,11 +842,11 @@ function applyDragLocal(
 		if (toCol === "backlog" || toCol === "done") {
 			return { ...x, position: newPos };
 		}
-		const assigneeId = userFromCol(toCol)!;
+		const assigneeEmail = userFromCol(toCol)!;
 		return {
 			...x,
 			assignees: x.assignees.map((a) =>
-				a.userId === assigneeId ? { ...a, position: newPos } : a
+				a.profileEmail === assigneeEmail ? { ...a, position: newPos } : a
 			),
 		};
 	});
@@ -855,7 +856,7 @@ function positionFor(task: ClientTask, colId: string): number {
 	if (colId === "backlog" || colId === "done") return task.position;
 	const m = userFromCol(colId);
 	if (!m) return 0;
-	return task.assignees.find((a) => a.userId === m)?.position ?? 0;
+	return task.assignees.find((a) => a.profileEmail === m)?.position ?? 0;
 }
 
 function neighborsOf(
@@ -915,7 +916,7 @@ export default function TasksBoard({
 	}
 
 	const userById = useMemo(
-		() => new Map(users.map((m) => [m.id, m])),
+		() => new Map(users.map((m) => [m.email, m])),
 		[users]
 	);
 	const tagIdByName = useMemo(
@@ -927,7 +928,7 @@ export default function TasksBoard({
 	const userMeta: ColumnMeta[] = useMemo(
 		() =>
 			users.map((m) => ({
-				id: userColId(m.id),
+				id: userColId(m.email),
 				label: m.name,
 				accent: "neutral" as const,
 			})),
@@ -946,7 +947,7 @@ export default function TasksBoard({
 	}
 
 	function persistUpdate(prev: ClientTask, next: ClientTask) {
-		const newAssigneeIds = next.assignees.map((a) => a.userId);
+		const newAssigneeEmails = next.assignees.map((a) => a.profileEmail);
 		setTasks((all) =>
 			all.map((t) =>
 				t.id === next.id
@@ -955,7 +956,7 @@ export default function TasksBoard({
 							status:
 								t.status === "done"
 									? "done"
-									: newAssigneeIds.length > 0
+									: newAssigneeEmails.length > 0
 										? "active"
 										: "backlog",
 						}
@@ -974,7 +975,7 @@ export default function TasksBoard({
 							.map((name) => tagIdByName.get(name))
 							.filter((id): id is string => !!id),
 						links: next.links.map((l) => ({ url: l.url, title: l.title })),
-						assigneeUserIds: newAssigneeIds,
+						assigneeEmails: newAssigneeEmails,
 					});
 					router.refresh();
 				} catch (e) {

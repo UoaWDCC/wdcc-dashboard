@@ -7,7 +7,7 @@ import {
   upsertProfileAction,
   removeProfileAction,
 } from "@/server/admin/actions";
-import type { Team } from "@/lib/profile";
+import type { Team, ProfileKind } from "@/lib/profile";
 
 const TEAMS: readonly Team[] = [
   "Admin",
@@ -18,14 +18,17 @@ const TEAMS: readonly Team[] = [
   "Social",
 ];
 
+const KINDS: readonly ProfileKind[] = ["personal", "shared"];
+
 type Props = {
   email: string;
   name: string;
   team: Team | null;
+  kind: ProfileKind;
   note: string | null;
 };
 
-export function ProfileRow({ email, name, team, note }: Props) {
+export function ProfileRow({ email, name, team, kind, note }: Props) {
   const [mode, setMode] = useState<"view" | "edit">("view");
 
   if (mode === "view") {
@@ -34,6 +37,7 @@ export function ProfileRow({ email, name, team, note }: Props) {
         <td className="py-2 pr-4 font-mono">{email}</td>
         <td className="py-2 pr-4">{name}</td>
         <td className="py-2 pr-4">{team ?? "—"}</td>
+        <td className="py-2 pr-4">{kind}</td>
         <td className="py-2 pr-4 text-muted-foreground">{note ?? "—"}</td>
         <td className="py-2 text-right whitespace-nowrap">
           <Button
@@ -62,14 +66,14 @@ export function ProfileRow({ email, name, team, note }: Props) {
   return (
     <tr className="border-b last:border-0 bg-muted/30">
       <td className="py-2 pr-4 font-mono align-middle">{email}</td>
-      <td colSpan={4} className="py-2">
+      <td colSpan={5} className="py-2">
         <form
           action={async (fd) => {
             fd.set("email", email);
             await upsertProfileAction(fd);
             setMode("view");
           }}
-          className="grid grid-cols-[1fr_160px_1fr_auto] gap-2 items-center"
+          className="grid grid-cols-[1fr_160px_140px_1fr_auto] gap-2 items-center"
         >
           <Input name="name" defaultValue={name} required />
           <select
@@ -81,6 +85,17 @@ export function ProfileRow({ email, name, team, note }: Props) {
             {TEAMS.map((t) => (
               <option key={t} value={t}>
                 {t}
+              </option>
+            ))}
+          </select>
+          <select
+            name="kind"
+            defaultValue={kind}
+            className="border rounded-md h-9 px-2 text-sm bg-transparent"
+          >
+            {KINDS.map((k) => (
+              <option key={k} value={k}>
+                {k}
               </option>
             ))}
           </select>
@@ -110,7 +125,7 @@ export function AddProfileRow() {
   if (!open) {
     return (
       <tr>
-        <td colSpan={5} className="pt-3">
+        <td colSpan={6} className="pt-3">
           <Button
             variant="outline"
             size="sm"
@@ -126,13 +141,13 @@ export function AddProfileRow() {
 
   return (
     <tr className="bg-muted/30">
-      <td colSpan={5} className="py-2">
+      <td colSpan={6} className="py-2">
         <form
           action={async (fd) => {
             await upsertProfileAction(fd);
             setOpen(false);
           }}
-          className="grid grid-cols-[1fr_1fr_160px_1fr_auto] gap-2 items-center"
+          className="grid grid-cols-[1fr_1fr_160px_140px_1fr_auto] gap-2 items-center"
         >
           <Input
             name="email"
@@ -150,6 +165,17 @@ export function AddProfileRow() {
             {TEAMS.map((t) => (
               <option key={t} value={t}>
                 {t}
+              </option>
+            ))}
+          </select>
+          <select
+            name="kind"
+            defaultValue="personal"
+            className="border rounded-md h-9 px-2 text-sm bg-transparent"
+          >
+            {KINDS.map((k) => (
+              <option key={k} value={k}>
+                {k}
               </option>
             ))}
           </select>
