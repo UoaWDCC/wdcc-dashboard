@@ -154,6 +154,10 @@ export function AddProfileRow() {
             type="email"
             placeholder="name@example.com"
             required
+            style={{ textTransform: "lowercase" }}
+            onChange={(e) => {
+              e.currentTarget.value = e.currentTarget.value.toLowerCase();
+            }}
           />
           <Input name="name" placeholder="Full name" required />
           <select

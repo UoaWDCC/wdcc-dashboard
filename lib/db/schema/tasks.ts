@@ -14,8 +14,6 @@ import { user } from "./auth";
 import { profile } from "./profile";
 import { taskStatus, taskPriority, taskTeam } from "./enums";
 
-export { taskStatus, taskPriority, taskTeam };
-
 export const task = pgTable(
   "task",
   {

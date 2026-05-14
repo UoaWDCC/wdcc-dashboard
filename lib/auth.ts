@@ -46,22 +46,24 @@ export const auth = betterAuth({
     user: {
       create: {
         before: async (user) => {
-          await checkAllowed(user.email);
-          const p = await getProfile(user.email);
+          const email = normalizeEmail(user.email);
+          await checkAllowed(email);
+          const p = await getProfile(email);
           return {
             data: {
               ...user,
-              email: normalizeEmail(user.email),
+              email,
               name: p?.name ?? user.name,
-              team: p?.team ?? null,
             },
           };
         },
       },
       update: {
         before: async (data) => {
-          if (data.email) await checkAllowed(data.email);
-          return { data };
+          if (!data.email) return { data };
+          const email = normalizeEmail(data.email);
+          await checkAllowed(email);
+          return { data: { ...data, email } };
         },
       },
     },

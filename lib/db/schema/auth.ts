@@ -4,8 +4,9 @@ import {
   timestamp,
   boolean,
   index,
+  check,
 } from "drizzle-orm/pg-core";
-import { taskTeam } from "./enums";
+import { sql } from "drizzle-orm";
 
 export const user = pgTable(
   "user",
@@ -15,12 +16,10 @@ export const user = pgTable(
     email: text("email").notNull().unique(),
     emailVerified: boolean("email_verified").notNull().default(false),
     image: text("image"),
-    active: boolean("active").notNull().default(true),
-    team: taskTeam("team"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
   },
-  (t) => [index("user_team_idx").on(t.team)]
+  (t) => [check("user_email_lower", sql`${t.email} = lower(${t.email})`)]
 );
 
 export const session = pgTable(

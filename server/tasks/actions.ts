@@ -271,7 +271,7 @@ export async function listUsers(team?: Team) {
       image: user.image,
     })
     .from(profile)
-    .leftJoin(user, eq(user.email, profile.email));
+    .leftJoin(user, eq(sql`lower(${user.email})`, profile.email));
   if (team) {
     return base
       .where(and(eq(profile.kind, "personal"), eq(profile.team, team)))
