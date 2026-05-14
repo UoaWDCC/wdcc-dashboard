@@ -13,6 +13,7 @@ import {
   user,
   profile,
 } from "@/lib/db/schema";
+import { lockProfileEmails } from "@/lib/db/locks";
 import { requireUser } from "@/lib/rbac";
 
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
@@ -116,7 +117,7 @@ const createTaskSchema = z.object({
   links: z
     .array(z.object({ url: z.string().min(1), title: z.string().optional() }))
     .optional(),
-  assigneeEmails: z.array(z.string().min(1)).optional(),
+  assigneeEmails: z.array(z.string().trim().email()).optional(),
 });
 
 const updateTaskSchema = z.object({
@@ -136,8 +137,21 @@ const updateTaskSchema = z.object({
       })
     )
     .optional(),
-  assigneeEmails: z.array(z.string().min(1)).optional(),
+  assigneeEmails: z.array(z.string().trim().email()).optional(),
 });
+
+async function assertProfilesExist(tx: Tx, emails: string[]): Promise<void> {
+  if (!emails.length) return;
+  const rows = await tx
+    .select({ email: profile.email })
+    .from(profile)
+    .where(inArray(profile.email, emails));
+  const known = new Set(rows.map((r) => r.email));
+  const unknown = emails.filter((e) => !known.has(e));
+  if (unknown.length) {
+    throw new Error(`Unknown assignee email(s): ${unknown.join(", ")}`);
+  }
+}
 
 const dedupe = <T>(xs: T[] | undefined): T[] =>
   xs ? [...new Set(xs)] : [];
@@ -271,7 +285,7 @@ export async function listUsers(team?: Team) {
       image: user.image,
     })
     .from(profile)
-    .leftJoin(user, eq(sql`lower(${user.email})`, profile.email));
+    .leftJoin(user, eq(user.email, profile.email));
   if (team) {
     return base
       .where(and(eq(profile.kind, "personal"), eq(profile.team, team)))
@@ -332,6 +346,8 @@ export async function createTask(input: CreateTaskInput) {
   );
 
   const result = await db.transaction(async (tx) => {
+    await lockProfileEmails(tx, assigneeEmails);
+    await assertProfilesExist(tx, assigneeEmails);
     const status = assigneeEmails.length ? "active" : "backlog";
 
     const tailRow = await tx
@@ -467,6 +483,8 @@ export async function updateTask(id: string, patch: UpdateTaskInput) {
       const targetList = dedupe(data.assigneeEmails).map((e) =>
         e.trim().toLowerCase()
       );
+      await lockProfileEmails(tx, targetList);
+      await assertProfilesExist(tx, targetList);
       const existing = await tx
         .select({ profileEmail: taskAssignee.profileEmail })
         .from(taskAssignee)
@@ -554,6 +572,14 @@ export async function moveTask(input: MoveTaskInput) {
   const { taskId, to, from, beforeId, afterId } = input;
 
   await db.transaction(async (tx) => {
+    // Lock profile emails touched by this move BEFORE column locks so we
+    // serialize against removeProfileAction (which also takes profile locks).
+    // Otherwise a concurrent profile delete can cascade-delete an assignee
+    // row we just inserted, leaving an active task with zero assignees.
+    const profileEmails: string[] = [];
+    if (from.kind === "user") profileEmails.push(from.profileEmail);
+    if (to.kind === "user") profileEmails.push(to.profileEmail);
+    await lockProfileEmails(tx, profileEmails);
     await lockColumns(tx, from, to);
 
     const current = await tx

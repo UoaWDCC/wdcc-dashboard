@@ -18,7 +18,7 @@ export async function getSession() {
     try {
       await auth.api.signOut({ headers: hdrs });
     } catch (err) {
-      console.error("[rbac] signOut after allowlist revoke failed", err);
+      console.error("[rbac] signOut after profile revoke failed", err);
     }
     return null;
   }
