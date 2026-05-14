@@ -1,7 +1,7 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
-import { isAllowedEmail } from "@/lib/allowlist";
+import { isAllowed } from "@/lib/profile";
 
 export async function getSession() {
   const hdrs = await headers();
@@ -9,9 +9,9 @@ export async function getSession() {
   if (!session) return null;
   let allowed: boolean;
   try {
-    allowed = await isAllowedEmail(session.user.email);
+    allowed = await isAllowed(session.user.email);
   } catch (err) {
-    console.error("[rbac] allowlist lookup failed; failing closed", err);
+    console.error("[rbac] profile lookup failed; failing closed", err);
     return null;
   }
   if (!allowed) {

@@ -2,11 +2,9 @@ import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { db } from "@/lib/db";
 import * as schema from "@/lib/db/schema";
-import { isAllowedEmail } from "@/lib/allowlist";
+import { getProfile, isAllowed, normalizeEmail } from "@/lib/profile";
 
 export class NotAllowedError extends Error {
-  // intentionally not re-exporting isAllowedEmail; import from @/lib/allowlist
-
   code = "NOT_ALLOWED";
 }
 
@@ -17,9 +15,9 @@ export class AllowlistLookupError extends Error {
 async function checkAllowed(email: string) {
   let allowed: boolean;
   try {
-    allowed = await isAllowedEmail(email);
+    allowed = await isAllowed(email);
   } catch (err) {
-    console.error("[auth] allowlist lookup failed", err);
+    console.error("[auth] profile lookup failed", err);
     throw new AllowlistLookupError("Allowlist check failed. Try again later.");
   }
   if (!allowed) throw new NotAllowedError(`Email ${email} is not authorised.`);
@@ -49,7 +47,15 @@ export const auth = betterAuth({
       create: {
         before: async (user) => {
           await checkAllowed(user.email);
-          return { data: user };
+          const p = await getProfile(user.email);
+          return {
+            data: {
+              ...user,
+              email: normalizeEmail(user.email),
+              name: p?.name ?? user.name,
+              team: p?.team ?? null,
+            },
+          };
         },
       },
       update: {
