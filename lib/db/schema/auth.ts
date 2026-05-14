@@ -5,17 +5,23 @@ import {
   boolean,
   index,
 } from "drizzle-orm/pg-core";
+import { taskTeam } from "./enums";
 
-export const user = pgTable("user", {
-  id: text("id").primaryKey(),
-  name: text("name").notNull(),
-  email: text("email").notNull().unique(),
-  emailVerified: boolean("email_verified").notNull().default(false),
-  image: text("image"),
-  active: boolean("active").notNull().default(true),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-  updatedAt: timestamp("updated_at").notNull().defaultNow(),
-});
+export const user = pgTable(
+  "user",
+  {
+    id: text("id").primaryKey(),
+    name: text("name").notNull(),
+    email: text("email").notNull().unique(),
+    emailVerified: boolean("email_verified").notNull().default(false),
+    image: text("image"),
+    active: boolean("active").notNull().default(true),
+    team: taskTeam("team"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (t) => [index("user_team_idx").on(t.team)]
+);
 
 export const session = pgTable(
   "session",
