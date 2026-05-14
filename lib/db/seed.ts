@@ -1,6 +1,16 @@
 import { db, pool } from "./index";
-import { tag, task, taskTag } from "./schema";
+import { profile, tag, task, taskTag } from "./schema";
 import { eq } from "drizzle-orm";
+
+const PROFILES: Array<{
+  email: string;
+  name: string;
+  team: "Admin" | "Projects" | "Tech" | "Marketing" | "Industry" | "Social";
+  note?: string;
+}> = [
+  { email: "koutaroyumiba@gmail.com", name: "Kot", team: "Tech" },
+  { email: "tech@wdcc.co.nz", name: "WDCC Tech", team: "Tech" },
+];
 
 const TAGS = [
   { name: "frontend", color: "#3b82f6" },
@@ -49,6 +59,19 @@ const DEMO_TASKS: Array<{
 ];
 
 async function main() {
+  console.log("seeding profiles...");
+  for (const p of PROFILES) {
+    await db
+      .insert(profile)
+      .values({
+        email: p.email.toLowerCase(),
+        name: p.name,
+        team: p.team,
+        note: p.note ?? null,
+      })
+      .onConflictDoNothing({ target: profile.email });
+  }
+
   console.log("seeding tags...");
   for (const t of TAGS) {
     await db.insert(tag).values(t).onConflictDoNothing({ target: tag.name });
