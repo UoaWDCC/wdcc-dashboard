@@ -5,7 +5,6 @@ import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { profile, task, taskAssignee } from "@/lib/db/schema";
-import { lockProfileEmails } from "@/lib/db/locks";
 import { requireUser } from "@/lib/rbac";
 import {
   upsertProfile,
@@ -64,7 +63,6 @@ export async function removeProfileAction(formData: FormData) {
   if (typeof raw !== "string" || !raw.trim()) return;
   const email = normalizeEmail(raw);
   await db.transaction(async (tx) => {
-    await lockProfileEmails(tx, [email]);
     // Capture tasks currently assigned to this profile before cascade delete,
     // so demotion only touches those tasks (not unrelated active rows that
     // happen to be assignee-less due to other bugs/races).
