@@ -13,7 +13,6 @@ import {
   user,
   profile,
 } from "@/lib/db/schema";
-import { lockProfileEmails } from "@/lib/db/locks";
 import { requireUser } from "@/lib/rbac";
 
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
@@ -346,7 +345,6 @@ export async function createTask(input: CreateTaskInput) {
   );
 
   const result = await db.transaction(async (tx) => {
-    await lockProfileEmails(tx, assigneeEmails);
     await assertProfilesExist(tx, assigneeEmails);
     const status = assigneeEmails.length ? "active" : "backlog";
 
@@ -483,7 +481,6 @@ export async function updateTask(id: string, patch: UpdateTaskInput) {
       const targetList = dedupe(data.assigneeEmails).map((e) =>
         e.trim().toLowerCase()
       );
-      await lockProfileEmails(tx, targetList);
       await assertProfilesExist(tx, targetList);
       const existing = await tx
         .select({ profileEmail: taskAssignee.profileEmail })
@@ -572,14 +569,6 @@ export async function moveTask(input: MoveTaskInput) {
   const { taskId, to, from, beforeId, afterId } = input;
 
   await db.transaction(async (tx) => {
-    // Lock profile emails touched by this move BEFORE column locks so we
-    // serialize against removeProfileAction (which also takes profile locks).
-    // Otherwise a concurrent profile delete can cascade-delete an assignee
-    // row we just inserted, leaving an active task with zero assignees.
-    const profileEmails: string[] = [];
-    if (from.kind === "user") profileEmails.push(from.profileEmail);
-    if (to.kind === "user") profileEmails.push(to.profileEmail);
-    await lockProfileEmails(tx, profileEmails);
     await lockColumns(tx, from, to);
 
     const current = await tx
