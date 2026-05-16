@@ -10,12 +10,6 @@ const PROFILES: Array<{
   note?: string;
 }> = [
   {
-    email: "koutaroyumiba@gmail.com",
-    name: "Kot",
-    team: "Tech",
-    kind: "personal",
-  },
-  {
     email: "tech@wdcc.co.nz",
     name: "WDCC Tech",
     team: "Tech",
