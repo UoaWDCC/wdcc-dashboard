@@ -8,8 +8,11 @@ import {
 	DragOverlay,
 	DragStartEvent,
 	PointerSensor,
-	closestCorners,
+	closestCenter,
+	pointerWithin,
+	rectIntersection,
 	useDroppable,
+	type CollisionDetection,
 	useSensor,
 	useSensors,
 } from "@dnd-kit/core";
@@ -1009,6 +1012,17 @@ export default function TasksBoard({
 		useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
 	);
 
+	// Pointer-first collision: column under the cursor wins. Falls back to
+	// rectIntersection (then closestCenter) when the pointer isn't inside any
+	// droppable, e.g. when auto-scrolling past column edges.
+	const collisionDetection: CollisionDetection = (args) => {
+		const pointer = pointerWithin(args);
+		if (pointer.length > 0) return pointer;
+		const intersecting = rectIntersection(args);
+		if (intersecting.length > 0) return intersecting;
+		return closestCenter(args);
+	};
+
 	const editingTask = useMemo(
 		() => tasks.find((t) => t.id === editingTaskId) ?? null,
 		[tasks, editingTaskId]
@@ -1097,7 +1111,7 @@ export default function TasksBoard({
 			<DndContext
 				id="tasks"
 				sensors={sensors}
-				collisionDetection={closestCorners}
+				collisionDetection={collisionDetection}
 				onDragStart={handleDragStart}
 				onDragEnd={handleDragEnd}
 				onDragCancel={() => setActiveTaskId(null)}
