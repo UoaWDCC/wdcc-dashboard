@@ -14,6 +14,13 @@ import {
   profile,
 } from "@/lib/db/schema";
 import { requireUser } from "@/lib/rbac";
+import {
+  TASK_PRIORITIES,
+  TEAMS,
+  type TaskStatus,
+  type TaskPriority,
+  type Team,
+} from "@/lib/types";
 
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
@@ -44,16 +51,9 @@ export type TaskView = {
   id: string;
   title: string;
   description: string | null;
-  status: "backlog" | "active" | "done";
-  priority: "low" | "med" | "high" | null;
-  team:
-    | "Admin"
-    | "Projects"
-    | "Tech"
-    | "Marketing"
-    | "Industry"
-    | "Social"
-    | null;
+  status: TaskStatus;
+  priority: TaskPriority | null;
+  team: Team | null;
   dueDate: string | null;
   startDate: string | null;
   estimateHours: number | null;
@@ -91,15 +91,8 @@ function midpoint(before: number | null, after: number | null): number {
   return (before + after) / 2;
 }
 
-const teamEnum = z.enum([
-  "Admin",
-  "Projects",
-  "Tech",
-  "Marketing",
-  "Industry",
-  "Social",
-]);
-const priorityEnum = z.enum(["low", "med", "high"]);
+const teamEnum = z.enum(TEAMS);
+const priorityEnum = z.enum(TASK_PRIORITIES);
 const dateStr = z
   .string()
   .regex(/^\d{4}-\d{2}-\d{2}$/, "Expected YYYY-MM-DD");
@@ -267,14 +260,6 @@ export async function listTasks(): Promise<TaskView[]> {
   }));
 }
 
-export type Team =
-  | "Admin"
-  | "Projects"
-  | "Tech"
-  | "Marketing"
-  | "Industry"
-  | "Social";
-
 export async function listUsers(team?: Team) {
   await requireUser();
   const base = db
@@ -348,14 +333,8 @@ export async function deleteTag(id: string) {
 export type CreateTaskInput = {
   title: string;
   description?: string;
-  priority?: "low" | "med" | "high";
-  team?:
-    | "Admin"
-    | "Projects"
-    | "Tech"
-    | "Marketing"
-    | "Industry"
-    | "Social";
+  priority?: TaskPriority;
+  team?: Team;
   dueDate?: string;
   startDate?: string;
   estimateHours?: number;
@@ -444,15 +423,8 @@ export async function createTask(input: CreateTaskInput) {
 export type UpdateTaskInput = {
   title?: string;
   description?: string | null;
-  priority?: "low" | "med" | "high" | null;
-  team?:
-    | "Admin"
-    | "Projects"
-    | "Tech"
-    | "Marketing"
-    | "Industry"
-    | "Social"
-    | null;
+  priority?: TaskPriority | null;
+  team?: Team | null;
   dueDate?: string | null;
   startDate?: string | null;
   estimateHours?: number | null;

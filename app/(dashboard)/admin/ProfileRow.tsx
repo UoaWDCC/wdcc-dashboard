@@ -7,18 +7,12 @@ import {
   upsertProfileAction,
   removeProfileAction,
 } from "@/server/admin/actions";
-import type { Team, ProfileKind } from "@/lib/profile";
-
-const TEAMS: readonly Team[] = [
-  "Admin",
-  "Projects",
-  "Tech",
-  "Marketing",
-  "Industry",
-  "Social",
-];
-
-const KINDS: readonly ProfileKind[] = ["personal", "shared"];
+import {
+  TEAMS,
+  PROFILE_KINDS as KINDS,
+  type Team,
+  type ProfileKind,
+} from "@/lib/types";
 
 type Props = {
   email: string;

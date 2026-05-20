@@ -54,10 +54,13 @@ import {
 	type ColumnId,
 	type TaskView,
 } from "@/server/tasks/actions";
-
-type Priority = "low" | "med" | "high";
-type Team = "Admin" | "Projects" | "Tech" | "Marketing" | "Industry" | "Social";
-type Status = "backlog" | "active" | "done";
+import {
+	TASK_PRIORITIES,
+	TEAMS,
+	type TaskPriority as Priority,
+	type Team,
+	type TaskStatus as Status,
+} from "@/lib/types";
 
 type BoardUser = { email: string; name: string; image: string | null };
 type TagOption = { id: string; name: string; color: string | null };
@@ -78,15 +81,7 @@ type ClientTask = {
 	dueDate: string | null;
 };
 
-const PRIORITIES: Priority[] = ["low", "med", "high"];
-const TEAMS: Team[] = [
-	"Admin",
-	"Projects",
-	"Tech",
-	"Marketing",
-	"Industry",
-	"Social",
-];
+const PRIORITIES = TASK_PRIORITIES;
 const priorityDot: Record<Priority, string> = {
 	low: "bg-emerald-500",
 	med: "bg-amber-500",

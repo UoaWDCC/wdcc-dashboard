@@ -1,4 +1,5 @@
-import { listProfiles, type Team, type ProfileKind } from "@/lib/profile";
+import { listProfiles } from "@/lib/profile";
+import type { Team, ProfileKind } from "@/lib/types";
 import { ProfileRow, AddProfileRow } from "./ProfileRow";
 
 export default async function AdminPage() {
