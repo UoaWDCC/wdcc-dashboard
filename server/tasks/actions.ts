@@ -317,6 +317,34 @@ export async function createTag(input: { name: string; color?: string }) {
   return created ?? null;
 }
 
+export async function updateTag(
+  id: string,
+  patch: { name?: string; color?: string | null }
+) {
+  await requireUser();
+  const fields: { name?: string; color?: string | null } = {};
+  if (patch.name !== undefined) {
+    const name = patch.name.trim().toLowerCase();
+    if (!name) throw new Error("Tag name required");
+    fields.name = name;
+  }
+  if (patch.color !== undefined) {
+    if (patch.color !== null && !HEX_COLOR_RE.test(patch.color)) {
+      throw new Error("Tag color must be #RRGGBB hex");
+    }
+    fields.color = patch.color;
+  }
+  if (Object.keys(fields).length === 0) return;
+  await db.update(tag).set(fields).where(eq(tag.id, id));
+  revalidatePath("/tasks");
+}
+
+export async function deleteTag(id: string) {
+  await requireUser();
+  await db.delete(tag).where(eq(tag.id, id));
+  revalidatePath("/tasks");
+}
+
 export type CreateTaskInput = {
   title: string;
   description?: string;

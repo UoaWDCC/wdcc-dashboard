@@ -46,8 +46,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import {
 	createTask,
+	deleteTag,
 	moveTask,
 	softDeleteTask,
+	updateTag,
 	updateTask,
 	type ColumnId,
 	type TaskView,
@@ -1126,6 +1128,123 @@ function neighborsOf(
 	};
 }
 
+function TagManagerDialog({
+	open,
+	onOpenChange,
+	tags,
+	onChanged,
+}: {
+	open: boolean;
+	onOpenChange: (v: boolean) => void;
+	tags: TagOption[];
+	onChanged: () => void;
+}) {
+	const [pending, startTransition] = useTransition();
+	const [drafts, setDrafts] = useState<Record<string, { name: string; color: string }>>({});
+
+	useEffect(() => {
+		if (!open) return;
+		const next: Record<string, { name: string; color: string }> = {};
+		for (const t of tags) next[t.id] = { name: t.name, color: t.color ?? "" };
+		setDrafts(next);
+	}, [open, tags]);
+
+	function setField(id: string, key: "name" | "color", value: string) {
+		setDrafts((d) => ({ ...d, [id]: { ...d[id], [key]: value } }));
+	}
+
+	function save(t: TagOption) {
+		const d = drafts[t.id];
+		if (!d) return;
+		const name = d.name.trim().toLowerCase();
+		const color = d.color.trim();
+		const patch: { name?: string; color?: string | null } = {};
+		if (name && name !== t.name) patch.name = name;
+		const normalizedColor = color || null;
+		if (normalizedColor !== (t.color ?? null)) patch.color = normalizedColor;
+		if (!Object.keys(patch).length) return;
+		startTransition(async () => {
+			try {
+				await updateTag(t.id, patch);
+				onChanged();
+			} catch (e) {
+				console.error("updateTag failed", e);
+			}
+		});
+	}
+
+	function remove(t: TagOption) {
+		if (!confirm(`Delete tag "${t.name}"? It will be removed from all tasks.`)) return;
+		startTransition(async () => {
+			try {
+				await deleteTag(t.id);
+				onChanged();
+			} catch (e) {
+				console.error("deleteTag failed", e);
+			}
+		});
+	}
+
+	return (
+		<Dialog open={open} onOpenChange={onOpenChange}>
+			<DialogContent className="sm:max-w-lg">
+				<DialogHeader>
+					<DialogTitle>Manage tags</DialogTitle>
+				</DialogHeader>
+				<div className="max-h-[60vh] space-y-2 overflow-y-auto">
+					{tags.length === 0 && (
+						<p className="text-muted-foreground text-sm">No tags yet.</p>
+					)}
+					{tags.map((t) => {
+						const d = drafts[t.id] ?? { name: t.name, color: t.color ?? "" };
+						const dirty =
+							d.name.trim().toLowerCase() !== t.name ||
+							(d.color.trim() || null) !== (t.color ?? null);
+						return (
+							<div key={t.id} className="flex items-center gap-2">
+								<Input
+									value={d.name}
+									onChange={(e) => setField(t.id, "name", e.target.value)}
+									className="flex-1"
+								/>
+								<input
+									type="color"
+									value={d.color || "#888888"}
+									onChange={(e) => setField(t.id, "color", e.target.value)}
+									className="h-9 w-10 rounded border bg-transparent"
+									aria-label={`Color for ${t.name}`}
+								/>
+								<Button
+									size="sm"
+									variant="outline"
+									disabled={!dirty || pending}
+									onClick={() => save(t)}
+								>
+									Save
+								</Button>
+								<Button
+									size="sm"
+									variant="ghost"
+									disabled={pending}
+									onClick={() => remove(t)}
+									aria-label={`Delete ${t.name}`}
+								>
+									<X className="size-4" />
+								</Button>
+							</div>
+						);
+					})}
+				</div>
+				<DialogFooter>
+					<Button variant="outline" onClick={() => onOpenChange(false)}>
+						Close
+					</Button>
+				</DialogFooter>
+			</DialogContent>
+		</Dialog>
+	);
+}
+
 export default function TasksBoard({
 	initialTasks,
 	users,
@@ -1142,6 +1261,7 @@ export default function TasksBoard({
 	const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
 	const [dialogOpen, setDialogOpen] = useState(false);
 	const [createOpen, setCreateOpen] = useState(false);
+	const [tagManagerOpen, setTagManagerOpen] = useState(false);
 	// In-flight mutation counter. router.refresh() pushes new initialTasks while
 	// optimistic state for a later drag may still be settling — applying server
 	// state then clobbers it. Defer the reset until mutations drain.
@@ -1391,6 +1511,13 @@ export default function TasksBoard({
 					<p className="text-muted-foreground text-xs">
 						{tasks.length} tasks · {users.length} users
 					</p>
+					<Button
+						size="sm"
+						variant="outline"
+						onClick={() => setTagManagerOpen(true)}
+					>
+						Manage tags
+					</Button>
 					<Button size="sm" onClick={() => setCreateOpen(true)}>
 						<Plus className="size-4" />
 						New task
@@ -1456,6 +1583,12 @@ export default function TasksBoard({
 				onCreate={persistCreate}
 				tagSuggestions={tagSuggestions}
 				users={users}
+			/>
+			<TagManagerDialog
+				open={tagManagerOpen}
+				onOpenChange={setTagManagerOpen}
+				tags={tags}
+				onChanged={() => router.refresh()}
 			/>
 			<TaskEditDialog
 				task={editingTask}
