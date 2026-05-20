@@ -45,6 +45,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import {
+	createTask,
 	moveTask,
 	softDeleteTask,
 	updateTask,
@@ -786,6 +787,253 @@ function TaskEditDialog({
 	);
 }
 
+function TaskCreateDialog({
+	open,
+	onOpenChange,
+	onCreate,
+	tagSuggestions,
+	users,
+}: {
+	open: boolean;
+	onOpenChange: (open: boolean) => void;
+	onCreate: (input: {
+		title: string;
+		description: string | null;
+		priority: Priority | null;
+		team: Team | null;
+		tags: string[];
+		links: { url: string; title: string | null }[];
+		assigneeEmails: string[];
+	}) => void;
+	tagSuggestions: string[];
+	users: BoardUser[];
+}) {
+	const [title, setTitle] = useState("");
+	const [description, setDescription] = useState("");
+	const [tags, setTags] = useState<string[]>([]);
+	const [links, setLinks] = useState<{ url: string; title: string | null }[]>(
+		[]
+	);
+	const [linkDraft, setLinkDraft] = useState("");
+	const [priority, setPriority] = useState<Priority | "">("");
+	const [team, setTeam] = useState<Team | "">("");
+	const [assigneeEmails, setAssigneeEmails] = useState<string[]>([]);
+
+	useEffect(() => {
+		if (open) {
+			setTitle("");
+			setDescription("");
+			setTags([]);
+			setLinks([]);
+			setLinkDraft("");
+			setPriority("");
+			setTeam("");
+			setAssigneeEmails([]);
+		}
+	}, [open]);
+
+	function addLink() {
+		const v = linkDraft.trim();
+		if (!v) return;
+		if (links.some((l) => l.url === v)) {
+			setLinkDraft("");
+			return;
+		}
+		setLinks([...links, { url: v, title: null }]);
+		setLinkDraft("");
+	}
+
+	function toggleAssignee(email: string) {
+		setAssigneeEmails((cur) =>
+			cur.includes(email) ? cur.filter((u) => u !== email) : [...cur, email]
+		);
+	}
+
+	function handleCreate() {
+		const trimmed = title.trim();
+		if (!trimmed) return;
+		const pendingLink = linkDraft.trim();
+		const finalLinks =
+			pendingLink && !links.some((l) => l.url === pendingLink)
+				? [...links, { url: pendingLink, title: null }]
+				: links;
+		onCreate({
+			title: trimmed,
+			description: description.trim() || null,
+			priority: priority || null,
+			team: team || null,
+			tags,
+			links: finalLinks,
+			assigneeEmails,
+		});
+		onOpenChange(false);
+	}
+
+	return (
+		<Dialog open={open} onOpenChange={onOpenChange}>
+			<DialogContent className="sm:max-w-2xl">
+				<DialogHeader>
+					<DialogTitle>New task</DialogTitle>
+				</DialogHeader>
+				<div className="flex max-h-[70vh] flex-col gap-4 overflow-y-auto pr-1">
+					<div className="flex flex-col gap-1.5">
+						<Label htmlFor="new-task-title">Title</Label>
+						<Input
+							id="new-task-title"
+							value={title}
+							onChange={(e) => setTitle(e.target.value)}
+							autoFocus
+						/>
+					</div>
+					<div className="flex flex-col gap-1.5">
+						<Label htmlFor="new-task-desc">Description</Label>
+						<Textarea
+							id="new-task-desc"
+							rows={8}
+							value={description}
+							onChange={(e) => setDescription(e.target.value)}
+						/>
+					</div>
+					<div className="grid grid-cols-2 gap-3">
+						<div className="flex flex-col gap-1.5">
+							<Label htmlFor="new-task-priority">Priority</Label>
+							<Select
+								value={priority || undefined}
+								onValueChange={(v) => setPriority(v as Priority)}
+							>
+								<SelectTrigger id="new-task-priority">
+									<SelectValue placeholder="None" />
+								</SelectTrigger>
+								<SelectContent>
+									{PRIORITIES.map((p) => (
+										<SelectItem key={p} value={p}>
+											{p}
+										</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
+						</div>
+						<div className="flex flex-col gap-1.5">
+							<Label htmlFor="new-task-team">Team</Label>
+							<Select
+								value={team || undefined}
+								onValueChange={(v) => setTeam(v as Team)}
+							>
+								<SelectTrigger id="new-task-team">
+									<SelectValue placeholder="None" />
+								</SelectTrigger>
+								<SelectContent>
+									{TEAMS.map((t) => (
+										<SelectItem key={t} value={t}>
+											{t}
+										</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
+						</div>
+					</div>
+					<div className="flex flex-col gap-1.5">
+						<Label>Assignees</Label>
+						<div className="flex flex-wrap gap-1.5">
+							{users.map((m) => {
+								const active = assigneeEmails.includes(m.email);
+								return (
+									<button
+										key={m.email}
+										type="button"
+										onClick={() => toggleAssignee(m.email)}
+										className={cn(
+											"rounded-full border px-3 py-1 text-xs transition",
+											active
+												? "bg-brand-blue text-brand-blue-fg border-transparent"
+												: "border-input hover:bg-accent"
+										)}
+									>
+										{m.name}
+									</button>
+								);
+							})}
+						</div>
+					</div>
+					<div className="flex flex-col gap-1.5">
+						<Label htmlFor="new-task-tags">Tags</Label>
+						<TagInput
+							id="new-task-tags"
+							tags={tags}
+							onChange={setTags}
+							suggestions={tagSuggestions}
+						/>
+					</div>
+					<div className="flex flex-col gap-1.5">
+						<Label htmlFor="new-task-link">Links</Label>
+						<div className="flex gap-2">
+							<Input
+								id="new-task-link"
+								type="url"
+								placeholder="https://..."
+								value={linkDraft}
+								onChange={(e) => setLinkDraft(e.target.value)}
+								onKeyDown={(e) => {
+									if (e.key === "Enter") {
+										e.preventDefault();
+										addLink();
+									}
+								}}
+							/>
+							<Button
+								type="button"
+								variant="outline"
+								size="icon"
+								onClick={addLink}
+								aria-label="Add link"
+							>
+								<Plus className="size-4" />
+							</Button>
+						</div>
+						{links.length > 0 && (
+							<ul className="flex flex-col gap-1">
+								{links.map((l, i) => (
+									<li
+										key={`${l.url}-${i}`}
+										className="bg-muted/50 flex items-center gap-2 rounded-md px-2 py-1 text-xs"
+									>
+										<a
+											href={l.url}
+											target="_blank"
+											rel="noopener noreferrer"
+											className="text-brand-blue min-w-0 flex-1 truncate hover:underline"
+										>
+											{l.url}
+										</a>
+										<button
+											type="button"
+											aria-label={`Remove ${l.url}`}
+											onClick={() =>
+												setLinks(links.filter((_, idx) => idx !== i))
+											}
+											className="hover:bg-foreground/10 rounded p-0.5"
+										>
+											<X className="size-3" />
+										</button>
+									</li>
+								))}
+							</ul>
+						)}
+					</div>
+				</div>
+				<DialogFooter>
+					<Button variant="outline" onClick={() => onOpenChange(false)}>
+						Cancel
+					</Button>
+					<Button onClick={handleCreate} disabled={!title.trim()}>
+						Create
+					</Button>
+				</DialogFooter>
+			</DialogContent>
+		</Dialog>
+	);
+}
+
 function applyDragLocal(
 	tasks: ClientTask[],
 	taskId: string,
@@ -893,6 +1141,7 @@ export default function TasksBoard({
 	const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
 	const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
 	const [dialogOpen, setDialogOpen] = useState(false);
+	const [createOpen, setCreateOpen] = useState(false);
 	// In-flight mutation counter. router.refresh() pushes new initialTasks while
 	// optimistic state for a later drag may still be settling — applying server
 	// state then clobbers it. Defer the reset until mutations drain.
@@ -984,6 +1233,40 @@ export default function TasksBoard({
 				} catch (e) {
 					console.error("updateTask failed", e);
 					setTasks((all) => all.map((t) => (t.id === prev.id ? prev : t)));
+				}
+			});
+		});
+	}
+
+	function persistCreate(input: {
+		title: string;
+		description: string | null;
+		priority: Priority | null;
+		team: Team | null;
+		tags: string[];
+		links: { url: string; title: string | null }[];
+		assigneeEmails: string[];
+	}) {
+		startTransition(() => {
+			trackMutation(async () => {
+				try {
+					await createTask({
+						title: input.title,
+						description: input.description ?? undefined,
+						priority: input.priority ?? undefined,
+						team: input.team ?? undefined,
+						tagIds: input.tags
+							.map((name) => tagIdByName.get(name))
+							.filter((id): id is string => !!id),
+						links: input.links.map((l) => ({
+							url: l.url,
+							title: l.title ?? undefined,
+						})),
+						assigneeEmails: input.assigneeEmails,
+					});
+					router.refresh();
+				} catch (e) {
+					console.error("createTask failed", e);
 				}
 			});
 		});
@@ -1102,11 +1385,17 @@ export default function TasksBoard({
 
 	return (
 		<div className="flex h-full flex-col gap-4">
-			<div className="flex items-baseline justify-between">
+			<div className="flex items-center justify-between">
 				<h1 className="text-2xl font-semibold">Tasks</h1>
-				<p className="text-muted-foreground text-xs">
-					{tasks.length} tasks · {users.length} users
-				</p>
+				<div className="flex items-center gap-3">
+					<p className="text-muted-foreground text-xs">
+						{tasks.length} tasks · {users.length} users
+					</p>
+					<Button size="sm" onClick={() => setCreateOpen(true)}>
+						<Plus className="size-4" />
+						New task
+					</Button>
+				</div>
 			</div>
 			<DndContext
 				id="tasks"
@@ -1161,6 +1450,13 @@ export default function TasksBoard({
 					) : null}
 				</DragOverlay>
 			</DndContext>
+			<TaskCreateDialog
+				open={createOpen}
+				onOpenChange={setCreateOpen}
+				onCreate={persistCreate}
+				tagSuggestions={tagSuggestions}
+				users={users}
+			/>
 			<TaskEditDialog
 				task={editingTask}
 				open={dialogOpen}
