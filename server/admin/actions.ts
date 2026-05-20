@@ -6,23 +6,10 @@ import { z } from "zod";
 import { db } from "@/lib/db";
 import { profile, task, taskAssignee } from "@/lib/db/schema";
 import { requireUser } from "@/lib/rbac";
-import {
-  upsertProfile,
-  normalizeEmail,
-  type Team,
-  type ProfileKind,
-} from "@/lib/profile";
+import { upsertProfile, normalizeEmail } from "@/lib/profile";
+import { TEAMS, type Team, type ProfileKind } from "@/lib/types";
 
 const emailSchema = z.string().trim().min(1).email();
-
-const TEAMS: readonly Team[] = [
-  "Admin",
-  "Projects",
-  "Tech",
-  "Marketing",
-  "Industry",
-  "Social",
-];
 
 function parseTeam(raw: string | null): Team | null {
   if (!raw) return null;

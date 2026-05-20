@@ -1,16 +1,7 @@
 import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { profile } from "@/lib/db/schema";
-
-export type Team =
-  | "Admin"
-  | "Projects"
-  | "Tech"
-  | "Marketing"
-  | "Industry"
-  | "Social";
-
-export type ProfileKind = "personal" | "shared";
+import type { Team, ProfileKind } from "@/lib/types";
 
 export function normalizeEmail(email: string) {
   return email.trim().toLowerCase();
