@@ -13,6 +13,11 @@ import {
   updateGoRedirect,
 } from "@/lib/linktree";
 import type { AddGoLinkInput, GoLinkRow } from "./types";
+import {
+  parseString,
+  parseRequiredString,
+  parseBool,
+} from "@/lib/form-parser";
 
 export async function addGoLinkAction(
   input: AddGoLinkInput
@@ -78,8 +83,8 @@ export async function reorderGoLinksAction(orderedIds: string[]) {
 
 export async function addGoRedirectAction(formData: FormData) {
   const session = await requireUser("/linktree");
-  const key = (formData.get("key") as string | null)?.trim();
-  const destinationUrl = (formData.get("destinationUrl") as string | null)?.trim();
+  const key = parseString(formData, "key");
+  const destinationUrl = parseString(formData, "destinationUrl");
   if (!key || !destinationUrl) return;
   await addGoRedirect(key, destinationUrl, session.user.id);
   revalidatePath("/linktree");
@@ -87,15 +92,14 @@ export async function addGoRedirectAction(formData: FormData) {
 
 export async function removeGoRedirectAction(formData: FormData) {
   await requireUser("/linktree");
-  const key = formData.get("key") as string;
-  await removeGoRedirect(key);
+  await removeGoRedirect(parseRequiredString(formData, "key"));
   revalidatePath("/linktree");
 }
 
 export async function toggleGoRedirectHiddenAction(formData: FormData) {
   const session = await requireUser("/linktree");
-  const key = formData.get("key") as string;
-  const hidden = formData.get("hidden") === "true";
+  const key = parseRequiredString(formData, "key");
+  const hidden = parseBool(formData, "hidden");
   await updateGoRedirect(key, { hidden }, session.user.id);
   revalidatePath("/linktree");
 }
