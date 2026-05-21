@@ -2,36 +2,25 @@
 
 import { revalidatePath } from "next/cache";
 import { and, eq, inArray, isNull, sql } from "drizzle-orm";
-import { z } from "zod";
 import { db } from "@/lib/db";
 import { profile, task, taskAssignee } from "@/lib/db/schema";
 import { requireUser } from "@/lib/rbac";
 import { upsertProfile, normalizeEmail } from "@/lib/profile";
-import { TEAMS, type Team, type ProfileKind } from "@/lib/types";
-
-const emailSchema = z.string().trim().min(1).email();
-
-function parseTeam(raw: string | null): Team | null {
-  if (!raw) return null;
-  return (TEAMS as readonly string[]).includes(raw) ? (raw as Team) : null;
-}
-
-function parseKind(raw: string | null): ProfileKind {
-  return raw === "shared" ? "shared" : "personal";
-}
+import { TEAMS, PROFILE_KINDS } from "@/lib/types";
+import {
+  parseEmail,
+  parseEnum,
+  parseRequiredString,
+  parseString,
+} from "@/lib/form-parser";
 
 export async function upsertProfileAction(formData: FormData) {
   const session = await requireUser("/admin");
-  const rawEmail = (formData.get("email") as string | null) ?? "";
-  const name = (formData.get("name") as string | null)?.trim();
-  const emailParse = emailSchema.safeParse(rawEmail);
-  if (!emailParse.success || !name) {
-    throw new Error("Valid email and name required");
-  }
-  const team = parseTeam(formData.get("team") as string | null);
-  const kind = parseKind(formData.get("kind") as string | null);
-  const note = (formData.get("note") as string | null)?.trim() || null;
-  const email = emailParse.data.toLowerCase();
+  const email = parseEmail(formData, "email");
+  const name = parseRequiredString(formData, "name");
+  const team = parseEnum(formData, "team", TEAMS);
+  const kind = parseEnum(formData, "kind", PROFILE_KINDS) ?? "personal";
+  const note = parseString(formData, "note");
   await upsertProfile({
     email,
     name,
@@ -46,8 +35,8 @@ export async function upsertProfileAction(formData: FormData) {
 
 export async function removeProfileAction(formData: FormData) {
   await requireUser("/admin");
-  const raw = formData.get("email");
-  if (typeof raw !== "string" || !raw.trim()) return;
+  const raw = parseString(formData, "email");
+  if (!raw) return;
   const email = normalizeEmail(raw);
   await db.transaction(async (tx) => {
     // Capture tasks currently assigned to this profile before cascade delete,
