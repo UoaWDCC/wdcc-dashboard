@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { Errors } from "./errors";
 
 function raw(fd: FormData, key: string): string | null {
 	const v = fd.get(key);
@@ -12,7 +13,7 @@ export function parseString(fd: FormData, key: string): string | null {
 
 export function parseRequiredString(fd: FormData, key: string): string {
 	const v = parseString(fd, key);
-	if (!v) throw new Error(`Missing required field: ${key}`);
+	if (!v) throw Errors.validation(`Missing required field: ${key}`);
 	return v;
 }
 
@@ -20,7 +21,7 @@ const emailSchema = z.email();
 
 export function parseEmail(fd: FormData, key: string): string {
 	const parsed = emailSchema.safeParse(raw(fd, key) ?? "");
-	if (!parsed.success) throw new Error(`Invalid email: ${key}`);
+	if (!parsed.success) throw Errors.validation(`Invalid email: ${key}`);
 	return parsed.data.toLowerCase();
 }
 

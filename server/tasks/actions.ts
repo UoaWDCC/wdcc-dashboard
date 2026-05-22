@@ -21,6 +21,8 @@ import {
   type TaskPriority,
   type Team,
 } from "@/lib/types";
+import { Errors } from "@/lib/errors";
+import { withAction } from "@/lib/with-action";
 
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
@@ -76,10 +78,10 @@ function validateLinkUrl(raw: string): string {
   try {
     parsed = new URL(raw);
   } catch {
-    throw new Error(`Invalid link URL: ${raw}`);
+    throw Errors.validation(`Invalid link URL: ${raw}`);
   }
   if (!ALLOWED_LINK_SCHEMES.has(parsed.protocol)) {
-    throw new Error(`Unsupported link scheme: ${parsed.protocol}`);
+    throw Errors.validation(`Unsupported link scheme: ${parsed.protocol}`);
   }
   return parsed.toString();
 }
@@ -141,7 +143,7 @@ async function assertProfilesExist(tx: Tx, emails: string[]): Promise<void> {
   const known = new Set(rows.map((r) => r.email));
   const unknown = emails.filter((e) => !known.has(e));
   if (unknown.length) {
-    throw new Error(`Unknown assignee email(s): ${unknown.join(", ")}`);
+    throw Errors.validation(`Unknown assignee email(s): ${unknown.join(", ")}`);
   }
 }
 
@@ -287,47 +289,53 @@ export async function listTags() {
 }
 
 export async function createTag(input: { name: string; color?: string }) {
-  // TODO: gate to admin role once roles exist
-  const session = await requireUser();
-  const name = input.name.trim().toLowerCase();
-  if (!name) throw new Error("Tag name required");
-  if (input.color !== undefined && !HEX_COLOR_RE.test(input.color)) {
-    throw new Error("Tag color must be #RRGGBB hex");
-  }
-  const [created] = await db
-    .insert(tag)
-    .values({ name, color: input.color, createdBy: session.user.id })
-    .onConflictDoNothing({ target: tag.name })
-    .returning();
-  return created ?? null;
+  return withAction("createTag", async () => {
+    // TODO: gate to admin role once roles exist
+    const session = await requireUser();
+    const name = input.name.trim().toLowerCase();
+    if (!name) throw Errors.validation("Tag name required");
+    if (input.color !== undefined && !HEX_COLOR_RE.test(input.color)) {
+      throw Errors.validation("Tag color must be #RRGGBB hex");
+    }
+    const [created] = await db
+      .insert(tag)
+      .values({ name, color: input.color, createdBy: session.user.id })
+      .onConflictDoNothing({ target: tag.name })
+      .returning();
+    return created ?? null;
+  });
 }
 
 export async function updateTag(
   id: string,
   patch: { name?: string; color?: string | null }
 ) {
-  await requireUser();
-  const fields: { name?: string; color?: string | null } = {};
-  if (patch.name !== undefined) {
-    const name = patch.name.trim().toLowerCase();
-    if (!name) throw new Error("Tag name required");
-    fields.name = name;
-  }
-  if (patch.color !== undefined) {
-    if (patch.color !== null && !HEX_COLOR_RE.test(patch.color)) {
-      throw new Error("Tag color must be #RRGGBB hex");
+  return withAction("updateTag", async () => {
+    await requireUser();
+    const fields: { name?: string; color?: string | null } = {};
+    if (patch.name !== undefined) {
+      const name = patch.name.trim().toLowerCase();
+      if (!name) throw Errors.validation("Tag name required");
+      fields.name = name;
     }
-    fields.color = patch.color;
-  }
-  if (Object.keys(fields).length === 0) return;
-  await db.update(tag).set(fields).where(eq(tag.id, id));
-  revalidatePath("/tasks");
+    if (patch.color !== undefined) {
+      if (patch.color !== null && !HEX_COLOR_RE.test(patch.color)) {
+        throw Errors.validation("Tag color must be #RRGGBB hex");
+      }
+      fields.color = patch.color;
+    }
+    if (Object.keys(fields).length === 0) return;
+    await db.update(tag).set(fields).where(eq(tag.id, id));
+    revalidatePath("/tasks");
+  });
 }
 
 export async function deleteTag(id: string) {
-  await requireUser();
-  await db.delete(tag).where(eq(tag.id, id));
-  revalidatePath("/tasks");
+  return withAction("deleteTag", async () => {
+    await requireUser();
+    await db.delete(tag).where(eq(tag.id, id));
+    revalidatePath("/tasks");
+  });
 }
 
 export type CreateTaskInput = {
@@ -344,6 +352,7 @@ export type CreateTaskInput = {
 };
 
 export async function createTask(input: CreateTaskInput) {
+  return withAction("createTask", async () => {
   const session = await requireUser();
   const data = createTaskSchema.parse(input);
   const tagIds = dedupe(data.tagIds);
@@ -418,6 +427,7 @@ export async function createTask(input: CreateTaskInput) {
 
   revalidatePath("/tasks");
   return result;
+  });
 }
 
 export type UpdateTaskInput = {
@@ -434,6 +444,7 @@ export type UpdateTaskInput = {
 };
 
 export async function updateTask(id: string, patch: UpdateTaskInput) {
+  return withAction("updateTask", async () => {
   const session = await requireUser();
   const data = updateTaskSchema.parse(patch);
 
@@ -542,9 +553,11 @@ export async function updateTask(id: string, patch: UpdateTaskInput) {
   });
 
   revalidatePath("/tasks");
+  });
 }
 
 export async function softDeleteTask(id: string) {
+  return withAction("softDeleteTask", async () => {
   const session = await requireUser();
   await db.transaction(async (tx) => {
     await tx.delete(taskAssignee).where(eq(taskAssignee.taskId, id));
@@ -554,6 +567,7 @@ export async function softDeleteTask(id: string) {
       .where(eq(task.id, id));
   });
   revalidatePath("/tasks");
+  });
 }
 
 export type MoveTaskInput = {
@@ -565,6 +579,7 @@ export type MoveTaskInput = {
 };
 
 export async function moveTask(input: MoveTaskInput) {
+  return withAction("moveTask", async () => {
   const session = await requireUser();
   const { taskId, to, from, beforeId, afterId } = input;
 
@@ -576,7 +591,7 @@ export async function moveTask(input: MoveTaskInput) {
       .from(task)
       .where(eq(task.id, taskId))
       .limit(1);
-    if (!current[0]) throw new Error("Task not found");
+    if (!current[0]) throw Errors.notFound("Task not found");
 
     const prevStatus = current[0].status;
     const prevCompletedAt = current[0].completedAt;
@@ -712,6 +727,7 @@ export async function moveTask(input: MoveTaskInput) {
   });
 
   revalidatePath("/tasks");
+  });
 }
 
 async function getNeighborPosition(
