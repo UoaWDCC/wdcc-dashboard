@@ -2,6 +2,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { isAllowed } from "@/lib/profile";
+import { log } from "@/lib/logger";
 
 export async function getSession() {
   const hdrs = await headers();
@@ -11,14 +12,18 @@ export async function getSession() {
   try {
     allowed = await isAllowed(session.user.email);
   } catch (err) {
-    console.error("[rbac] profile lookup failed; failing closed", err);
+    log.error("rbac_profile_lookup_failed", {
+      error: err instanceof Error ? err.message : String(err),
+    });
     return null;
   }
   if (!allowed) {
     try {
       await auth.api.signOut({ headers: hdrs });
     } catch (err) {
-      console.error("[rbac] signOut after profile revoke failed", err);
+      log.error("rbac_signout_failed", {
+        error: err instanceof Error ? err.message : String(err),
+      });
     }
     return null;
   }

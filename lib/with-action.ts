@@ -1,4 +1,5 @@
 import { AppError, Errors } from "./errors";
+import { log } from "./logger";
 
 function isNextControlFlow(e: unknown): boolean {
 	if (!e || typeof e !== "object" || !("digest" in e)) return false;
@@ -16,10 +17,13 @@ export async function withAction<T>(
 	} catch (e) {
 		if (isNextControlFlow(e)) throw e;
 		if (e instanceof AppError) {
-			console.error(`[action:${name}] ${e.code}: ${e.message}`);
+			log.warn("action_failed", { action: name, code: e.code, message: e.message });
 			throw e;
 		}
-		console.error(`[action:${name}] unexpected`, e);
+		log.error("action_unexpected", {
+			action: name,
+			error: e instanceof Error ? e.message : String(e),
+		});
 		throw Errors.internal();
 	}
 }
