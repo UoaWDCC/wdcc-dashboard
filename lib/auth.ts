@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import * as schema from "@/lib/db/schema";
 import { env } from "@/lib/env";
 import { getProfile, isAllowed, normalizeEmail } from "@/lib/profile";
+import { log } from "@/lib/logger";
 
 export class NotAllowedError extends Error {
   code = "NOT_ALLOWED";
@@ -18,7 +19,10 @@ async function checkAllowed(email: string) {
   try {
     allowed = await isAllowed(email);
   } catch (err) {
-    console.error("[auth] profile lookup failed", err);
+    log.error("auth_profile_lookup_failed", {
+      email,
+      error: err instanceof Error ? err.message : String(err),
+    });
     throw new AllowlistLookupError("Allowlist check failed. Try again later.");
   }
   if (!allowed) throw new NotAllowedError(`Email ${email} is not authorised.`);
