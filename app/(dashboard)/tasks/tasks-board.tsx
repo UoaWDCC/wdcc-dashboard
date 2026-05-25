@@ -57,6 +57,8 @@ import {
 import {
 	TASK_PRIORITIES,
 	TEAMS,
+	PRIORITY_DOT,
+	PRIORITY_LABEL,
 	type TaskPriority as Priority,
 	type Team,
 	type TaskStatus as Status,
@@ -81,17 +83,6 @@ type ClientTask = {
 	dueDate: string | null;
 };
 
-const PRIORITIES = TASK_PRIORITIES;
-const priorityDot: Record<Priority, string> = {
-	low: "bg-emerald-500",
-	med: "bg-amber-500",
-	high: "bg-red-500",
-};
-const priorityLabel: Record<Priority, string> = {
-	low: "Low priority",
-	med: "Medium priority",
-	high: "High priority",
-};
 
 type ColumnMeta = {
 	id: string;
@@ -211,11 +202,11 @@ function TaskCard({
 				<CardTitle className="flex items-center gap-2 pr-6">
 					{task.priority && (
 						<span
-							aria-label={priorityLabel[task.priority]}
-							title={priorityLabel[task.priority]}
+							aria-label={PRIORITY_LABEL[task.priority]}
+							title={PRIORITY_LABEL[task.priority]}
 							className={cn(
 								"inline-block size-2 shrink-0 rounded-full",
-								priorityDot[task.priority]
+								PRIORITY_DOT[task.priority]
 							)}
 						/>
 					)}
@@ -642,7 +633,7 @@ function TaskEditDialog({
 									<SelectValue placeholder="None" />
 								</SelectTrigger>
 								<SelectContent>
-									{PRIORITIES.map((p) => (
+									{TASK_PRIORITIES.map((p) => (
 										<SelectItem key={p} value={p}>
 											{p}
 										</SelectItem>
@@ -902,7 +893,7 @@ function TaskCreateDialog({
 									<SelectValue placeholder="None" />
 								</SelectTrigger>
 								<SelectContent>
-									{PRIORITIES.map((p) => (
+									{TASK_PRIORITIES.map((p) => (
 										<SelectItem key={p} value={p}>
 											{p}
 										</SelectItem>
