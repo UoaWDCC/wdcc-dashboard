@@ -1,6 +1,11 @@
 import { eq, asc, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { goLink, goRedirect } from "@/lib/db/schema";
+import { getTodayIso } from "@/lib/date";
+
+export function isLinkExpired(eventDate: string | null): boolean {
+  return eventDate !== null && eventDate < getTodayIso();
+}
 
 export async function listGoLinks() {
   return db
