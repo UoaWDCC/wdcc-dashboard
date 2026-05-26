@@ -38,6 +38,8 @@ export function useTaskForm(
 	const [values, setValues] = useState<TaskFormValues>(initial ?? EMPTY);
 
 	useEffect(() => {
+		// Seed/reset form values when caller's reset key changes.
+		// eslint-disable-next-line react-hooks/set-state-in-effect
 		setValues(initial ?? EMPTY);
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [resetKey]);

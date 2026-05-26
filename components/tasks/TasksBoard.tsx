@@ -10,19 +10,15 @@ import {
 	moveTask,
 	softDeleteTask,
 	updateTask,
-	type ColumnId,
 	type TaskView,
 } from "@/server/tasks/actions";
 import {
-	PRIORITY_DOT,
-	PRIORITY_LABEL,
 	type TaskPriority as Priority,
 	type Team,
 } from "@/lib/types";
 import type {
 	BoardUser,
 	TagOption,
-	ClientAssignee,
 	ClientTask,
 	ColumnMeta,
 } from "@/lib/tasks/types";

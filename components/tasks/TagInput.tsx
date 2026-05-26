@@ -35,6 +35,8 @@ export function TagInput({
 		!suggestions.includes(draftLower);
 
 	useEffect(() => {
+		// Reset keyboard highlight when query or match set changes.
+		// eslint-disable-next-line react-hooks/set-state-in-effect
 		setHighlight(0);
 	}, [draft, matches.length]);
 
