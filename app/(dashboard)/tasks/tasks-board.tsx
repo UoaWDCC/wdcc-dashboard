@@ -2,19 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import {
-	DndContext,
-	DragEndEvent,
-	DragOverlay,
-	DragStartEvent,
-	PointerSensor,
-	closestCenter,
-	pointerWithin,
-	rectIntersection,
-	type CollisionDetection,
-	useSensor,
-	useSensors,
-} from "@dnd-kit/core";
+import { DndContext, DragOverlay } from "@dnd-kit/core";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -40,15 +28,11 @@ import type {
 } from "@/lib/tasks/types";
 import {
 	userColId,
-	userFromCol,
 	colIdToColumnId,
 	fromServer,
-	belongsTo,
 	colTasks,
-	positionFor,
-	neighborsOf,
-	applyDragLocal,
 } from "@/lib/tasks/utils";
+import { useTaskDragDrop } from "@/hooks/useTaskDragDrop";
 import { TaskCard } from "@/components/tasks/TaskCard";
 import { TaskColumn } from "@/components/tasks/TaskColumn";
 import { TagManagerDialog } from "@/components/tasks/TagManagerDialog";
@@ -67,7 +51,6 @@ export default function TasksBoard({
 	const router = useRouter();
 	const [, startTransition] = useTransition();
 	const [tasks, setTasks] = useState<ClientTask[]>(() => fromServer(initialTasks));
-	const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
 	const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
 	const [dialogOpen, setDialogOpen] = useState(false);
 	const [createOpen, setCreateOpen] = useState(false);
@@ -221,89 +204,39 @@ export default function TasksBoard({
 		});
 	}
 
-	const sensors = useSensors(
-		useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
-	);
-
-	// Pointer-first collision: column under the cursor wins. Falls back to
-	// rectIntersection (then closestCenter) when the pointer isn't inside any
-	// droppable, e.g. when auto-scrolling past column edges.
-	const collisionDetection: CollisionDetection = (args) => {
-		const pointer = pointerWithin(args);
-		if (pointer.length > 0) return pointer;
-		const intersecting = rectIntersection(args);
-		if (intersecting.length > 0) return intersecting;
-		return closestCenter(args);
-	};
-
 	const editingTask = useMemo(
 		() => tasks.find((t) => t.id === editingTaskId) ?? null,
 		[tasks, editingTaskId]
 	);
 
-	const activeTask = useMemo(
-		() =>
-			activeTaskId ? (tasks.find((t) => t.id === activeTaskId) ?? null) : null,
-		[activeTaskId, tasks]
-	);
-
-	function handleDragStart(e: DragStartEvent) {
-		const data = e.active.data.current as
-			| { type: "task"; taskId: string }
-			| undefined;
-		if (data?.taskId) setActiveTaskId(data.taskId);
-	}
-
-	function handleDragEnd(e: DragEndEvent) {
-		const { active, over } = e;
-		setActiveTaskId(null);
-		if (!over) return;
-
-		const aData = active.data.current as
-			| { type: "task"; columnId: string; taskId: string }
-			| undefined;
-		if (!aData) return;
-
-		const oData = over.data.current as
-			| { type: "task"; columnId: string; taskId: string }
-			| { type: "column"; columnId: string }
-			| undefined;
-
-		const toCol =
-			oData?.type === "task"
-				? oData.columnId
-				: oData?.type === "column"
-					? oData.columnId
-					: String(over.id);
-
-		const overTaskId = oData?.type === "task" ? oData.taskId : null;
-
-		const snapshot = tasks;
-		const next = applyDragLocal(tasks, aData.taskId, aData.columnId, toCol, overTaskId);
-		setTasks(next);
-
-		const { beforeId, afterId } = neighborsOf(next, aData.taskId, toCol);
-
-		startTransition(() => {
-			trackMutation(async () => {
-				try {
-					await moveTask({
-						taskId: aData.taskId,
-						from: colIdToColumnId(aData.columnId),
-						to: colIdToColumnId(toCol),
-						beforeId,
-						afterId,
+	const { sensors, collisionDetection, activeTask, handleDragStart, handleDragEnd, handleDragCancel } =
+		useTaskDragDrop({
+			tasks,
+			setTasks,
+			persistMove: ({ taskId, fromCol, toCol, beforeId, afterId }) =>
+				new Promise<void>((resolve, reject) => {
+					startTransition(() => {
+						trackMutation(async () => {
+							try {
+								await moveTask({
+									taskId,
+									from: colIdToColumnId(fromCol),
+									to: colIdToColumnId(toCol),
+									beforeId,
+									afterId,
+								});
+								// Optimistic state already matches server ordering. Skip
+								// router.refresh() here — it can clobber subsequent in-flight
+								// drags. The next mutation (or focus return) re-syncs.
+								resolve();
+							} catch (err) {
+								console.error("moveTask failed", err);
+								reject(err);
+							}
+						});
 					});
-					// Optimistic state already matches server ordering. Skip
-					// router.refresh() here — it can clobber subsequent in-flight
-					// drags. The next mutation (or focus return) re-syncs.
-				} catch (err) {
-					console.error("moveTask failed", err);
-					setTasks(snapshot);
-				}
-			});
+				}),
 		});
-	}
 
 	const backlogTasks = useMemo(() => colTasks(tasks, "backlog"), [tasks]);
 	const doneTasksList = useMemo(() => colTasks(tasks, "done"), [tasks]);
@@ -340,7 +273,7 @@ export default function TasksBoard({
 				collisionDetection={collisionDetection}
 				onDragStart={handleDragStart}
 				onDragEnd={handleDragEnd}
-				onDragCancel={() => setActiveTaskId(null)}
+				onDragCancel={handleDragCancel}
 			>
 				<div className="flex flex-1 min-h-0 gap-3">
 					<TaskColumn
