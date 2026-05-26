@@ -32,6 +32,8 @@ export function TagManagerDialog({
 		if (!open) return;
 		const next: Record<string, { name: string; color: string }> = {};
 		for (const t of tags) next[t.id] = { name: t.name, color: t.color ?? "" };
+		// Seed drafts from server tags when dialog opens.
+		// eslint-disable-next-line react-hooks/set-state-in-effect
 		setDrafts(next);
 	}, [open, tags]);
 
