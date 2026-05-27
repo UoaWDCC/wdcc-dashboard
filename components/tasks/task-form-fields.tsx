@@ -20,8 +20,8 @@ import {
 	type Team,
 } from "@/lib/types";
 import type { BoardUser } from "@/lib/tasks/types";
-import type { TaskFormApi } from "@/hooks/useTaskForm";
-import { TagInput } from "./TagInput";
+import type { TaskFormApi } from "@/hooks/use-task-form";
+import { TagInput } from "./tag-input";
 
 export function TaskFormFields({
 	form,

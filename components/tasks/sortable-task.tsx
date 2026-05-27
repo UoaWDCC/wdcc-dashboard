@@ -4,7 +4,7 @@ import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import type { BoardUser, ClientTask } from "@/lib/tasks/types";
 import { sortableId } from "@/lib/tasks/utils";
-import { TaskCard } from "./TaskCard";
+import { TaskCard } from "./task-card";
 
 export function SortableTask({
 	task,

@@ -10,8 +10,8 @@ import {
 } from "@/components/ui/dialog";
 import type { TaskPriority, Team } from "@/lib/types";
 import type { BoardUser } from "@/lib/tasks/types";
-import { useTaskForm } from "@/hooks/useTaskForm";
-import { TaskFormFields } from "./TaskFormFields";
+import { useTaskForm } from "@/hooks/use-task-form";
+import { TaskFormFields } from "./task-form-fields";
 
 export type CreateTaskFormInput = {
 	title: string;

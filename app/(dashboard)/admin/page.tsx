@@ -1,6 +1,6 @@
 import { listProfiles } from "@/lib/profile";
 import type { Team, ProfileKind } from "@/lib/types";
-import { ProfileRow, AddProfileRow } from "@/components/admin/ProfileRow";
+import { ProfileRow, AddProfileRow } from "@/components/admin/profile-row";
 
 export default async function AdminPage() {
   const profiles = await listProfiles();
