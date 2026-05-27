@@ -22,24 +22,37 @@ export async function addGoLink(
     iconUrl?: string | null;
     isPermanent?: boolean;
     hidden?: boolean;
-    sortOrder?: number;
     team?: string | null;
     eventDate?: string | null;
   },
   userId: string
 ) {
-  await db.insert(goLink).values({
-    label: data.label,
-    link: data.link,
-    hoverHint: data.hoverHint ?? null,
-    iconUrl: data.iconUrl ?? null,
-    isPermanent: data.isPermanent ?? false,
-    hidden: data.hidden ?? false,
-    sortOrder: data.sortOrder ?? 0,
-    team: data.team ?? null,
-    eventDate: data.eventDate ?? null,
-    createdBy: userId,
-    updatedBy: userId,
+  // Insert at sortOrder 0, bumping every other link down by 1. Bumping all rows
+  // (not just same-group) is safe because the read query groups by
+  // (expired, isPermanent) before sortOrder — relative order within each group
+  // is preserved, and the new row lands at the top of whichever group it
+  // belongs to.
+  return db.transaction(async (tx) => {
+    await tx
+      .update(goLink)
+      .set({ sortOrder: sql`${goLink.sortOrder} + 1` });
+    const [row] = await tx
+      .insert(goLink)
+      .values({
+        label: data.label,
+        link: data.link,
+        hoverHint: data.hoverHint ?? null,
+        iconUrl: data.iconUrl ?? null,
+        isPermanent: data.isPermanent ?? false,
+        hidden: data.hidden ?? false,
+        sortOrder: 0,
+        team: data.team ?? null,
+        eventDate: data.eventDate ?? null,
+        createdBy: userId,
+        updatedBy: userId,
+      })
+      .returning();
+    return row;
   });
 }
 
@@ -54,6 +67,7 @@ export async function updateGoLink(
     hidden?: boolean;
     sortOrder?: number;
     team?: string | null;
+    eventDate?: string | null;
   },
   userId: string
 ) {
@@ -76,6 +90,19 @@ export async function toggleGoLinkHidden(
     .update(goLink)
     .set({ hidden, updatedBy: userId, updatedAt: new Date() })
     .where(eq(goLink.id, id));
+}
+
+export async function reorderGoLinks(orderedIds: string[], userId: string) {
+  if (orderedIds.length === 0) return;
+  const now = new Date();
+  await db.transaction(async (tx) => {
+    for (let i = 0; i < orderedIds.length; i++) {
+      await tx
+        .update(goLink)
+        .set({ sortOrder: i, updatedBy: userId, updatedAt: now })
+        .where(eq(goLink.id, orderedIds[i]));
+    }
+  });
 }
 
 export async function listGoRedirects() {

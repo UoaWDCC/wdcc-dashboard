@@ -4,44 +4,75 @@ import { revalidatePath } from "next/cache";
 import { requireUser } from "@/lib/rbac";
 import {
   addGoLink,
+  updateGoLink,
   removeGoLink,
   toggleGoLinkHidden,
+  reorderGoLinks,
   addGoRedirect,
   removeGoRedirect,
   updateGoRedirect,
 } from "@/lib/linktree";
+import type { AddGoLinkInput, GoLinkRow } from "./types";
 
-export async function addGoLinkAction(formData: FormData) {
+export async function addGoLinkAction(
+  input: AddGoLinkInput
+): Promise<GoLinkRow> {
   const session = await requireUser("/linktree");
-  const label = (formData.get("label") as string | null)?.trim();
-  const link = (formData.get("link") as string | null)?.trim();
+  const label = input.label.trim();
+  const link = input.link.trim();
+  if (!label || !link) throw new Error("Label and link are required");
+  const row = await addGoLink(
+    {
+      label,
+      link,
+      hoverHint: input.hoverHint?.trim() || null,
+      iconUrl: input.iconUrl?.trim() || null,
+      team: input.team?.trim() || null,
+      isPermanent: input.isPermanent ?? false,
+      eventDate: input.eventDate?.trim() || null,
+    },
+    session.user.id
+  );
+  revalidatePath("/linktree");
+  return row;
+}
+
+export async function updateGoLinkAction(id: string, input: AddGoLinkInput) {
+  const session = await requireUser("/linktree");
+  const label = input.label.trim();
+  const link = input.link.trim();
   if (!label || !link) return;
-  const hoverHint = (formData.get("hoverHint") as string | null)?.trim() || null;
-  const iconUrl = (formData.get("iconUrl") as string | null)?.trim() || null;
-  const team = (formData.get("team") as string | null)?.trim() || null;
-  const isPermanent = formData.get("isPermanent") === "on";
-  const sortOrder =
-    parseInt((formData.get("sortOrder") as string | null) ?? "0", 10) || 0;
-  const eventDate = (formData.get("eventDate") as string | null)?.trim() || null;
-  await addGoLink(
-    { label, link, hoverHint, iconUrl, team, isPermanent, sortOrder, eventDate },
+  await updateGoLink(
+    id,
+    {
+      label,
+      link,
+      hoverHint: input.hoverHint?.trim() || null,
+      iconUrl: input.iconUrl?.trim() || null,
+      team: input.team?.trim() || null,
+      isPermanent: input.isPermanent ?? false,
+      eventDate: input.eventDate?.trim() || null,
+    },
     session.user.id
   );
   revalidatePath("/linktree");
 }
 
-export async function removeGoLinkAction(formData: FormData) {
+export async function removeGoLinkAction(id: string) {
   await requireUser("/linktree");
-  const id = formData.get("id") as string;
   await removeGoLink(id);
   revalidatePath("/linktree");
 }
 
-export async function toggleGoLinkHiddenAction(formData: FormData) {
+export async function toggleGoLinkHiddenAction(id: string, hidden: boolean) {
   const session = await requireUser("/linktree");
-  const id = formData.get("id") as string;
-  const hidden = formData.get("hidden") === "true";
   await toggleGoLinkHidden(id, hidden, session.user.id);
+  revalidatePath("/linktree");
+}
+
+export async function reorderGoLinksAction(orderedIds: string[]) {
+  const session = await requireUser("/linktree");
+  await reorderGoLinks(orderedIds, session.user.id);
   revalidatePath("/linktree");
 }
 
