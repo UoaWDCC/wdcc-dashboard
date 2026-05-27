@@ -10,8 +10,8 @@ import {
 	DialogTitle,
 } from "@/components/ui/dialog";
 import type { BoardUser, ClientTask } from "@/lib/tasks/types";
-import { useTaskForm, type TaskFormValues } from "@/hooks/useTaskForm";
-import { TaskFormFields } from "./TaskFormFields";
+import { useTaskForm, type TaskFormValues } from "@/hooks/use-task-form";
+import { TaskFormFields } from "./task-form-fields";
 
 function taskToValues(task: ClientTask): TaskFormValues {
 	return {
