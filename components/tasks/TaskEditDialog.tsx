@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import type { BoardUser, ClientTask } from "@/lib/tasks/types";
 import { useTaskForm, type TaskFormValues } from "@/hooks/use-task-form";
-import { TaskFormFields } from "./task-form-fields";
+import { TaskFormFields } from "./TaskFormFields";
 
 function taskToValues(task: ClientTask): TaskFormValues {
 	return {

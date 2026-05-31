@@ -9,7 +9,7 @@ import {
 import { cn } from "@/lib/utils";
 import type { BoardUser, ClientTask, ColumnMeta } from "@/lib/tasks/types";
 import { sortableId } from "@/lib/tasks/utils";
-import { SortableTask } from "./sortable-task";
+import { SortableTask } from "./SortableTask";
 
 const accentMap = {
 	neutral: {

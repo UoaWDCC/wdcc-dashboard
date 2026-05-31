@@ -21,7 +21,7 @@ import {
 } from "@/lib/types";
 import type { BoardUser } from "@/lib/tasks/types";
 import type { TaskFormApi } from "@/hooks/use-task-form";
-import { TagInput } from "./tag-input";
+import { TagInput } from "./TagInput";
 
 export function TaskFormFields({
 	form,
