@@ -29,11 +29,11 @@ import {
 	colTasks,
 } from "@/lib/tasks/utils";
 import { useTaskDragDrop } from "@/hooks/use-task-drag-drop";
-import { TaskCard } from "@/components/tasks/task-card";
-import { TaskColumn } from "@/components/tasks/task-column";
-import { TagManagerDialog } from "@/components/tasks/tag-manager-dialog";
-import { TaskCreateDialog } from "@/components/tasks/task-create-dialog";
-import { TaskEditDialog } from "@/components/tasks/task-edit-dialog";
+import { TaskCard } from "@/components/tasks/TaskCard";
+import { TaskColumn } from "@/components/tasks/TaskColumn";
+import { TagManagerDialog } from "@/components/tasks/TagManagerDialog";
+import { TaskCreateDialog } from "@/components/tasks/TaskCreateDialog";
+import { TaskEditDialog } from "@/components/tasks/TaskEditDialog";
 
 export default function TasksBoard({
 	initialTasks,

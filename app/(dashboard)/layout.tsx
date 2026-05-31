@@ -3,9 +3,9 @@ import {
   SidebarTrigger,
   SidebarInset,
 } from "@/components/ui/sidebar";
-import { AppSidebar } from "@/components/app-sidebar";
-import { UserMenu } from "@/components/user-menu";
-import { requireUser } from "@/lib/rbac";
+import { AppSidebar } from "@/components/AppSidebar";
+import { UserMenu } from "@/components/UserMenu";
+import { requireUser } from "@/lib/access";
 
 export default async function DashboardLayout({
   children,

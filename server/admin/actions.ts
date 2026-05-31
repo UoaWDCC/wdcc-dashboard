@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { profile, task, taskAssignee } from "@/lib/db/schema";
-import { requireUser } from "@/lib/rbac";
+import { requireUser } from "@/lib/access";
 import { upsertProfile, normalizeEmail } from "@/lib/profile";
 import { TEAMS, PROFILE_KINDS } from "@/lib/types";
 import {

@@ -13,7 +13,7 @@ import {
   user,
   profile,
 } from "@/lib/db/schema";
-import { requireUser } from "@/lib/rbac";
+import { requireUser } from "@/lib/access";
 import {
   TASK_PRIORITIES,
   TEAMS,

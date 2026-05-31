@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireUser } from "@/lib/rbac";
+import { requireUser } from "@/lib/access";
 import {
   addGoLink,
   updateGoLink,

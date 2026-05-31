@@ -8,7 +8,7 @@ import {
   removeGoRedirectAction,
   toggleGoRedirectHiddenAction,
 } from "@/server/linktree/actions";
-import GoLinksManager from "./go-links-manager";
+import GoLinksManager from "./GoLinksManager";
 
 export default async function LinktreePage() {
   const [links, redirects] = await Promise.all([
