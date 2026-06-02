@@ -1,4 +1,3 @@
-import "server-only";
 import { flyTokens } from "./config";
 
 export async function flyFetch(
