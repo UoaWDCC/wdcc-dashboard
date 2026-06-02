@@ -1,8 +1,9 @@
 import { fetchAllApps } from "@/lib/flyio/apps";
-import { orgSlugs } from "@/lib/flyio/config";
 
 export default async function TechPage() {
-  if (orgSlugs.length === 0) {
+  const apps = await fetchAllApps();
+
+  if (apps.length === 0) {
     return (
       <div className="space-y-2">
         <h1 className="text-2xl font-semibold">Tech</h1>
@@ -12,8 +13,6 @@ export default async function TechPage() {
       </div>
     );
   }
-
-  const apps = await fetchAllApps();
 
   return (
     <div className="space-y-4">
