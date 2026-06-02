@@ -1,4 +1,4 @@
-import { flyFetch } from "./client";
+import { flyFetch } from "./fetcher";
 import { orgSlugs } from "./config";
 import type { FlyApp, FlyAppsResponse } from "./types";
 
