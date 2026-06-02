@@ -1,4 +1,3 @@
-import "server-only";
 import { flyFetch } from "./client";
 import { orgSlugs } from "./config";
 import type { FlyApp, FlyAppsResponse } from "./types";

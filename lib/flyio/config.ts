@@ -1,4 +1,5 @@
-import "server-only";
+// NOTE: fs is Node-only — this file and anything that imports it cannot be used in Client Components.
+// For explicit build-time protection, install the "server-only" package as recommended by Next.js.
 import * as fs from "fs";
 
 function loadTokens(): Map<string, string> {
