@@ -1,10 +1,9 @@
 import { flyFetch } from "./fetcher";
-import { orgSlugs } from "./config";
 import type { FlyApp, FlyAppsResponse } from "./types";
 
 const APPS_BASE = "https://api.machines.dev/v1/apps";
 
-async function fetchOrgApps(slug: string): Promise<FlyApp[]> {
+export async function fetchOrgApps(slug: string): Promise<FlyApp[]> {
   const url = `${APPS_BASE}?org_slug=${encodeURIComponent(slug)}`;
 
   const res = await flyFetch(url, slug);
@@ -14,9 +13,3 @@ async function fetchOrgApps(slug: string): Promise<FlyApp[]> {
   return json.apps ?? [];
 }
 
-export async function fetchAllApps(): Promise<FlyApp[]> {
-  if (orgSlugs.length === 0) return [];
-  
-  const results = await Promise.all(orgSlugs.map(fetchOrgApps));
-  return results.flat();
-}
