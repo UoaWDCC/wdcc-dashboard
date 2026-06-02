@@ -33,6 +33,9 @@ yarn-error.log*
 # env files (can opt-in for committing if needed)
 .env*
 
+# fly.io tokens (use fly-tokens.example.json as template)
+fly-tokens.json
+
 # vercel
 .vercel
 
