@@ -7,6 +7,7 @@ export async function flyFetch(
 ): Promise<Response> {
   const token = flyTokens.get(orgSlug);
   if (!token) throw new Error(`No token for org: ${orgSlug}`);
+  
   return fetch(url, {
     ...init,
     headers: {
