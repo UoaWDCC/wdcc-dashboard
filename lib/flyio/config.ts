@@ -3,6 +3,7 @@
 import * as fs from "fs";
 
 function loadTokens(): Map<string, string> {
+  // Path for production or local if you want to set env vars directly instead of using a file for whatever reason
   if (process.env.FLY_TOKENS) {
     try {
       return new Map(Object.entries(JSON.parse(process.env.FLY_TOKENS)));
@@ -12,6 +13,7 @@ function loadTokens(): Map<string, string> {
     }
   }
 
+  // Path for local development
   try {
     const raw = fs.readFileSync("fly-tokens.json", "utf8");
     return new Map(Object.entries(JSON.parse(raw)));
