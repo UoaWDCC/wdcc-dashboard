@@ -1,12 +1,18 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import {
+	useMutation,
+	useQuery,
+	useQueryClient,
+} from "@tanstack/react-query";
 import { DndContext, DragOverlay } from "@dnd-kit/core";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
 	createTask,
+	listTasks,
 	moveTask,
 	softDeleteTask,
 	updateTask,
@@ -29,6 +35,7 @@ import {
 	colTasks,
 } from "@/lib/tasks/utils";
 import { useTaskDragDrop } from "@/hooks/use-task-drag-drop";
+import { taskKeys } from "@/lib/tasks/queries";
 import { TaskCard } from "@/components/tasks/TaskCard";
 import { TaskColumn } from "@/components/tasks/TaskColumn";
 import { TagManagerDialog } from "@/components/tasks/TagManagerDialog";
@@ -45,36 +52,33 @@ export default function TasksBoard({
 	tags: TagOption[];
 }) {
 	const router = useRouter();
-	const [, startTransition] = useTransition();
-	const [tasks, setTasks] = useState<ClientTask[]>(() => fromServer(initialTasks));
+	const queryClient = useQueryClient();
+
+	const { data: tasks = [] } = useQuery({
+		queryKey: taskKeys.all,
+		queryFn: async () => fromServer(await listTasks()),
+		initialData: () => fromServer(initialTasks),
+	});
+
+	const setTasks = useCallback(
+		(updater: ClientTask[] | ((prev: ClientTask[]) => ClientTask[])) => {
+			queryClient.setQueryData<ClientTask[]>(taskKeys.all, (prev) => {
+				const base = prev ?? [];
+				return typeof updater === "function" ? updater(base) : updater;
+			});
+		},
+		[queryClient]
+	);
+
+	const invalidateTasks = useCallback(
+		() => queryClient.invalidateQueries({ queryKey: taskKeys.all }),
+		[queryClient]
+	);
+
 	const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
 	const [dialogOpen, setDialogOpen] = useState(false);
 	const [createOpen, setCreateOpen] = useState(false);
 	const [tagManagerOpen, setTagManagerOpen] = useState(false);
-	// In-flight mutation counter. router.refresh() pushes new initialTasks while
-	// optimistic state for a later drag may still be settling — applying server
-	// state then clobbers it. Defer the reset until mutations drain.
-	const pendingMutations = useRef(0);
-	const pendingRefresh = useRef(false);
-
-	useEffect(() => {
-		if (pendingMutations.current > 0) {
-			pendingRefresh.current = true;
-			return;
-		}
-		setTasks(fromServer(initialTasks));
-	}, [initialTasks]);
-
-	function trackMutation<T>(fn: () => Promise<T>): Promise<T> {
-		pendingMutations.current += 1;
-		return fn().finally(() => {
-			pendingMutations.current -= 1;
-			if (pendingMutations.current === 0 && pendingRefresh.current) {
-				pendingRefresh.current = false;
-				router.refresh();
-			}
-		});
-	}
 
 	const userById = useMemo(
 		() => new Map(users.map((m) => [m.email, m])),
@@ -107,98 +111,122 @@ export default function TasksBoard({
 		setDialogOpen(true);
 	}
 
-	function persistUpdate(prev: ClientTask, next: ClientTask) {
-		const newAssigneeEmails = next.assignees.map((a) => a.profileEmail);
-		setTasks((all) =>
-			all.map((t) =>
-				t.id === next.id
-					? {
-							...next,
-							status:
-								t.status === "done"
-									? "done"
-									: newAssigneeEmails.length > 0
-										? "active"
-										: "backlog",
-						}
-					: t
-			)
-		);
-		startTransition(() => {
-			trackMutation(async () => {
-				try {
-					await updateTask(next.id, {
-						title: next.title,
-						description: next.description,
-						priority: next.priority,
-						team: next.team,
-						tagIds: next.tags
-							.map((name) => tagIdByName.get(name))
-							.filter((id): id is string => !!id),
-						links: next.links.map((l) => ({ url: l.url, title: l.title })),
-						assigneeEmails: newAssigneeEmails,
-					});
-					router.refresh();
-				} catch (e) {
-					console.error("updateTask failed", e);
-					setTasks((all) => all.map((t) => (t.id === prev.id ? prev : t)));
-				}
+	const updateMutation = useMutation({
+		mutationFn: async ({
+			next,
+		}: {
+			prev: ClientTask;
+			next: ClientTask;
+		}) => {
+			await updateTask(next.id, {
+				title: next.title,
+				description: next.description,
+				priority: next.priority,
+				team: next.team,
+				tagIds: next.tags
+					.map((name) => tagIdByName.get(name))
+					.filter((id): id is string => !!id),
+				links: next.links.map((l) => ({ url: l.url, title: l.title })),
+				assigneeEmails: next.assignees.map((a) => a.profileEmail),
 			});
-		});
-	}
+		},
+		onMutate: async ({ next }) => {
+			await queryClient.cancelQueries({ queryKey: taskKeys.all });
+			const snapshot = queryClient.getQueryData<ClientTask[]>(taskKeys.all);
+			const newAssigneeEmails = next.assignees.map((a) => a.profileEmail);
+			setTasks((all) =>
+				all.map((t) =>
+					t.id === next.id
+						? {
+								...next,
+								status:
+									t.status === "done"
+										? "done"
+										: newAssigneeEmails.length > 0
+											? "active"
+											: "backlog",
+							}
+						: t
+				)
+			);
+			return { snapshot };
+		},
+		onError: (err, _vars, ctx) => {
+			console.error("updateTask failed", err);
+			if (ctx?.snapshot) setTasks(ctx.snapshot);
+		},
+		onSettled: invalidateTasks,
+	});
 
-	function persistCreate(input: {
-		title: string;
-		description: string | null;
-		priority: Priority | null;
-		team: Team | null;
-		tags: string[];
-		links: { url: string; title: string | null }[];
-		assigneeEmails: string[];
-	}) {
-		startTransition(() => {
-			trackMutation(async () => {
-				try {
-					await createTask({
-						title: input.title,
-						description: input.description ?? undefined,
-						priority: input.priority ?? undefined,
-						team: input.team ?? undefined,
-						tagIds: input.tags
-							.map((name) => tagIdByName.get(name))
-							.filter((id): id is string => !!id),
-						links: input.links.map((l) => ({
-							url: l.url,
-							title: l.title ?? undefined,
-						})),
-						assigneeEmails: input.assigneeEmails,
-					});
-					router.refresh();
-				} catch (e) {
-					console.error("createTask failed", e);
-				}
+	const createMutation = useMutation({
+		mutationFn: async (input: {
+			title: string;
+			description: string | null;
+			priority: Priority | null;
+			team: Team | null;
+			tags: string[];
+			links: { url: string; title: string | null }[];
+			assigneeEmails: string[];
+		}) => {
+			await createTask({
+				title: input.title,
+				description: input.description ?? undefined,
+				priority: input.priority ?? undefined,
+				team: input.team ?? undefined,
+				tagIds: input.tags
+					.map((name) => tagIdByName.get(name))
+					.filter((id): id is string => !!id),
+				links: input.links.map((l) => ({
+					url: l.url,
+					title: l.title ?? undefined,
+				})),
+				assigneeEmails: input.assigneeEmails,
 			});
-		});
-	}
+		},
+		onError: (err) => console.error("createTask failed", err),
+		onSettled: invalidateTasks,
+	});
 
-	function persistDelete(id: string) {
-		const deleted = tasks.find((t) => t.id === id);
-		if (!deleted) return;
-		setTasks((all) => all.filter((t) => t.id !== id));
-		startTransition(() => {
-			trackMutation(async () => {
-				try {
-					await softDeleteTask(id);
-					router.refresh();
-				} catch (e) {
-					console.error("softDeleteTask failed", e);
-					setTasks((all) =>
-						all.some((t) => t.id === id) ? all : [...all, deleted]
-					);
-				}
+	const deleteMutation = useMutation({
+		mutationFn: async (id: string) => {
+			await softDeleteTask(id);
+		},
+		onMutate: async (id) => {
+			await queryClient.cancelQueries({ queryKey: taskKeys.all });
+			const snapshot = queryClient.getQueryData<ClientTask[]>(taskKeys.all);
+			setTasks((all) => all.filter((t) => t.id !== id));
+			return { snapshot };
+		},
+		onError: (err, _id, ctx) => {
+			console.error("softDeleteTask failed", err);
+			if (ctx?.snapshot) setTasks(ctx.snapshot);
+		},
+		onSettled: invalidateTasks,
+	});
+
+	const moveMutation = useMutation({
+		mutationFn: async (input: {
+			taskId: string;
+			fromCol: string;
+			toCol: string;
+			beforeId: string | null;
+			afterId: string | null;
+		}) => {
+			await moveTask({
+				taskId: input.taskId,
+				from: colIdToColumnId(input.fromCol),
+				to: colIdToColumnId(input.toCol),
+				beforeId: input.beforeId,
+				afterId: input.afterId,
 			});
-		});
-	}
+		},
+		// Optimistic state already applied by the drag hook. Skip invalidation —
+		// it would race subsequent in-flight drags. Cache re-syncs on next
+		// non-move mutation or window focus.
+		onError: (err) => {
+			console.error("moveTask failed", err);
+		},
+	});
 
 	const editingTask = useMemo(
 		() => tasks.find((t) => t.id === editingTaskId) ?? null,
@@ -209,29 +237,7 @@ export default function TasksBoard({
 		useTaskDragDrop({
 			tasks,
 			setTasks,
-			persistMove: ({ taskId, fromCol, toCol, beforeId, afterId }) =>
-				new Promise<void>((resolve, reject) => {
-					startTransition(() => {
-						trackMutation(async () => {
-							try {
-								await moveTask({
-									taskId,
-									from: colIdToColumnId(fromCol),
-									to: colIdToColumnId(toCol),
-									beforeId,
-									afterId,
-								});
-								// Optimistic state already matches server ordering. Skip
-								// router.refresh() here — it can clobber subsequent in-flight
-								// drags. The next mutation (or focus return) re-syncs.
-								resolve();
-							} catch (err) {
-								console.error("moveTask failed", err);
-								reject(err);
-							}
-						});
-					});
-				}),
+			persistMove: (input) => moveMutation.mutateAsync(input),
 		});
 
 	const backlogTasks = useMemo(() => colTasks(tasks, "backlog"), [tasks]);
@@ -319,7 +325,7 @@ export default function TasksBoard({
 			<TaskCreateDialog
 				open={createOpen}
 				onOpenChange={setCreateOpen}
-				onCreate={persistCreate}
+				onCreate={(input) => createMutation.mutate(input)}
 				tagSuggestions={tagSuggestions}
 				users={users}
 			/>
@@ -335,9 +341,9 @@ export default function TasksBoard({
 				onOpenChange={setDialogOpen}
 				onSave={(updated) => {
 					const prev = tasks.find((t) => t.id === updated.id);
-					if (prev) persistUpdate(prev, updated);
+					if (prev) updateMutation.mutate({ prev, next: updated });
 				}}
-				onDelete={persistDelete}
+				onDelete={(id) => deleteMutation.mutate(id)}
 				tagSuggestions={tagSuggestions}
 				users={users}
 			/>
