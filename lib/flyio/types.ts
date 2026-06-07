@@ -24,3 +24,28 @@ export type OrgApps = {
   slug: string;
   apps: FlyApp[];
 };
+
+export type FlyMachineGuest = {
+  cpu_kind: string;
+  cpus: number;
+  memory_mb: number;
+};
+
+export type FlyMachineConfig = {
+  guest: FlyMachineGuest;
+};
+
+export type FlyMachineEvent = {
+  status: string;
+  timestamp: number;
+};
+
+export type FlyMachine = {
+  id: string;
+  name: string;
+  state: string;
+  config: FlyMachineConfig | null;
+  events: FlyMachineEvent[];
+};
+
+export type FlyAppWithMachines = FlyApp & { machines: FlyMachine[] };
