@@ -1,3 +1,5 @@
+// ── Apps ─────────────────────────────────────────────────────────────
+
 export type FlyOrganization = {
   internal_numeric_id: number;
   name: string;
@@ -24,6 +26,7 @@ export type OrgApps = {
   slug: string;
   apps: FlyApp[];
 };
+// ── Machines ──────────────────────────────────────────────────────────
 
 export type FlyMachineGuest = {
   cpu_kind: string;
@@ -47,5 +50,7 @@ export type FlyMachine = {
   config: FlyMachineConfig | null;
   events: FlyMachineEvent[];
 };
+
+// ── Composite ─────────────────────────────────────────────────────────
 
 export type FlyAppWithMachines = FlyApp & { machines: FlyMachine[] };
