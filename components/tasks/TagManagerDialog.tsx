@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { deleteTag, updateTag } from "@/server/tasks/actions";
+import { toast } from "sonner";
 import type { TagOption } from "@/lib/tasks/types";
 
 export function TagManagerDialog({
@@ -55,8 +56,10 @@ export function TagManagerDialog({
 			try {
 				await updateTag(t.id, patch);
 				onChanged();
+				toast.success("Tag updated");
 			} catch (e) {
 				console.error("updateTag failed", e);
+				toast.error("Failed to update tag");
 			}
 		});
 	}
@@ -67,8 +70,10 @@ export function TagManagerDialog({
 			try {
 				await deleteTag(t.id);
 				onChanged();
+				toast.success("Tag deleted");
 			} catch (e) {
 				console.error("deleteTag failed", e);
+				toast.error("Failed to delete tag");
 			}
 		});
 	}

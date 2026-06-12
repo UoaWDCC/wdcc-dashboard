@@ -37,6 +37,7 @@ import {
   updateGoLinkAction,
 } from "@/server/linktree/actions";
 import type { AddGoLinkInput, GoLinkRow } from "@/server/linktree/types";
+import { toast } from "sonner";
 
 type GroupKey = "active" | "permanent" | "expired";
 
@@ -112,6 +113,7 @@ export default function GoLinksManager({
         await reorderGoLinksAction(next.map((l) => l.id));
       } catch (err) {
         console.error("reorderGoLinks failed", err);
+        toast.error("Failed to reorder links");
         setLinks(snapshot);
       }
     });
@@ -123,8 +125,10 @@ export default function GoLinksManager({
     startTransition(async () => {
       try {
         await removeGoLinkAction(id);
+        toast.success("Link removed");
       } catch (err) {
         console.error("removeGoLink failed", err);
+        toast.error("Failed to remove link");
         setLinks(snapshot);
       }
     });
@@ -140,6 +144,7 @@ export default function GoLinksManager({
         await toggleGoLinkHiddenAction(id, hidden);
       } catch (err) {
         console.error("toggleGoLinkHidden failed", err);
+        toast.error("Failed to update link visibility");
         setLinks(snapshot);
       }
     });
@@ -153,8 +158,10 @@ export default function GoLinksManager({
         // Mirror that locally by prepending — group placement is recomputed
         // from the link's own fields, not its sortOrder.
         setLinks((cur) => [row, ...cur]);
+        toast.success("Link added");
       } catch (err) {
         console.error("addGoLink failed", err);
+        toast.error("Failed to add link");
       }
     });
   }
@@ -180,8 +187,10 @@ export default function GoLinksManager({
     startTransition(async () => {
       try {
         await updateGoLinkAction(id, input);
+        toast.success("Link updated");
       } catch (err) {
         console.error("updateGoLink failed", err);
+        toast.error("Failed to update link");
         setLinks(snapshot);
       }
     });
