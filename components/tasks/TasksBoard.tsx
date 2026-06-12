@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { DndContext, DragOverlay } from "@dnd-kit/core";
 import { Plus } from "lucide-react";
@@ -38,7 +37,6 @@ export default function TasksBoard({
 	users: BoardUser[];
 	tags: TagOption[];
 }) {
-	const router = useRouter();
 	const queryClient = useQueryClient();
 
 	const { data: tasks = [] } = useTasksQuery(initialTasks);
@@ -199,7 +197,9 @@ export default function TasksBoard({
 				open={tagManagerOpen}
 				onOpenChange={setTagManagerOpen}
 				tags={tags}
-				onChanged={() => router.refresh()}
+				onChanged={() =>
+					queryClient.invalidateQueries({ queryKey: taskKeys.all })
+				}
 			/>
 			<TaskEditDialog
 				task={editingTask}

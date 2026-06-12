@@ -1,4 +1,3 @@
-import { useEffect } from "react";
 import {
 	useMutation,
 	useQuery,
@@ -21,10 +20,6 @@ export const taskKeys = {
 };
 
 export function useTasksQuery(initialTasks: TaskView[]) {
-	const queryClient = useQueryClient();
-	useEffect(() => {
-		queryClient.setQueryData<ClientTask[]>(taskKeys.all, fromServer(initialTasks));
-	}, [initialTasks, queryClient]);
 	return useQuery({
 		queryKey: taskKeys.all,
 		queryFn: async () => fromServer(await listTasks()),
@@ -144,8 +139,12 @@ export type MoveTaskInput = {
 	afterId: string | null;
 };
 
+const moveMutationKey = ["tasks", "move"] as const;
+
 export function useMoveTaskMutation() {
+	const queryClient = useQueryClient();
 	return useMutation({
+		mutationKey: moveMutationKey,
 		mutationFn: async (input: MoveTaskInput) => {
 			await moveTask({
 				taskId: input.taskId,
@@ -155,11 +154,14 @@ export function useMoveTaskMutation() {
 				afterId: input.afterId,
 			});
 		},
-		// Optimistic state already applied by drag hook. Skip invalidation — would
-		// race subsequent in-flight drags. Cache re-syncs on next non-move
-		// mutation or window focus.
 		onError: (err) => {
 			console.error("moveTask failed", err);
+		},
+		// Only invalidate when last move settles — avoids racing in-flight drags.
+		onSettled: () => {
+			if (queryClient.isMutating({ mutationKey: moveMutationKey }) <= 1) {
+				queryClient.invalidateQueries({ queryKey: taskKeys.all });
+			}
 		},
 	});
 }
