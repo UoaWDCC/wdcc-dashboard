@@ -5,12 +5,12 @@ import { useQueryClient } from "@tanstack/react-query";
 import { DndContext, DragOverlay } from "@dnd-kit/core";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { type TaskView } from "@/server/tasks/actions";
 import type {
 	BoardUser,
 	TagOption,
 	ClientTask,
 	ColumnMeta,
+	TaskView,
 } from "@/lib/tasks/types";
 import { userColId, colTasks } from "@/lib/tasks/utils";
 import { useTaskDragDrop } from "@/hooks/use-task-drag-drop";

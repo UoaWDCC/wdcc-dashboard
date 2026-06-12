@@ -1,5 +1,4 @@
-import type { ColumnId, TaskView } from "@/server/tasks/actions";
-import type { ClientTask } from "./types";
+import type { ClientTask, ColumnId, TaskView } from "./types";
 
 export const userColId = (email: string) => `user-${email}`;
 

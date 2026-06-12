@@ -9,10 +9,12 @@ import {
 	moveTask,
 	softDeleteTask,
 	updateTask,
-	type CreateTaskInput,
-	type TaskView,
 } from "@/server/tasks/actions";
-import type { ClientTask } from "@/lib/tasks/types";
+import type {
+	ClientTask,
+	CreateTaskInput,
+	TaskView,
+} from "@/lib/tasks/types";
 import {
 	applyDragLocal,
 	colIdToColumnId,
