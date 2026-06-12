@@ -13,14 +13,14 @@ import {
 	useSensors,
 } from "@dnd-kit/core";
 import type { ClientTask } from "@/lib/tasks/types";
-import type { MoveTaskInput } from "@/lib/tasks/queries";
+import type { MoveTaskVars } from "@/lib/tasks/queries";
 
 export function useTaskDragDrop({
 	tasks,
 	onMove,
 }: {
 	tasks: ClientTask[];
-	onMove: (input: MoveTaskInput) => void;
+	onMove: (input: MoveTaskVars) => void;
 }) {
 	const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
 

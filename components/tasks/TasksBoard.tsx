@@ -78,7 +78,7 @@ export default function TasksBoard({
 	}
 
 	const updateMutation = useUpdateTaskMutation(tagIdByName);
-	const createMutation = useCreateTaskMutation(tagIdByName);
+	const createMutation = useCreateTaskMutation();
 	const deleteMutation = useDeleteTaskMutation();
 	const moveMutation = useMoveTaskMutation();
 
@@ -178,7 +178,22 @@ export default function TasksBoard({
 			<TaskCreateDialog
 				open={createOpen}
 				onOpenChange={setCreateOpen}
-				onCreate={(input) => createMutation.mutate(input)}
+				onCreate={(input) =>
+					createMutation.mutate({
+						title: input.title,
+						description: input.description ?? undefined,
+						priority: input.priority ?? undefined,
+						team: input.team ?? undefined,
+						tagIds: input.tags
+							.map((name) => tagIdByName.get(name))
+							.filter((id): id is string => !!id),
+						links: input.links.map((l) => ({
+							url: l.url,
+							title: l.title ?? undefined,
+						})),
+						assigneeEmails: input.assigneeEmails,
+					})
+				}
 				tagSuggestions={tagSuggestions}
 				users={users}
 			/>
