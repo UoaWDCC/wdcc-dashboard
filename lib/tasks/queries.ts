@@ -11,6 +11,7 @@ import {
 	updateTask,
 } from "@/server/tasks/actions";
 import type {
+	ClientMoveTask,
 	ClientTask,
 	CreateTaskInput,
 	TaskView,
@@ -115,12 +116,6 @@ export function useDeleteTaskMutation() {
 	});
 }
 
-export type MoveTaskVars = {
-	taskId: string;
-	fromCol: string;
-	toCol: string;
-	overTaskId: string | null;
-};
 
 const moveMutationKey = ["tasks", "move"] as const;
 
@@ -128,7 +123,7 @@ export function useMoveTaskMutation() {
 	const queryClient = useQueryClient();
 	return useMutation({
 		mutationKey: moveMutationKey,
-		onMutate: async (input: MoveTaskVars) => {
+		onMutate: async (input: ClientMoveTask) => {
 			const snapshot =
 				queryClient.getQueryData<ClientTask[]>(taskKeys.all) ?? [];
 			const next = applyDragLocal(
