@@ -2,40 +2,27 @@
 
 import { useCallback, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import {
-	useMutation,
-	useQuery,
-	useQueryClient,
-} from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { DndContext, DragOverlay } from "@dnd-kit/core";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-	createTask,
-	listTasks,
-	moveTask,
-	softDeleteTask,
-	updateTask,
-	type TaskView,
-} from "@/server/tasks/actions";
-import {
-	type TaskPriority as Priority,
-	type Team,
-} from "@/lib/types";
+import { type TaskView } from "@/server/tasks/actions";
 import type {
 	BoardUser,
 	TagOption,
 	ClientTask,
 	ColumnMeta,
 } from "@/lib/tasks/types";
-import {
-	userColId,
-	colIdToColumnId,
-	fromServer,
-	colTasks,
-} from "@/lib/tasks/utils";
+import { userColId, colTasks } from "@/lib/tasks/utils";
 import { useTaskDragDrop } from "@/hooks/use-task-drag-drop";
-import { taskKeys } from "@/lib/tasks/queries";
+import {
+	taskKeys,
+	useTasksQuery,
+	useUpdateTaskMutation,
+	useCreateTaskMutation,
+	useDeleteTaskMutation,
+	useMoveTaskMutation,
+} from "@/lib/tasks/queries";
 import { TaskCard } from "@/components/tasks/TaskCard";
 import { TaskColumn } from "@/components/tasks/TaskColumn";
 import { TagManagerDialog } from "@/components/tasks/TagManagerDialog";
@@ -54,11 +41,7 @@ export default function TasksBoard({
 	const router = useRouter();
 	const queryClient = useQueryClient();
 
-	const { data: tasks = [] } = useQuery({
-		queryKey: taskKeys.all,
-		queryFn: async () => fromServer(await listTasks()),
-		initialData: () => fromServer(initialTasks),
-	});
+	const { data: tasks = [] } = useTasksQuery(initialTasks);
 
 	const setTasks = useCallback(
 		(updater: ClientTask[] | ((prev: ClientTask[]) => ClientTask[])) => {
@@ -67,11 +50,6 @@ export default function TasksBoard({
 				return typeof updater === "function" ? updater(base) : updater;
 			});
 		},
-		[queryClient]
-	);
-
-	const invalidateTasks = useCallback(
-		() => queryClient.invalidateQueries({ queryKey: taskKeys.all }),
 		[queryClient]
 	);
 
@@ -111,122 +89,10 @@ export default function TasksBoard({
 		setDialogOpen(true);
 	}
 
-	const updateMutation = useMutation({
-		mutationFn: async ({
-			next,
-		}: {
-			prev: ClientTask;
-			next: ClientTask;
-		}) => {
-			await updateTask(next.id, {
-				title: next.title,
-				description: next.description,
-				priority: next.priority,
-				team: next.team,
-				tagIds: next.tags
-					.map((name) => tagIdByName.get(name))
-					.filter((id): id is string => !!id),
-				links: next.links.map((l) => ({ url: l.url, title: l.title })),
-				assigneeEmails: next.assignees.map((a) => a.profileEmail),
-			});
-		},
-		onMutate: async ({ next }) => {
-			await queryClient.cancelQueries({ queryKey: taskKeys.all });
-			const snapshot = queryClient.getQueryData<ClientTask[]>(taskKeys.all);
-			const newAssigneeEmails = next.assignees.map((a) => a.profileEmail);
-			setTasks((all) =>
-				all.map((t) =>
-					t.id === next.id
-						? {
-								...next,
-								status:
-									t.status === "done"
-										? "done"
-										: newAssigneeEmails.length > 0
-											? "active"
-											: "backlog",
-							}
-						: t
-				)
-			);
-			return { snapshot };
-		},
-		onError: (err, _vars, ctx) => {
-			console.error("updateTask failed", err);
-			if (ctx?.snapshot) setTasks(ctx.snapshot);
-		},
-		onSettled: invalidateTasks,
-	});
-
-	const createMutation = useMutation({
-		mutationFn: async (input: {
-			title: string;
-			description: string | null;
-			priority: Priority | null;
-			team: Team | null;
-			tags: string[];
-			links: { url: string; title: string | null }[];
-			assigneeEmails: string[];
-		}) => {
-			await createTask({
-				title: input.title,
-				description: input.description ?? undefined,
-				priority: input.priority ?? undefined,
-				team: input.team ?? undefined,
-				tagIds: input.tags
-					.map((name) => tagIdByName.get(name))
-					.filter((id): id is string => !!id),
-				links: input.links.map((l) => ({
-					url: l.url,
-					title: l.title ?? undefined,
-				})),
-				assigneeEmails: input.assigneeEmails,
-			});
-		},
-		onError: (err) => console.error("createTask failed", err),
-		onSettled: invalidateTasks,
-	});
-
-	const deleteMutation = useMutation({
-		mutationFn: async (id: string) => {
-			await softDeleteTask(id);
-		},
-		onMutate: async (id) => {
-			await queryClient.cancelQueries({ queryKey: taskKeys.all });
-			const snapshot = queryClient.getQueryData<ClientTask[]>(taskKeys.all);
-			setTasks((all) => all.filter((t) => t.id !== id));
-			return { snapshot };
-		},
-		onError: (err, _id, ctx) => {
-			console.error("softDeleteTask failed", err);
-			if (ctx?.snapshot) setTasks(ctx.snapshot);
-		},
-		onSettled: invalidateTasks,
-	});
-
-	const moveMutation = useMutation({
-		mutationFn: async (input: {
-			taskId: string;
-			fromCol: string;
-			toCol: string;
-			beforeId: string | null;
-			afterId: string | null;
-		}) => {
-			await moveTask({
-				taskId: input.taskId,
-				from: colIdToColumnId(input.fromCol),
-				to: colIdToColumnId(input.toCol),
-				beforeId: input.beforeId,
-				afterId: input.afterId,
-			});
-		},
-		// Optimistic state already applied by the drag hook. Skip invalidation —
-		// it would race subsequent in-flight drags. Cache re-syncs on next
-		// non-move mutation or window focus.
-		onError: (err) => {
-			console.error("moveTask failed", err);
-		},
-	});
+	const updateMutation = useUpdateTaskMutation(tagIdByName);
+	const createMutation = useCreateTaskMutation(tagIdByName);
+	const deleteMutation = useDeleteTaskMutation();
+	const moveMutation = useMoveTaskMutation();
 
 	const editingTask = useMemo(
 		() => tasks.find((t) => t.id === editingTaskId) ?? null,
