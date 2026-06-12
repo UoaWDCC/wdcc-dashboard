@@ -3,6 +3,7 @@ import {
 	useQuery,
 	useQueryClient,
 } from "@tanstack/react-query";
+import { toast } from "sonner";
 import {
 	createTask,
 	listTasks,
@@ -74,6 +75,7 @@ export function useUpdateTaskMutation(tagIdByName: Map<string, string>) {
 		},
 		onError: (err, _vars, ctx) => {
 			console.error("updateTask failed", err);
+			toast.error("Failed to update task");
 			if (ctx?.snapshot) queryClient.setQueryData(taskKeys.all, ctx.snapshot);
 		},
 		onSettled: () =>
@@ -87,7 +89,11 @@ export function useCreateTaskMutation() {
 		mutationFn: async (input: CreateTaskInput) => {
 			await createTask(input);
 		},
-		onError: (err) => console.error("createTask failed", err),
+		onSuccess: () => toast.success("Task created"),
+		onError: (err) => {
+			console.error("createTask failed", err);
+			toast.error("Failed to create task");
+		},
 		onSettled: () =>
 			queryClient.invalidateQueries({ queryKey: taskKeys.all }),
 	});
@@ -107,8 +113,10 @@ export function useDeleteTaskMutation() {
 			);
 			return { snapshot };
 		},
+		onSuccess: () => toast.success("Task deleted"),
 		onError: (err, _id, ctx) => {
 			console.error("softDeleteTask failed", err);
+			toast.error("Failed to delete task");
 			if (ctx?.snapshot) queryClient.setQueryData(taskKeys.all, ctx.snapshot);
 		},
 		onSettled: () =>
@@ -155,6 +163,7 @@ export function useMoveTaskMutation() {
 		},
 		onError: (err, _input, ctx) => {
 			console.error("moveTask failed", err);
+			toast.error("Failed to move task");
 			if (ctx?.snapshot) queryClient.setQueryData(taskKeys.all, ctx.snapshot);
 		},
 		// Only invalidate when last move settles — avoids racing in-flight drags.
