@@ -9,9 +9,9 @@ import {
 	moveTask,
 	softDeleteTask,
 	updateTask,
+	type CreateTaskInput,
 	type TaskView,
 } from "@/server/tasks/actions";
-import type { TaskPriority as Priority, Team } from "@/lib/types";
 import type { ClientTask } from "@/lib/tasks/types";
 import {
 	applyDragLocal,
@@ -78,34 +78,11 @@ export function useUpdateTaskMutation(tagIdByName: Map<string, string>) {
 	});
 }
 
-export type CreateTaskInput = {
-	title: string;
-	description: string | null;
-	priority: Priority | null;
-	team: Team | null;
-	tags: string[];
-	links: { url: string; title: string | null }[];
-	assigneeEmails: string[];
-};
-
-export function useCreateTaskMutation(tagIdByName: Map<string, string>) {
+export function useCreateTaskMutation() {
 	const queryClient = useQueryClient();
 	return useMutation({
 		mutationFn: async (input: CreateTaskInput) => {
-			await createTask({
-				title: input.title,
-				description: input.description ?? undefined,
-				priority: input.priority ?? undefined,
-				team: input.team ?? undefined,
-				tagIds: input.tags
-					.map((name) => tagIdByName.get(name))
-					.filter((id): id is string => !!id),
-				links: input.links.map((l) => ({
-					url: l.url,
-					title: l.title ?? undefined,
-				})),
-				assigneeEmails: input.assigneeEmails,
-			});
+			await createTask(input);
 		},
 		onError: (err) => console.error("createTask failed", err),
 		onSettled: () =>
@@ -136,7 +113,7 @@ export function useDeleteTaskMutation() {
 	});
 }
 
-export type MoveTaskInput = {
+export type MoveTaskVars = {
 	taskId: string;
 	fromCol: string;
 	toCol: string;
@@ -149,7 +126,7 @@ export function useMoveTaskMutation() {
 	const queryClient = useQueryClient();
 	return useMutation({
 		mutationKey: moveMutationKey,
-		onMutate: async (input: MoveTaskInput) => {
+		onMutate: async (input: MoveTaskVars) => {
 			const snapshot =
 				queryClient.getQueryData<ClientTask[]>(taskKeys.all) ?? [];
 			const next = applyDragLocal(
