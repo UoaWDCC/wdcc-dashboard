@@ -26,31 +26,27 @@ export function TagManagerDialog({
 	onChanged: () => void;
 }) {
 	const [pending, startTransition] = useTransition();
-	const [drafts, setDrafts] = useState<Record<string, { name: string; color: string }>>({});
+	const [drafts, setDrafts] = useState<Record<string, { name: string }>>({});
 
 	useEffect(() => {
 		if (!open) return;
-		const next: Record<string, { name: string; color: string }> = {};
-		for (const t of tags) next[t.id] = { name: t.name, color: t.color ?? "" };
+		const next: Record<string, { name: string }> = {};
+		for (const t of tags) next[t.id] = { name: t.name };
 		// Seed drafts from server tags when dialog opens.
 		// eslint-disable-next-line react-hooks/set-state-in-effect
 		setDrafts(next);
 	}, [open, tags]);
 
-	function setField(id: string, key: "name" | "color", value: string) {
-		setDrafts((d) => ({ ...d, [id]: { ...d[id], [key]: value } }));
+	function setName(id: string, value: string) {
+		setDrafts((d) => ({ ...d, [id]: { name: value } }));
 	}
 
 	function save(t: TagOption) {
 		const d = drafts[t.id];
 		if (!d) return;
 		const name = d.name.trim().toLowerCase();
-		const color = d.color.trim();
-		const patch: { name?: string; color?: string | null } = {};
-		if (name && name !== t.name) patch.name = name;
-		const normalizedColor = color || null;
-		if (normalizedColor !== (t.color ?? null)) patch.color = normalizedColor;
-		if (!Object.keys(patch).length) return;
+		if (!name || name === t.name) return;
+		const patch = { name };
 		startTransition(async () => {
 			try {
 				await updateTag(t.id, patch);
@@ -84,23 +80,14 @@ export function TagManagerDialog({
 						<p className="text-muted-foreground text-sm">No tags yet.</p>
 					)}
 					{tags.map((t) => {
-						const d = drafts[t.id] ?? { name: t.name, color: t.color ?? "" };
-						const dirty =
-							d.name.trim().toLowerCase() !== t.name ||
-							(d.color.trim() || null) !== (t.color ?? null);
+						const d = drafts[t.id] ?? { name: t.name };
+						const dirty = d.name.trim().toLowerCase() !== t.name;
 						return (
 							<div key={t.id} className="flex items-center gap-2">
 								<Input
 									value={d.name}
-									onChange={(e) => setField(t.id, "name", e.target.value)}
+									onChange={(e) => setName(t.id, e.target.value)}
 									className="flex-1"
-								/>
-								<input
-									type="color"
-									value={d.color || "#888888"}
-									onChange={(e) => setField(t.id, "color", e.target.value)}
-									className="h-9 w-10 rounded border bg-transparent"
-									aria-label={`Color for ${t.name}`}
 								/>
 								<Button
 									size="sm"
