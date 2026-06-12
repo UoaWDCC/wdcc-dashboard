@@ -17,54 +17,21 @@ import { requireUser } from "@/lib/access";
 import {
   TASK_PRIORITIES,
   TEAMS,
-  type TaskStatus,
   type TaskPriority,
   type Team,
 } from "@/lib/types";
+import type {
+  ColumnId,
+  CreateTaskInput,
+  MoveTaskInput,
+  TaskAssigneeView,
+  TaskLinkView,
+  TaskTagView,
+  TaskView,
+  UpdateTaskInput,
+} from "@/lib/tasks/types";
 
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
-
-export type ColumnId =
-  | { kind: "backlog" }
-  | { kind: "done" }
-  | { kind: "user"; profileEmail: string };
-
-export type TaskAssigneeView = {
-  profileEmail: string;
-  name: string;
-  position: number;
-};
-
-export type TaskTagView = {
-  id: string;
-  name: string;
-  color: string | null;
-};
-
-export type TaskLinkView = {
-  id: string;
-  url: string;
-  title: string | null;
-};
-
-export type TaskView = {
-  id: string;
-  title: string;
-  description: string | null;
-  status: TaskStatus;
-  priority: TaskPriority | null;
-  team: Team | null;
-  dueDate: string | null;
-  startDate: string | null;
-  estimateHours: number | null;
-  position: number;
-  completedAt: Date | null;
-  createdAt: Date;
-  updatedAt: Date;
-  assignees: TaskAssigneeView[];
-  tags: TaskTagView[];
-  links: TaskLinkView[];
-};
 
 const POSITION_GAP_MIN = 1e-6;
 const ALLOWED_LINK_SCHEMES = new Set(["http:", "https:", "mailto:"]);
@@ -330,19 +297,6 @@ export async function deleteTag(id: string) {
   revalidatePath("/tasks");
 }
 
-export type CreateTaskInput = {
-  title: string;
-  description?: string;
-  priority?: TaskPriority;
-  team?: Team;
-  dueDate?: string;
-  startDate?: string;
-  estimateHours?: number;
-  tagIds?: string[];
-  links?: { url: string; title?: string }[];
-  assigneeEmails?: string[];
-};
-
 export async function createTask(input: CreateTaskInput) {
   const session = await requireUser();
   const data = createTaskSchema.parse(input);
@@ -419,19 +373,6 @@ export async function createTask(input: CreateTaskInput) {
   revalidatePath("/tasks");
   return result;
 }
-
-export type UpdateTaskInput = {
-  title?: string;
-  description?: string | null;
-  priority?: TaskPriority | null;
-  team?: Team | null;
-  dueDate?: string | null;
-  startDate?: string | null;
-  estimateHours?: number | null;
-  tagIds?: string[];
-  links?: { url: string; title?: string | null }[];
-  assigneeEmails?: string[];
-};
 
 export async function updateTask(id: string, patch: UpdateTaskInput) {
   const session = await requireUser();
@@ -555,14 +496,6 @@ export async function softDeleteTask(id: string) {
   });
   revalidatePath("/tasks");
 }
-
-export type MoveTaskInput = {
-  taskId: string;
-  to: ColumnId;
-  from: ColumnId;
-  beforeId: string | null;
-  afterId: string | null;
-};
 
 export async function moveTask(input: MoveTaskInput) {
   const session = await requireUser();
