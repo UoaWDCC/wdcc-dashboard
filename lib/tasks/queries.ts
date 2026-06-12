@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import {
 	useMutation,
 	useQuery,
@@ -20,6 +21,10 @@ export const taskKeys = {
 };
 
 export function useTasksQuery(initialTasks: TaskView[]) {
+	const queryClient = useQueryClient();
+	useEffect(() => {
+		queryClient.setQueryData<ClientTask[]>(taskKeys.all, fromServer(initialTasks));
+	}, [initialTasks, queryClient]);
 	return useQuery({
 		queryKey: taskKeys.all,
 		queryFn: async () => fromServer(await listTasks()),
@@ -30,12 +35,7 @@ export function useTasksQuery(initialTasks: TaskView[]) {
 export function useUpdateTaskMutation(tagIdByName: Map<string, string>) {
 	const queryClient = useQueryClient();
 	return useMutation({
-		mutationFn: async ({
-			next,
-		}: {
-			prev: ClientTask;
-			next: ClientTask;
-		}) => {
+		mutationFn: async ({ next }: { next: ClientTask }) => {
 			await updateTask(next.id, {
 				title: next.title,
 				description: next.description,

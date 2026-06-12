@@ -205,10 +205,7 @@ export default function TasksBoard({
 				task={editingTask}
 				open={dialogOpen}
 				onOpenChange={setDialogOpen}
-				onSave={(updated) => {
-					const prev = tasks.find((t) => t.id === updated.id);
-					if (prev) updateMutation.mutate({ prev, next: updated });
-				}}
+				onSave={(updated) => updateMutation.mutate({ next: updated })}
 				onDelete={(id) => deleteMutation.mutate(id)}
 				tagSuggestions={tagSuggestions}
 				users={users}
