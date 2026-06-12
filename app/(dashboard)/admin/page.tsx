@@ -1,6 +1,7 @@
 import { listProfiles } from "@/lib/profile";
 import type { Team, ProfileKind } from "@/lib/types";
 import { ProfileRow, AddProfileRow } from "@/components/admin/ProfileRow";
+import { ResyncButton } from "@/components/admin/ResyncButton";
 
 export default async function AdminPage() {
   const profiles = await listProfiles();
@@ -10,7 +11,10 @@ export default async function AdminPage() {
       <h1 className="text-2xl font-semibold">Admin</h1>
 
       <section className="space-y-4">
-        <h2 className="text-lg font-medium">Members</h2>
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-medium">Members</h2>
+          <ResyncButton />
+        </div>
 
         <table className="w-full text-sm border-collapse">
           <thead>
