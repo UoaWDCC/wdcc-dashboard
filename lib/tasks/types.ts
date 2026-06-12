@@ -82,6 +82,13 @@ export type TagOption = { id: string; name: string; color: string | null };
 
 export type ClientAssignee = { profileEmail: string; position: number };
 
+export type ClientMoveTask = {
+	taskId: string;
+	fromCol: string;
+	toCol: string;
+	overTaskId: string | null;
+};
+
 export type ClientTask = {
 	id: string;
 	title: string;
