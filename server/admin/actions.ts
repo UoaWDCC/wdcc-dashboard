@@ -6,6 +6,7 @@ import { db } from "@/lib/db";
 import { profile, task, taskAssignee } from "@/lib/db/schema";
 import { requireUser } from "@/lib/access";
 import { upsertProfile, normalizeEmail } from "@/lib/profile";
+import { syncDocsAccessGroup } from "@/lib/cloudflare";
 import { TEAMS, PROFILE_KINDS } from "@/lib/types";
 import {
   parseEmail,
@@ -29,6 +30,7 @@ export async function upsertProfileAction(formData: FormData) {
     note,
     createdBy: session.user.id,
   });
+  await syncDocsAccessGroup();
   revalidatePath("/admin");
   revalidatePath("/tasks");
 }
@@ -83,6 +85,12 @@ export async function removeProfileAction(formData: FormData) {
         .where(eq(task.id, row.id));
     }
   });
+  await syncDocsAccessGroup();
   revalidatePath("/admin");
   revalidatePath("/tasks");
+}
+
+export async function resyncDocsAccessGroupAction() {
+  await requireUser("/admin");
+  await syncDocsAccessGroup();
 }
