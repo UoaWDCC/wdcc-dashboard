@@ -13,27 +13,14 @@ import {
 	useSensors,
 } from "@dnd-kit/core";
 import type { ClientTask } from "@/lib/tasks/types";
-import {
-	applyDragLocal,
-	neighborsOf,
-} from "@/lib/tasks/utils";
-
-export type PersistMoveInput = {
-	taskId: string;
-	fromCol: string;
-	toCol: string;
-	beforeId: string | null;
-	afterId: string | null;
-};
+import type { MoveTaskInput } from "@/lib/tasks/queries";
 
 export function useTaskDragDrop({
 	tasks,
-	setTasks,
-	persistMove,
+	onMove,
 }: {
 	tasks: ClientTask[];
-	setTasks: React.Dispatch<React.SetStateAction<ClientTask[]>>;
-	persistMove: (input: PersistMoveInput) => Promise<void>;
+	onMove: (input: MoveTaskInput) => void;
 }) {
 	const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
 
@@ -95,26 +82,11 @@ export function useTaskDragDrop({
 
 		const overTaskId = oData?.type === "task" ? oData.taskId : null;
 
-		const snapshot = tasks;
-		const next = applyDragLocal(
-			tasks,
-			aData.taskId,
-			aData.columnId,
-			toCol,
-			overTaskId,
-		);
-		setTasks(next);
-
-		const { beforeId, afterId } = neighborsOf(next, aData.taskId, toCol);
-
-		persistMove({
+		onMove({
 			taskId: aData.taskId,
 			fromCol: aData.columnId,
 			toCol,
-			beforeId,
-			afterId,
-		}).catch(() => {
-			setTasks(snapshot);
+			overTaskId,
 		});
 	}
 

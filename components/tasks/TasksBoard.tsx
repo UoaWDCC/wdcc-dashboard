@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { DndContext, DragOverlay } from "@dnd-kit/core";
 import { Plus } from "lucide-react";
@@ -40,16 +40,6 @@ export default function TasksBoard({
 	const queryClient = useQueryClient();
 
 	const { data: tasks = [] } = useTasksQuery(initialTasks);
-
-	const setTasks = useCallback(
-		(updater: ClientTask[] | ((prev: ClientTask[]) => ClientTask[])) => {
-			queryClient.setQueryData<ClientTask[]>(taskKeys.all, (prev) => {
-				const base = prev ?? [];
-				return typeof updater === "function" ? updater(base) : updater;
-			});
-		},
-		[queryClient]
-	);
 
 	const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
 	const [dialogOpen, setDialogOpen] = useState(false);
@@ -100,8 +90,7 @@ export default function TasksBoard({
 	const { sensors, collisionDetection, activeTask, handleDragStart, handleDragEnd, handleDragCancel } =
 		useTaskDragDrop({
 			tasks,
-			setTasks,
-			persistMove: (input) => moveMutation.mutateAsync(input),
+			onMove: moveMutation.mutate,
 		});
 
 	const backlogTasks = useMemo(() => colTasks(tasks, "backlog"), [tasks]);

@@ -13,7 +13,12 @@ import {
 } from "@/server/tasks/actions";
 import type { TaskPriority as Priority, Team } from "@/lib/types";
 import type { ClientTask } from "@/lib/tasks/types";
-import { colIdToColumnId, fromServer } from "@/lib/tasks/utils";
+import {
+	applyDragLocal,
+	colIdToColumnId,
+	fromServer,
+	neighborsOf,
+} from "@/lib/tasks/utils";
 
 export const taskKeys = {
 	all: ["tasks"] as const,
@@ -135,8 +140,7 @@ export type MoveTaskInput = {
 	taskId: string;
 	fromCol: string;
 	toCol: string;
-	beforeId: string | null;
-	afterId: string | null;
+	overTaskId: string | null;
 };
 
 const moveMutationKey = ["tasks", "move"] as const;
@@ -145,17 +149,39 @@ export function useMoveTaskMutation() {
 	const queryClient = useQueryClient();
 	return useMutation({
 		mutationKey: moveMutationKey,
-		mutationFn: async (input: MoveTaskInput) => {
+		onMutate: async (input: MoveTaskInput) => {
+			const snapshot =
+				queryClient.getQueryData<ClientTask[]>(taskKeys.all) ?? [];
+			const next = applyDragLocal(
+				snapshot,
+				input.taskId,
+				input.fromCol,
+				input.toCol,
+				input.overTaskId,
+			);
+			queryClient.setQueryData<ClientTask[]>(taskKeys.all, next);
+			await queryClient.cancelQueries({ queryKey: taskKeys.all });
+			return { snapshot };
+		},
+		mutationFn: async (input) => {
+			const current =
+				queryClient.getQueryData<ClientTask[]>(taskKeys.all) ?? [];
+			const { beforeId, afterId } = neighborsOf(
+				current,
+				input.taskId,
+				input.toCol,
+			);
 			await moveTask({
 				taskId: input.taskId,
 				from: colIdToColumnId(input.fromCol),
 				to: colIdToColumnId(input.toCol),
-				beforeId: input.beforeId,
-				afterId: input.afterId,
+				beforeId,
+				afterId,
 			});
 		},
-		onError: (err) => {
+		onError: (err, _input, ctx) => {
 			console.error("moveTask failed", err);
+			if (ctx?.snapshot) queryClient.setQueryData(taskKeys.all, ctx.snapshot);
 		},
 		// Only invalidate when last move settles — avoids racing in-flight drags.
 		onSettled: () => {
