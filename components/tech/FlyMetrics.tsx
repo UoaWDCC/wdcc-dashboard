@@ -3,7 +3,7 @@
 import { useFlyOrgQueries } from "@/lib/flyio/queries";
 import type { OrgApps } from "@/lib/flyio/types";
 
-export function TechView({
+export function FlyMetrics({
   orgSlugs,
   initialData,
 }: {
