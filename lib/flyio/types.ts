@@ -19,3 +19,8 @@ export type FlyAppsResponse = {
   apps: FlyApp[];
   total_apps: number;
 };
+
+export type OrgApps = {
+  slug: string;
+  apps: FlyApp[];
+};
