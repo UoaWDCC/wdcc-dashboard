@@ -150,6 +150,15 @@
   --sidebar-ring: #3884ff;
 }
 
+@keyframes ring-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--brand-green) 50%, transparent); }
+  50%       { box-shadow: 0 0 0 4px color-mix(in srgb, var(--brand-green) 0%, transparent); }
+}
+
+.status-dot-pulse {
+  animation: ring-pulse 2s infinite;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
