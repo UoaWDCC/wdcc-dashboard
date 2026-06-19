@@ -15,9 +15,15 @@ export default async function TechPage() {
     );
   }
 
-  const initialData: OrgApps[] = await Promise.all(
-    orgSlugs.map(async (slug) => ({ slug, apps: await listAppsWithMachinesForOrg(slug) }))
+  const settled = await Promise.allSettled(
+    orgSlugs.map((slug) => listAppsWithMachinesForOrg(slug))
   );
+
+  const initialData: OrgApps[] = orgSlugs
+    .flatMap((slug, i) => {
+      const r = settled[i];
+      return r.status === "fulfilled" ? [{ slug, apps: r.value }] : [];
+    });
 
   return (
     <div className="space-y-6">
