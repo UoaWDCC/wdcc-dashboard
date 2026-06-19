@@ -1,20 +1,21 @@
 "use server";
 
-import { flyFetch } from "@/lib/flyio/fetcher";
 import { requireUser } from "@/lib/access";
-import type { FlyApp, FlyAppsResponse } from "@/lib/flyio/types";
+import { flyFetch } from "@/lib/flyio/fetcher";
+import type { FlyAppsResponse, FlyAppWithMachines, FlyMachine } from "@/lib/flyio/types";
 
 const APPS_BASE = "https://api.machines.dev/v1/apps";
 
-export async function listAppsForOrg(slug: string): Promise<FlyApp[]> {
+export async function listAppsWithMachinesForOrg(slug: string): Promise<FlyAppWithMachines[]> {
   await requireUser();
 
-  const res = await flyFetch(
-    `${APPS_BASE}?org_slug=${encodeURIComponent(slug)}`,
-    slug
+  const json = await flyFetch<FlyAppsResponse>(`${APPS_BASE}?org_slug=${encodeURIComponent(slug)}`, slug);
+  const apps = json?.apps ?? [];
+
+  return Promise.all(
+    apps.map(async (app) => ({
+      ...app,
+      machines: await flyFetch<FlyMachine[]>(`${APPS_BASE}/${encodeURIComponent(app.name)}/machines`, slug) ?? [],
+    }))
   );
-  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
-  
-  const json: FlyAppsResponse = await res.json();
-  return json.apps;
 }
