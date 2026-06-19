@@ -1,6 +1,6 @@
 // ── Apps ─────────────────────────────────────────────────────────────
 
-export type FlyOrganization = {
+type FlyOrganization = {
   internal_numeric_id: number;
   name: string;
   slug: string;
@@ -24,7 +24,7 @@ export type FlyAppsResponse = {
 
 export type OrgApps = {
   slug: string;
-  apps: FlyApp[];
+  apps: FlyAppWithMachines[];
 };
 // ── Machines ──────────────────────────────────────────────────────────
 
