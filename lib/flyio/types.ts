@@ -6,7 +6,7 @@ type FlyOrganization = {
   slug: string;
 };
 
-export type FlyApp = {
+type FlyApp = {
   id: string;
   internal_numeric_id: number;
   machine_count: number;
@@ -22,23 +22,19 @@ export type FlyAppsResponse = {
   total_apps: number;
 };
 
-export type OrgApps = {
-  slug: string;
-  apps: FlyAppWithMachines[];
-};
 // ── Machines ──────────────────────────────────────────────────────────
 
-export type FlyMachineGuest = {
+type FlyMachineGuest = {
   cpu_kind: string;
   cpus: number;
   memory_mb: number;
 };
 
-export type FlyMachineConfig = {
+type FlyMachineConfig = {
   guest: FlyMachineGuest;
 };
 
-export type FlyMachineEvent = {
+type FlyMachineEvent = {
   status: string;
   timestamp: number;
 };
@@ -54,3 +50,8 @@ export type FlyMachine = {
 // ── Composite ─────────────────────────────────────────────────────────
 
 export type FlyAppWithMachines = FlyApp & { machines: FlyMachine[] };
+
+export type OrgApps = {
+  slug: string;
+  apps: FlyAppWithMachines[];
+};
