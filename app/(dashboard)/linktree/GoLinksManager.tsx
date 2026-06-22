@@ -142,6 +142,7 @@ export default function GoLinksManager({
     startTransition(async () => {
       try {
         await toggleGoLinkHiddenAction(id, hidden);
+        toast.success(hidden ? "Link hidden" : "Link visible");
       } catch (err) {
         console.error("toggleGoLinkHidden failed", err);
         toast.error("Failed to update link visibility");
