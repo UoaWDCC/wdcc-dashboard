@@ -73,6 +73,7 @@ export function useUpdateTaskMutation(tagIdByName: Map<string, string>) {
 			);
 			return { snapshot };
 		},
+		onSuccess: () => toast.success("Task updated"),
 		onError: (err, _vars, ctx) => {
 			console.error("updateTask failed", err);
 			toast.error("Failed to update task");
