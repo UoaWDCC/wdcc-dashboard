@@ -1,9 +1,9 @@
 "use client";
 
 import { useFlyOrgQueries } from "@/lib/flyio/queries";
+import { FlySummary } from "./FlySummary";
+import { FlyOrg } from "./FlyOrg";
 import type { OrgApps } from "@/lib/flyio/types";
-import { FlySummaryStats } from "./FlySummaryStats";
-import { FlyOrgGroup } from "./FlyOrgGroup";
 
 export function FlyMetrics({
   orgSlugs,
@@ -14,6 +14,7 @@ export function FlyMetrics({
 }) {
   const results = useFlyOrgQueries(orgSlugs, initialData);
 
+  // index alignment works because useFlyOrgQueries creates 1 query per slug in the same order as orgSlugs
   const orgs: OrgApps[] = orgSlugs
     .map((slug, i) => ({ slug, apps: results[i].data ?? [] }))
     .sort((a, b) => a.slug.localeCompare(b.slug));
@@ -26,7 +27,7 @@ export function FlyMetrics({
 
   return (
     <div className="space-y-6">
-      <FlySummaryStats orgs={orgs} />
+      <FlySummary orgs={orgs} />
 
       {errors.length > 0 && (
         <div className="space-y-1">
@@ -43,12 +44,13 @@ export function FlyMetrics({
           <h2 className="text-sm font-semibold">Apps</h2>
           <span className="text-xs text-muted-foreground">grouped by org · alphabetical</span>
         </div>
+
         <div className="bg-card border border-border rounded-lg overflow-hidden">
           {orgs.length === 0 ? (
             <p className="text-muted-foreground text-sm px-4 py-6">No orgs configured.</p>
           ) : (
             orgs.map(({ slug, apps }) => (
-              <FlyOrgGroup key={slug} slug={slug} apps={apps} />
+              <FlyOrg key={slug} slug={slug} apps={apps} />
             ))
           )}
         </div>
