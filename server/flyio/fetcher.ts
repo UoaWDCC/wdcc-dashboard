@@ -1,4 +1,4 @@
-import { flyTokens } from "./config";
+import { flyTokens } from "../../lib/flyio/config";
 
 export async function flyFetch<T>(url: string, orgSlug: string): Promise<T | null> {
   const token = flyTokens.get(orgSlug);

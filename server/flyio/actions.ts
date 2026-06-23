@@ -1,7 +1,7 @@
 "use server";
 
 import { requireUser } from "@/lib/access";
-import { flyFetch } from "@/lib/flyio/fetcher";
+import { flyFetch } from "@/server/flyio/fetcher";
 import type { FlyAppsResponse, FlyAppWithMachines, FlyMachine } from "@/lib/flyio/types";
 
 const APPS_BASE = "https://api.machines.dev/v1/apps";
