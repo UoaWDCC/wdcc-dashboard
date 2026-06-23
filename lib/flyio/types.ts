@@ -67,3 +67,7 @@ export type OrgApps = {
   slug: string;
   apps: FlyAppWithMachines[];
 };
+
+// ── Display ───────────────────────────────────────────────────────────
+
+export type DisplayState = "started" | "created" | "suspended" | "stopped" | "failed" | "other";

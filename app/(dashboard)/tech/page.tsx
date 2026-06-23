@@ -1,6 +1,6 @@
 import { orgSlugs } from "@/lib/flyio/config";
 import { listAppsWithMachinesForOrg } from "@/server/flyio/actions";
-import { FlyMetrics } from "../../../components/tech/FlyMetrics";
+import { FlyMetrics } from "@/components/tech/FlyMetrics";
 import type { OrgApps } from "@/lib/flyio/types";
 
 export default async function TechPage() {
@@ -28,6 +28,7 @@ export default async function TechPage() {
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-semibold">Tech</h1>
+      
       <FlyMetrics orgSlugs={orgSlugs} initialData={initialData} />
     </div>
   );
