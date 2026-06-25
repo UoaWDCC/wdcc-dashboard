@@ -2,23 +2,18 @@
 
 import { requireUser } from "@/lib/access";
 import { flyFetch } from "@/server/flyio/fetcher";
-import type { FlyAppsResponse, FlyAppWithMachines, FlyMachine } from "@/lib/flyio/types";
+import type { FlyAppsResponse, FlyApp, FlyMachine } from "@/lib/flyio/types";
 
 const APPS_BASE = "https://api.machines.dev/v1/apps";
 
-export async function listAppsWithMachinesForOrg(slug: string): Promise<FlyAppWithMachines[]> {
+export async function listAppsForOrg(slug: string): Promise<FlyApp[]> {
   await requireUser();
-
   const { apps } = await flyFetch<FlyAppsResponse>(`${APPS_BASE}?org_slug=${encodeURIComponent(slug)}`, slug);
+  return apps;
+}
 
-  const settled = await Promise.allSettled(
-    apps.map(async (app) => ({
-      ...app,
-      machines: await flyFetch<FlyMachine[]>(`${APPS_BASE}/${encodeURIComponent(app.name)}/machines`, slug),
-    }))
-  );
-
-  return settled
-    .filter((r): r is PromiseFulfilledResult<FlyAppWithMachines> => r.status === "fulfilled")
-    .map((r) => r.value);
+export async function listMachinesForApp(appName: string, slug: string): Promise<FlyMachine[]> {
+  await requireUser();
+  
+  return flyFetch<FlyMachine[]>(`${APPS_BASE}/${encodeURIComponent(appName)}/machines`, slug);
 }

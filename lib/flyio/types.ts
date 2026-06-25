@@ -6,7 +6,7 @@ type FlyOrganization = {
   slug: string;
 };
 
-type FlyApp = {
+export type FlyApp = {
   id: string;
   internal_numeric_id: number;
   machine_count: number;
