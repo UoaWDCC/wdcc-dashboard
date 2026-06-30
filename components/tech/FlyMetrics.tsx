@@ -1,29 +1,47 @@
 "use client";
 
-import { useFlyOrgQueries } from "@/lib/flyio/queries";
+import { useFlyAppsQueries, useFlyMachinesQueries } from "@/lib/flyio/queries";
 import { FlySummary } from "./FlySummary";
 import { FlyOrg } from "./FlyOrg";
-import type { OrgApps } from "@/lib/flyio/types";
+import type { FlyMachine, OrgApps } from "@/lib/flyio/types";
 
-export function FlyMetrics({
-  orgSlugs,
-  initialData,
-}: {
-  orgSlugs: string[];
-  initialData: OrgApps[];
-}) {
-  const results = useFlyOrgQueries(orgSlugs, initialData);
+export function FlyMetrics({ orgSlugs }: { orgSlugs: string[] }) {
+  const appResults = useFlyAppsQueries(orgSlugs);
 
-  // index alignment works because useFlyOrgQueries creates 1 query per slug in the same order as orgSlugs
+  const allApps = orgSlugs.flatMap((slug, i) =>
+    (appResults[i].data ?? []).map((app) => ({ app, slug }))
+  );
+
+  const machineResults = useFlyMachinesQueries(allApps);
+
+  const machinesByKey = new Map<string, FlyMachine[]>();
+  allApps.forEach(({ app, slug }, i) => {
+    machinesByKey.set(`${slug}:${app.name}`, machineResults[i]?.data ?? []);
+  });
+
   const orgs: OrgApps[] = orgSlugs
-    .map((slug, i) => ({ slug, apps: results[i].data ?? [] }))
+    .map((slug, i) => ({
+      slug,
+      apps: (appResults[i].data ?? []).map((app) => ({
+        ...app,
+        machines: machinesByKey.get(`${slug}:${app.name}`) ?? [],
+      })),
+    }))
     .sort((a, b) => a.slug.localeCompare(b.slug));
 
-  const errors = orgSlugs.flatMap((slug, i) =>
-    results[i].isError
-      ? [{ slug, message: results[i].error instanceof Error ? results[i].error.message : "Failed to load" }]
+  const appErrors = orgSlugs.flatMap((slug, i) =>
+    appResults[i].isError
+      ? [{ key: slug, message: appResults[i].error instanceof Error ? appResults[i].error.message : "Failed to load" }]
       : []
   );
+
+  const machineErrors = allApps.flatMap(({ app, slug }, i) =>
+    machineResults[i]?.isError
+      ? [{ key: `${slug}/${app.name}`, message: machineResults[i].error instanceof Error ? machineResults[i].error.message : "Failed to load machines" }]
+      : []
+  );
+
+  const errors = [...appErrors, ...machineErrors];
 
   return (
     <div className="space-y-6">
@@ -31,9 +49,9 @@ export function FlyMetrics({
 
       {errors.length > 0 && (
         <div className="space-y-1">
-          {errors.map(({ slug, message }) => (
-            <p key={slug} className="text-destructive text-sm">
-              {slug}: {message}
+          {errors.map(({ key, message }) => (
+            <p key={key} className="text-destructive text-sm">
+              {key}: {message}
             </p>
           ))}
         </div>
