@@ -226,7 +226,7 @@ export default function GoLinksManager({
             <span>Label</span>
             <span>Link</span>
             <span>Team</span>
-            <span>Event date</span>
+            <span>Expiry Date</span>
             <span>Flags</span>
             <span className="text-right">Actions</span>
           </div>
@@ -485,7 +485,7 @@ function GoLinkForm({
             />
           </div>
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor={`${fieldId}-event-date`}>Event date</Label>
+            <Label htmlFor={`${fieldId}-event-date`}>Expiry Date</Label>
             <Input
               id={`${fieldId}-event-date`}
               type="date"
