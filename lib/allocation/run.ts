@@ -21,7 +21,7 @@ export function safeProjectName(name: string): string {
   return name.replace(/[\\/:.]/g, "_");
 }
 
-function summarizeProject(allocation: Allocation): ProjectSummary {
+export function summarizeProject(allocation: Allocation): ProjectSummary {
   const buckets: { rank: number; applicants: Applicant[] }[] = [0, 1, 2, 3, 4, 5].map((rank) => ({
     rank,
     applicants: [],

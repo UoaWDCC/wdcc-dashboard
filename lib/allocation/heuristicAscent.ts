@@ -72,14 +72,15 @@ function singleHeuristicAscent(startingAllocations: Allocation[]): [Allocation[]
       totalUtility += utilityChange;
     }
 
-    // Move to next swap (try out all possible swaps)
+    // Move to next swap (try out all possible swaps). Math.max(len, 1) keeps an empty
+    // team (a project nobody was placed on) from dividing by zero into a NaN index.
     const alloc1Len = allocations[swap.alloc1Index].applicants.length;
-    swap.i = (swap.i + 1) % alloc1Len;
+    swap.i = (swap.i + 1) % Math.max(alloc1Len, 1);
     if (swap.i === 0) swap.alloc1Index = (swap.alloc1Index + 1) % allocations.length;
     if (swap.i === 0 && swap.alloc1Index === 0) {
       // Move second pointer only once first pointer has done a full applicantsPerProject * numProjects sweep
       const alloc2Len = allocations[swap.alloc2Index].applicants.length;
-      swap.j = (swap.j + 1) % alloc2Len;
+      swap.j = (swap.j + 1) % Math.max(alloc2Len, 1);
       if (swap.j === 0) swap.alloc2Index = (swap.alloc2Index + 1) % allocations.length;
     }
   }
@@ -107,6 +108,10 @@ function getMaxIgnores(numProjects: number, numApplicants: number) {
  */
 function swapApplicants(swap: Swap): number {
   const { alloc1, i, alloc2, j } = swap;
+
+  // Nothing to swap if either slot is out of range (e.g. an empty team).
+  if (!(i < alloc1.applicants.length) || !(j < alloc2.applicants.length)) return 0;
+
   const alloc1OldUtility = alloc1.utility;
   const alloc2OldUtility = alloc2.utility;
 
