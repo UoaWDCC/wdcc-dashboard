@@ -10,6 +10,7 @@ import {
   Cpu,
   Link2,
   ListTodo,
+  Terminal,
 } from "lucide-react";
 import {
   Sidebar,
@@ -31,6 +32,7 @@ const nav = [
   { href: "/tasks", label: "Tasks", icon: ListTodo },
   { href: "/projects", label: "Projects", icon: Table2 },
   { href: "/linktree", label: "Linktree", icon: Link2 },
+  { href: "/scripts", label: "Project Allocation", icon: Terminal },
 ];
 
 export function AppSidebar() {
