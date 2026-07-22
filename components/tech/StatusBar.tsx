@@ -1,8 +1,8 @@
 import { STATE_META } from "@/lib/flyio/styles";
-import type { DisplayState } from "@/lib/flyio/types";
+import type { AppStatus } from "@/lib/flyio/types";
 import type { StateCounts } from "@/lib/flyio/utils";
 
-const STATE_ORDER: DisplayState[] = ["started", "created", "failed", "suspended", "stopped", "other"];
+const STATE_ORDER: AppStatus[] = ["started", "created", "failed", "suspended", "stopped", "other"];
 
 export function StatusBar({ counts, total }: { counts: StateCounts; total: number }) {
   if (total === 0) return null;

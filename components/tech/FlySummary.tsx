@@ -1,13 +1,13 @@
 import { FlySummaryCard } from "./FlySummaryCard";
 import { countStates, deriveAppState } from "@/lib/flyio/utils";
-import type { OrgApps, FlyAppWithDetails } from "@/lib/flyio/types";
+import type { OrgApps, FlyAppWithMachinesAndMetrics } from "@/lib/flyio/types";
 
 function average(values: number[]): number | null {
   return values.length > 0 ? Math.round(values.reduce((sum, v) => sum + v, 0) / values.length) : null;
 }
 
 export function FlySummary({ orgs }: { orgs: OrgApps[] }) {
-  const allApps: FlyAppWithDetails[] = orgs.flatMap((o) => o.apps);
+  const allApps: FlyAppWithMachinesAndMetrics[] = orgs.flatMap((o) => o.apps);
   const total = allApps.length;
 
   const counts = countStates(allApps);

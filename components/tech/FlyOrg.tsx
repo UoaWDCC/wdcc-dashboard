@@ -2,14 +2,14 @@ import { ChevronRight } from "lucide-react";
 import { countStates } from "@/lib/flyio/utils";
 import { FlyAppCard } from "./FlyAppCard";
 import { StatusBar } from "./StatusBar";
-import type { FlyAppWithDetails } from "@/lib/flyio/types";
+import type { FlyAppWithMachinesAndMetrics } from "@/lib/flyio/types";
 
 export function FlyOrg({
   slug,
   apps,
 }: {
   slug: string;
-  apps: FlyAppWithDetails[];
+  apps: FlyAppWithMachinesAndMetrics[];
 }) {
   const sorted = [...apps].sort((a, b) => a.name.localeCompare(b.name));
   const total = apps.length;
@@ -50,7 +50,7 @@ export function FlyOrg({
       <div className="bg-muted border-t border-border px-4 pb-4 pt-3.5">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {sorted.map((app) => (
-            <FlyAppCard key={app.id} app={app} metrics={app.metrics} />
+            <FlyAppCard key={app.id} app={app} />
           ))}
         </div>
       </div>

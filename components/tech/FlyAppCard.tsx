@@ -1,20 +1,18 @@
 import { deriveAppState, machineTypeLabel, uniqueRegions } from "@/lib/flyio/utils";
 import { STATE_META } from "@/lib/flyio/styles";
 import { UtilBar } from "./UtilBar";
-import type { FlyAppWithMachines, FlyAppMetrics } from "@/lib/flyio/types";
+import type { FlyAppWithMachinesAndMetrics } from "@/lib/flyio/types";
 
 export function FlyAppCard({
   app,
-  metrics,
 }: {
-  app: FlyAppWithMachines;
-  metrics: FlyAppMetrics;
+  app: FlyAppWithMachinesAndMetrics;
 }) {
-  const state = deriveAppState(app);
+  const appStatus = deriveAppState(app);
   const regions = uniqueRegions(app);
   const machineType = machineTypeLabel(app);
 
-  const { label, badgeClass, accentClass } = STATE_META[state];
+  const { label, badgeClass, accentClass } = STATE_META[appStatus];
 
   return (
     <div className="relative bg-card border border-border rounded-lg overflow-hidden flex flex-col gap-3 p-4 hover:border-brand-blue hover:shadow-sm transition-all cursor-pointer group">
@@ -46,7 +44,7 @@ export function FlyAppCard({
           className={`shrink-0 inline-flex items-center gap-1.5 text-[11px] font-medium px-2 py-1 rounded-full border ${badgeClass}`}
         >
           <span
-            className={`w-1.5 h-1.5 rounded-full ${state === "started" ? "bg-brand-green status-dot-pulse" : accentClass}`}
+            className={`w-1.5 h-1.5 rounded-full ${appStatus === "started" ? "bg-brand-green status-dot-pulse" : accentClass}`}
             aria-hidden="true"
           />
           {label}
@@ -54,8 +52,8 @@ export function FlyAppCard({
       </div>
 
       <div className="flex flex-col gap-2">
-        <UtilBar label="CPU" value={metrics.cpuPercent} />
-        <UtilBar label="MEM" value={metrics.memPercent} />
+        <UtilBar label="CPU" value={app.metrics.cpuPercent} />
+        <UtilBar label="MEM" value={app.metrics.memPercent} />
       </div>
 
       <div className="flex justify-between items-center pt-3 border-t border-border text-xs">

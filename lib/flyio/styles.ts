@@ -1,7 +1,7 @@
-import type { DisplayState } from "./types";
+import type { AppStatus } from "./types";
 
 export const STATE_META: Record<
-  DisplayState,
+  AppStatus,
   { label: string; barClass: string; badgeClass: string; accentClass: string }
 > = {
   started:   { label: "Running",   barClass: "bg-brand-green",         badgeClass: "bg-brand-green/10 text-brand-green border-brand-green/20",       accentClass: "bg-brand-green" },

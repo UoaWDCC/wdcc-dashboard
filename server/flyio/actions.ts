@@ -2,7 +2,7 @@
 
 import { requireUser } from "@/lib/access";
 import { flyFetch } from "@/server/flyio/fetcher";
-import type { FlyAppsResponse, FlyApp, FlyMachine, FlyOrgMetrics, PrometheusQueryResponse } from "@/lib/flyio/types";
+import type { FlyAppsResponse, FlyApp, FlyMachine, AppMetricsByName, PrometheusQueryResponse } from "@/lib/flyio/types";
 
 const APPS_BASE = "https://api.machines.dev/v1/apps";
 
@@ -38,7 +38,7 @@ function queryPrometheus(slug: string, promql: string): Promise<PrometheusQueryR
   return flyFetch<PrometheusQueryResponse>(url, slug);
 }
 
-export async function getMetricsForOrg(slug: string): Promise<FlyOrgMetrics> {
+export async function getMetricsForOrg(slug: string): Promise<AppMetricsByName> {
   await requireUser();
 
   const [cpu, mem] = await Promise.all([
@@ -46,7 +46,7 @@ export async function getMetricsForOrg(slug: string): Promise<FlyOrgMetrics> {
     queryPrometheus(slug, MEM_QUERY),
   ]);
 
-  const metrics: FlyOrgMetrics = {};
+  const metrics: AppMetricsByName = {};
   for (const { metric, value } of cpu.data.result) {
     if (!metric.app) continue;
     metrics[metric.app] = { cpuPercent: Math.round(Number(value[1])), memPercent: null };

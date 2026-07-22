@@ -1,25 +1,17 @@
-// ── Apps ─────────────────────────────────────────────────────────────
+// These types are a hand-picked subset of the Fly Machines API response —
+// only the fields this domain actually reads, not the full API shape. If
+// you need a field that isn't here, see the full response schema at
+// https://machines-api-spec.fly.dev/ and add just what you need.
 
-type FlyOrganization = {
-  internal_numeric_id: number;
-  name: string;
-  slug: string;
-};
+// ── Apps ─────────────────────────────────────────────────────────────
 
 export type FlyApp = {
   id: string;
-  internal_numeric_id: number;
-  machine_count: number;
   name: string;
-  network: string;
-  organization: FlyOrganization;
-  status: string;
-  volume_count: number;
 };
 
 export type FlyAppsResponse = {
   apps: FlyApp[];
-  total_apps: number;
 };
 
 // ── Machines ──────────────────────────────────────────────────────────
@@ -27,25 +19,16 @@ export type FlyAppsResponse = {
 type FlyMachineGuest = {
   cpu_kind: string;
   cpus: number;
-  memory_mb: number;
 };
 
 type FlyMachineConfig = {
   guest: FlyMachineGuest;
 };
 
-type FlyMachineEvent = {
-  status: string;
-  timestamp: number;
-};
-
 export type FlyMachine = {
-  id: string;
-  name: string;
   state: string;
   region?: string;
   config: FlyMachineConfig | null;
-  events: FlyMachineEvent[];
 };
 
 // ── Prometheus metrics ────────────────────────────────────────────────
@@ -59,7 +42,7 @@ export type FlyAppMetrics = {
   memPercent: number | null;
 };
 
-export type FlyOrgMetrics = Record<string, FlyAppMetrics>;
+export type AppMetricsByName = Record<string, FlyAppMetrics>;
 
 type PrometheusResult = {
   metric: { app?: string };
@@ -78,13 +61,13 @@ export type PrometheusQueryResponse = {
 
 export type FlyAppWithMachines = FlyApp & { machines: FlyMachine[] };
 
-export type FlyAppWithDetails = FlyAppWithMachines & { metrics: FlyAppMetrics };
+export type FlyAppWithMachinesAndMetrics = FlyAppWithMachines & { metrics: FlyAppMetrics };
 
 export type OrgApps = {
   slug: string;
-  apps: FlyAppWithDetails[];
+  apps: FlyAppWithMachinesAndMetrics[];
 };
 
 // ── Display ───────────────────────────────────────────────────────────
 
-export type DisplayState = "started" | "created" | "suspended" | "stopped" | "failed" | "other";
+export type AppStatus = "started" | "created" | "suspended" | "stopped" | "failed" | "other";
