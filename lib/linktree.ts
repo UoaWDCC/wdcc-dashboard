@@ -8,6 +8,13 @@ export function isLinkExpired(eventDate: string | null): boolean {
 }
 
 export async function listGoLinks() {
+  // Expired links auto-hide: flip hidden on any that have passed their eventDate.
+  await db
+    .update(goLink)
+    .set({ hidden: true })
+    .where(
+      sql`${goLink.eventDate} IS NOT NULL AND ${goLink.eventDate} < CURRENT_DATE AND ${goLink.hidden} = false`
+    );
   return db
     .select()
     .from(goLink)
