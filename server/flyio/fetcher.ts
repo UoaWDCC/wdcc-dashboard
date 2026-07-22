@@ -9,7 +9,7 @@ export async function flyFetch<T>(url: string, orgSlug: string): Promise<T> {
 
   const res = await fetch(url, {
     headers: {
-      Authorization: `Bearer ${token}`,
+      Authorization: token,
       "Content-Type": "application/json",
     },
   });

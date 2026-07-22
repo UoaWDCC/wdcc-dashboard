@@ -1,9 +1,11 @@
 "use client";
 
-import { useFlyAppsQueries, useFlyMachinesQueries } from "@/lib/flyio/queries";
+import { useFlyAppsQueries, useFlyMachinesQueries, useFlyMetricsQueries } from "@/lib/flyio/queries";
 import { FlySummary } from "./FlySummary";
 import { FlyOrg } from "./FlyOrg";
-import type { FlyMachine, OrgApps } from "@/lib/flyio/types";
+import type { FlyMachine, OrgApps, FlyOrgMetrics } from "@/lib/flyio/types";
+
+const NO_METRICS = { cpuPercent: null, memPercent: null };
 
 export function FlyMetrics({ orgSlugs }: { orgSlugs: string[] }) {
   const appResults = useFlyAppsQueries(orgSlugs);
@@ -13,10 +15,15 @@ export function FlyMetrics({ orgSlugs }: { orgSlugs: string[] }) {
   );
 
   const machineResults = useFlyMachinesQueries(allApps);
+  const metricsResults = useFlyMetricsQueries(orgSlugs);
 
   const machinesByKey = new Map<string, FlyMachine[]>();
   allApps.forEach(({ app, slug }, i) => {
     machinesByKey.set(`${slug}:${app.name}`, machineResults[i]?.data ?? []);
+  });
+  const metricsBySlug = new Map<string, FlyOrgMetrics>();
+  orgSlugs.forEach((slug, i) => {
+    metricsBySlug.set(slug, metricsResults[i]?.data ?? {});
   });
 
   const orgs: OrgApps[] = orgSlugs
@@ -25,6 +32,7 @@ export function FlyMetrics({ orgSlugs }: { orgSlugs: string[] }) {
       apps: (appResults[i].data ?? []).map((app) => ({
         ...app,
         machines: machinesByKey.get(`${slug}:${app.name}`) ?? [],
+        metrics: metricsBySlug.get(slug)?.[app.name] ?? NO_METRICS,
       })),
     }))
     .sort((a, b) => a.slug.localeCompare(b.slug));
@@ -34,14 +42,18 @@ export function FlyMetrics({ orgSlugs }: { orgSlugs: string[] }) {
       ? [{ key: slug, message: appResults[i].error instanceof Error ? appResults[i].error.message : "Failed to load" }]
       : []
   );
-
   const machineErrors = allApps.flatMap(({ app, slug }, i) =>
     machineResults[i]?.isError
       ? [{ key: `${slug}/${app.name}`, message: machineResults[i].error instanceof Error ? machineResults[i].error.message : "Failed to load machines" }]
       : []
   );
+  const metricErrors = orgSlugs.flatMap((slug, i) =>
+    metricsResults[i]?.isError
+      ? [{ key: `${slug}/metrics`, message: metricsResults[i].error instanceof Error ? metricsResults[i].error.message : "Failed to load metrics" }]
+      : []
+  );
 
-  const errors = [...appErrors, ...machineErrors];
+  const errors = [...appErrors, ...machineErrors, ...metricErrors];
 
   return (
     <div className="space-y-6">

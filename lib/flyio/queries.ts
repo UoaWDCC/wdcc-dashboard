@@ -1,5 +1,5 @@
 import { useQueries } from "@tanstack/react-query";
-import { listAppsForOrg, listMachinesForApp } from "@/server/flyio/actions";
+import { listAppsForOrg, listMachinesForApp, getMetricsForOrg } from "@/server/flyio/actions";
 import type { FlyApp } from "./types";
 
 export const appsQuery = (slug: string) => ({
@@ -12,6 +12,11 @@ export const machinesQuery = (slug: string, appName: string) => ({
   queryFn: () => listMachinesForApp(appName, slug),
 });
 
+export const metricsQuery = (slug: string) => ({
+  queryKey: ["fly", "metrics", slug] as const,
+  queryFn: () => getMetricsForOrg(slug),
+});
+
 export function useFlyAppsQueries(orgSlugs: string[]) {
   return useQueries({
     queries: orgSlugs.map((slug) => appsQuery(slug)),
@@ -21,5 +26,11 @@ export function useFlyAppsQueries(orgSlugs: string[]) {
 export function useFlyMachinesQueries(apps: { app: FlyApp; slug: string }[]) {
   return useQueries({
     queries: apps.map(({ app, slug }) => machinesQuery(slug, app.name)),
+  });
+}
+
+export function useFlyMetricsQueries(orgSlugs: string[]) {
+  return useQueries({
+    queries: orgSlugs.map((slug) => metricsQuery(slug)),
   });
 }

@@ -59,13 +59,30 @@ export type FlyAppMetrics = {
   memPercent: number | null;
 };
 
+export type FlyOrgMetrics = Record<string, FlyAppMetrics>;
+
+type PrometheusResult = {
+  metric: { app?: string };
+  value: [number, string];
+};
+
+export type PrometheusQueryResponse = {
+  status: string;
+  data: {
+    resultType: string;
+    result: PrometheusResult[];
+  };
+};
+
 // ── Composite ─────────────────────────────────────────────────────────
 
 export type FlyAppWithMachines = FlyApp & { machines: FlyMachine[] };
 
+export type FlyAppWithDetails = FlyAppWithMachines & { metrics: FlyAppMetrics };
+
 export type OrgApps = {
   slug: string;
-  apps: FlyAppWithMachines[];
+  apps: FlyAppWithDetails[];
 };
 
 // ── Display ───────────────────────────────────────────────────────────
