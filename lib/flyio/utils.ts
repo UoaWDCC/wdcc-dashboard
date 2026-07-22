@@ -1,6 +1,6 @@
-import type { DisplayState, FlyAppWithMachines } from "./types";
+import type { AppStatus, FlyAppWithMachines } from "./types";
 
-export type StateCounts = Record<DisplayState, number>;
+export type StateCounts = Record<AppStatus, number>;
 
 export function countStates(apps: FlyAppWithMachines[]): StateCounts {
   const counts: StateCounts = { started: 0, created: 0, suspended: 0, stopped: 0, failed: 0, other: 0 };
@@ -9,7 +9,7 @@ export function countStates(apps: FlyAppWithMachines[]): StateCounts {
   return counts;
 }
 
-export function deriveAppState(app: FlyAppWithMachines): DisplayState {
+export function deriveAppState(app: FlyAppWithMachines): AppStatus {
   if (app.machines.length === 0) return "stopped";
 
   const states = new Set(app.machines.map((m) => m.state));

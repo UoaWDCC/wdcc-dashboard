@@ -1,27 +1,35 @@
 "use client";
 
-import { useFlyAppsQueries, useFlyMachinesQueries, useFlyMetricsQueries } from "@/lib/flyio/queries";
+import {
+  useFlyAppsQueries,
+  useFlyMachinesQueries,
+  useFlyMetricsQueries,
+} from "@/lib/flyio/queries";
 import { FlySummary } from "./FlySummary";
 import { FlyOrg } from "./FlyOrg";
-import type { FlyMachine, OrgApps, FlyOrgMetrics } from "@/lib/flyio/types";
+import type { FlyMachine, OrgApps, AppMetricsByName } from "@/lib/flyio/types";
 
 const NO_METRICS = { cpuPercent: null, memPercent: null };
 
+function appKey(slug: string, appName: string): string {
+  return `${slug}:${appName}`;
+}
+
 export function FlyMetrics({ orgSlugs }: { orgSlugs: string[] }) {
   const appResults = useFlyAppsQueries(orgSlugs);
-
-  const allApps = orgSlugs.flatMap((slug, i) =>
+  const appFetchTargets = orgSlugs.flatMap((slug, i) =>
     (appResults[i].data ?? []).map((app) => ({ app, slug }))
   );
 
-  const machineResults = useFlyMachinesQueries(allApps);
+  const machineResults = useFlyMachinesQueries(appFetchTargets);
   const metricsResults = useFlyMetricsQueries(orgSlugs);
 
-  const machinesByKey = new Map<string, FlyMachine[]>();
-  allApps.forEach(({ app, slug }, i) => {
-    machinesByKey.set(`${slug}:${app.name}`, machineResults[i]?.data ?? []);
+  const machinesByAppKey = new Map<string, FlyMachine[]>();
+  appFetchTargets.forEach(({ app, slug }, i) => {
+    machinesByAppKey.set(appKey(slug, app.name), machineResults[i]?.data ?? []);
   });
-  const metricsBySlug = new Map<string, FlyOrgMetrics>();
+
+  const metricsBySlug = new Map<string, AppMetricsByName>();
   orgSlugs.forEach((slug, i) => {
     metricsBySlug.set(slug, metricsResults[i]?.data ?? {});
   });
@@ -31,7 +39,7 @@ export function FlyMetrics({ orgSlugs }: { orgSlugs: string[] }) {
       slug,
       apps: (appResults[i].data ?? []).map((app) => ({
         ...app,
-        machines: machinesByKey.get(`${slug}:${app.name}`) ?? [],
+        machines: machinesByAppKey.get(appKey(slug, app.name)) ?? [],
         metrics: metricsBySlug.get(slug)?.[app.name] ?? NO_METRICS,
       })),
     }))
@@ -39,17 +47,41 @@ export function FlyMetrics({ orgSlugs }: { orgSlugs: string[] }) {
 
   const appErrors = orgSlugs.flatMap((slug, i) =>
     appResults[i].isError
-      ? [{ key: slug, message: appResults[i].error instanceof Error ? appResults[i].error.message : "Failed to load" }]
+      ? [
+          {
+            key: slug,
+            message:
+              appResults[i].error instanceof Error
+                ? appResults[i].error.message
+                : "Failed to load",
+          },
+        ]
       : []
   );
-  const machineErrors = allApps.flatMap(({ app, slug }, i) =>
+  const machineErrors = appFetchTargets.flatMap(({ app, slug }, i) =>
     machineResults[i]?.isError
-      ? [{ key: `${slug}/${app.name}`, message: machineResults[i].error instanceof Error ? machineResults[i].error.message : "Failed to load machines" }]
+      ? [
+          {
+            key: `${slug}/${app.name}`,
+            message:
+              machineResults[i].error instanceof Error
+                ? machineResults[i].error.message
+                : "Failed to load machines",
+          },
+        ]
       : []
   );
   const metricErrors = orgSlugs.flatMap((slug, i) =>
     metricsResults[i]?.isError
-      ? [{ key: `${slug}/metrics`, message: metricsResults[i].error instanceof Error ? metricsResults[i].error.message : "Failed to load metrics" }]
+      ? [
+          {
+            key: `${slug}/metrics`,
+            message:
+              metricsResults[i].error instanceof Error
+                ? metricsResults[i].error.message
+                : "Failed to load metrics",
+          },
+        ]
       : []
   );
 
@@ -72,12 +104,16 @@ export function FlyMetrics({ orgSlugs }: { orgSlugs: string[] }) {
       <div>
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-sm font-semibold">Apps</h2>
-          <span className="text-xs text-muted-foreground">grouped by org · alphabetical</span>
+          <span className="text-xs text-muted-foreground">
+            grouped by org · alphabetical
+          </span>
         </div>
 
         <div className="bg-card border border-border rounded-lg overflow-hidden">
           {orgs.length === 0 ? (
-            <p className="text-muted-foreground text-sm px-4 py-6">No orgs configured.</p>
+            <p className="text-muted-foreground text-sm px-4 py-6">
+              No orgs configured.
+            </p>
           ) : (
             orgs.map(({ slug, apps }) => (
               <FlyOrg key={slug} slug={slug} apps={apps} />
