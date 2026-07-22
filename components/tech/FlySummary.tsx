@@ -1,9 +1,13 @@
 import { FlySummaryCard } from "./FlySummaryCard";
-import { countStates } from "@/lib/flyio/utils";
-import type { OrgApps, FlyAppWithMachines } from "@/lib/flyio/types";
+import { countStates, deriveAppState } from "@/lib/flyio/utils";
+import type { OrgApps, FlyAppWithDetails } from "@/lib/flyio/types";
+
+function average(values: number[]): number | null {
+  return values.length > 0 ? Math.round(values.reduce((sum, v) => sum + v, 0) / values.length) : null;
+}
 
 export function FlySummary({ orgs }: { orgs: OrgApps[] }) {
-  const allApps: FlyAppWithMachines[] = orgs.flatMap((o) => o.apps);
+  const allApps: FlyAppWithDetails[] = orgs.flatMap((o) => o.apps);
   const total = allApps.length;
 
   const counts = countStates(allApps);
@@ -11,6 +15,10 @@ export function FlySummary({ orgs }: { orgs: OrgApps[] }) {
   const failed = counts.failed;
 
   const uptimePct = total > 0 ? Math.round((running / total) * 100) : 0;
+
+  const runningApps = allApps.filter((a) => deriveAppState(a) === "started");
+  const avgCpu = average(runningApps.flatMap((a) => (a.metrics.cpuPercent !== null ? [a.metrics.cpuPercent] : [])));
+  const avgMem = average(runningApps.flatMap((a) => (a.metrics.memPercent !== null ? [a.metrics.memPercent] : [])));
 
   return (
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
@@ -29,11 +37,11 @@ export function FlySummary({ orgs }: { orgs: OrgApps[] }) {
         subClass={failed > 0 ? "text-brand-pink" : "text-brand-green"}
       />
 
-      {/* TODO: populate once Prometheus metrics are wired */}
       <FlySummaryCard
         label="Avg CPU / MEM"
-        value="—"
-        sub="metrics not yet connected"
+        value={avgCpu !== null ? `${avgCpu}%` : "—"}
+        unit={avgMem !== null ? `/ ${avgMem}%` : undefined}
+        sub={avgCpu !== null || avgMem !== null ? "across running apps" : "no data available"}
         subClass="text-muted-foreground"
       />
 
