@@ -110,7 +110,7 @@ export function AddProfileRow({ kind }: { kind: ProfileKind }) {
             onClick={() => setOpen(true)}
             type="button"
           >
-            + Add {kind}
+            + Add {kind === "personal" ? "Personal" : "Shared"} member
           </Button>
         </td>
       </tr>
@@ -133,10 +133,6 @@ export function AddProfileRow({ kind }: { kind: ProfileKind }) {
             type="email"
             placeholder="name@example.com"
             required
-            style={{ textTransform: "lowercase" }}
-            onChange={(e) => {
-              e.currentTarget.value = e.currentTarget.value.toLowerCase();
-            }}
           />
           <Input name="name" placeholder="Full name" required />
           <select
