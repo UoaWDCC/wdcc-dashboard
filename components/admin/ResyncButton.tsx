@@ -9,6 +9,9 @@ export function ResyncButton() {
     mutationFn: () => resyncDocsAccessGroupAction(),
   });
 
+  const failed = m.data && !m.data.ok ? m.data.error : null;
+  const succeeded = m.data?.ok === true;
+
   return (
     <div className="flex items-center gap-3">
       <Button
@@ -19,13 +22,11 @@ export function ResyncButton() {
       >
         {m.isPending ? "Syncing…" : "Resync docs access"}
       </Button>
-      {m.isSuccess && (
+      {!m.isPending && succeeded && (
         <span className="text-xs text-muted-foreground">Synced.</span>
       )}
-      {m.isError && (
-        <span className="text-xs text-destructive">
-          {m.error instanceof Error ? m.error.message : "Sync failed"}
-        </span>
+      {!m.isPending && failed && (
+        <span className="text-xs text-destructive">{failed}</span>
       )}
     </div>
   );

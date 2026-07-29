@@ -3,11 +3,25 @@ import type { Team, ProfileKind } from "@/lib/types";
 import { ProfileRow, AddProfileRow } from "@/components/admin/ProfileRow";
 import { ResyncButton } from "@/components/admin/ResyncButton";
 
+type Row = {
+  email: string;
+  name: string;
+  team: Team | null;
+  kind: ProfileKind;
+  note: string | null;
+};
+
+const byTeam = (a: Row, b: Row) => {
+  if (a.team !== b.team) {
+    if (a.team === null) return 1;
+    if (b.team === null) return -1;
+    return a.team.localeCompare(b.team);
+  }
+  return a.email.localeCompare(b.email);
+};
+
 export default async function AdminPage() {
-  const profiles = await listProfiles();
-  const byTeam = (a: Row, b: Row) =>
-    (a.team ?? "￿").localeCompare(b.team ?? "￿") ||
-    a.email.localeCompare(b.email);
+  const profiles = (await listProfiles()) as Row[];
   const personal = profiles.filter((p) => p.kind === "personal").sort(byTeam);
   const shared = profiles.filter((p) => p.kind === "shared").sort(byTeam);
 
@@ -23,14 +37,6 @@ export default async function AdminPage() {
     </div>
   );
 }
-
-type Row = {
-  email: string;
-  name: string;
-  team: string | null;
-  kind: string;
-  note: string | null;
-};
 
 function ProfileSection({
   title,
@@ -70,8 +76,8 @@ function ProfileSection({
                 key={row.email}
                 email={row.email}
                 name={row.name}
-                team={row.team as Team | null}
-                kind={row.kind as ProfileKind}
+                team={row.team}
+                kind={row.kind}
                 note={row.note}
               />
             ))

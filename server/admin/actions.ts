@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { profile, task, taskAssignee } from "@/lib/db/schema";
@@ -20,7 +21,8 @@ export async function upsertProfileAction(formData: FormData) {
   const email = parseEmail(formData, "email");
   const name = parseRequiredString(formData, "name");
   const team = parseEnum(formData, "team", TEAMS);
-  const kind = parseEnum(formData, "kind", PROFILE_KINDS) ?? "personal";
+  const kind = parseEnum(formData, "kind", PROFILE_KINDS);
+  if (!kind) throw new Error("Missing or invalid field: kind");
   const note = parseString(formData, "note");
   await upsertProfile({
     email,
@@ -30,9 +32,22 @@ export async function upsertProfileAction(formData: FormData) {
     note,
     createdBy: session.user.id,
   });
-  await syncDocsAccessGroup();
+  scheduleDocsSync("upsertProfileAction");
   revalidatePath("/admin");
   revalidatePath("/tasks");
+}
+
+// Fire CF sync after response so admins aren't blocked on Cloudflare latency
+// (worst-case two sequential ~10s API calls). On failure the DB truth stands
+// and the operator can reconcile via Resync.
+function scheduleDocsSync(context: string) {
+  after(async () => {
+    try {
+      await syncDocsAccessGroup();
+    } catch (err) {
+      console.error(`[${context}] syncDocsAccessGroup failed:`, err);
+    }
+  });
 }
 
 export async function removeProfileAction(formData: FormData) {
@@ -85,12 +100,25 @@ export async function removeProfileAction(formData: FormData) {
         .where(eq(task.id, row.id));
     }
   });
+  // Removal is security-sensitive: revoking a user must actually close their
+  // docs access before we return success. Run the CF sync inline (worst case
+  // ~10s per API call, capped by AbortSignal) and surface failure so the admin
+  // knows to retry via the Resync button instead of a silent stale allowlist.
   await syncDocsAccessGroup();
   revalidatePath("/admin");
   revalidatePath("/tasks");
 }
 
-export async function resyncDocsAccessGroupAction() {
+export type ResyncResult = { ok: true } | { ok: false; error: string };
+
+export async function resyncDocsAccessGroupAction(): Promise<ResyncResult> {
   await requireUser("/admin");
-  await syncDocsAccessGroup();
+  try {
+    await syncDocsAccessGroup();
+    return { ok: true };
+  } catch (err) {
+    // Return the error text instead of throwing: Next masks thrown server-action
+    // errors in production, so the client would otherwise show a generic message.
+    return { ok: false, error: err instanceof Error ? err.message : "Sync failed" };
+  }
 }
