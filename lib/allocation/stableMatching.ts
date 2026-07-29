@@ -3,27 +3,21 @@
 import { IGetCompareValue, MinPriorityQueue } from "@datastructures-js/priority-queue";
 
 import { Allocation, Applicant, Project } from "./models";
+import { applicantBackendFraction, backendFraction, centeredPriority } from "./utils";
 
 function _calculateContribution(projectAllocation: ProjectAllocation, applicant: Applicant): number {
   // how to calculate the multipliers
   const FRONT = 1;
   const BACK = 1;
+  const backFraction = backendFraction(projectAllocation.project);
   const front_multiplier =
-    FRONT *
-    Math.floor(
-      projectAllocation.teamSize * (1 - projectAllocation.project.backendWeighting / 7) -
-        projectAllocation.front_allocated
-    );
+    FRONT * Math.floor(projectAllocation.teamSize * (1 - backFraction) - projectAllocation.front_allocated);
   const back_multiplier =
-    BACK *
-    Math.floor(
-      projectAllocation.teamSize * (projectAllocation.project.backendWeighting / 7) -
-        projectAllocation.back_allocated
-    );
+    BACK * Math.floor(projectAllocation.teamSize * backFraction - projectAllocation.back_allocated);
 
   return (
     2 *
-      (projectAllocation.project.priority - 1.5) *
+      centeredPriority(projectAllocation.project) *
       (front_multiplier * applicant.frontendExperience + back_multiplier * applicant.backendExperience) +
     projectAllocation.project.backendWeighting * applicant.backendPreference
   );
@@ -68,22 +62,24 @@ export function stableMatching(applicants: Applicant[], projects: Project[]): Al
     }
 
     const currAllocation: ProjectAllocation = allocationResult.get(currChoice)!;
+    const backShare = applicantBackendFraction(applicant);
     if (currAllocation.allocated.size() < projectTeamSize) {
       currAllocation.allocated.enqueue(applicant);
-      currAllocation.front_allocated += 1 - applicant.backendPreference / 5;
-      currAllocation.back_allocated += applicant.backendPreference / 5;
+      currAllocation.front_allocated += 1 - backShare;
+      currAllocation.back_allocated += backShare;
     } else {
       const lowest: Applicant = currAllocation.allocated.front()!;
-      currAllocation.front_allocated += 1 - applicant.backendPreference / 5;
-      currAllocation.back_allocated += applicant.backendPreference / 5;
+      currAllocation.front_allocated += 1 - backShare;
+      currAllocation.back_allocated += backShare;
 
       if (getContribution(currAllocation)(applicant) > getContribution(currAllocation)(lowest)) {
+        const lowestBackShare = applicantBackendFraction(lowest);
         currAllocation.allocated.dequeue();
-        currAllocation.front_allocated -= 1 - lowest.backendPreference / 5;
-        currAllocation.back_allocated -= lowest.backendPreference / 5;
+        currAllocation.front_allocated -= 1 - lowestBackShare;
+        currAllocation.back_allocated -= lowestBackShare;
         currAllocation.allocated.enqueue(applicant);
-        currAllocation.front_allocated += 1 - applicant.backendPreference / 5;
-        currAllocation.back_allocated += applicant.backendPreference / 5;
+        currAllocation.front_allocated += 1 - backShare;
+        currAllocation.back_allocated += backShare;
         applicantQueue.push(lowest);
       } else {
         applicantQueue.push(applicant);

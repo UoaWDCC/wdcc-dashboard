@@ -15,6 +15,14 @@ function parseCsv(content: string): Record<string, string>[] {
   return result.data;
 }
 
+// Applicants may skip the backend/frontend preference question; a blank reads as "no preference".
+const NEUTRAL_BACKEND_PREFERENCE = 3;
+
+function parseBackendPreference(value: string | undefined): number {
+  const parsed = parseInt(value ?? "", 10);
+  return Number.isNaN(parsed) ? NEUTRAL_BACKEND_PREFERENCE : parsed;
+}
+
 function splitList(value: string | undefined): string[] {
   if (!value) return [];
   const delim = value.includes(LIST_DELIM) ? LIST_DELIM : ",";
@@ -35,7 +43,7 @@ export function parseRawApplicants(content: string): Applicant[] {
     major: row["What do you study? (Degree: major)"],
     rolePreference: row["Role preference"],
     skills: row["Previous technical experience"]?.split(",").map((s: string) => s.trim()) || [],
-    backendPreference: parseInt(
+    backendPreference: parseBackendPreference(
       row["What kind of work do you have a higher preference towards learning/doing within projects?"]
     ),
     frontendExperience: mapExperience(
@@ -78,7 +86,7 @@ export function parseProcessedApplicants(content: string): Applicant[] {
     major: row["major"],
     rolePreference: row["rolePreference"],
     skills: splitList(row["skills"]),
-    backendPreference: parseInt(row["backendPreference"], 10),
+    backendPreference: parseBackendPreference(row["backendPreference"]),
     frontendExperience: parseInt(row["frontendExperience"], 10),
     backendExperience: parseInt(row["backendExperience"], 10),
     designExperience: parseInt(row["designExperience"], 10),
@@ -96,9 +104,7 @@ export function parseProcessedApplicants(content: string): Applicant[] {
 
 /** Parses the projects CSV export. */
 export function parseProjects(content: string): Project[] {
-  // Numeric fields are left as their raw CSV strings; the objective-function arithmetic
-  // coerces them to numbers. Kept as-is to preserve identical scoring behaviour.
-  const num = (v: string) => v as unknown as number;
+  const num = (v: string | undefined) => parseInt(v ?? "", 10);
   return parseCsv(content).map((row, index) => ({
     id: index,
     name: row["What is the name of your project?"],

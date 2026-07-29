@@ -24,12 +24,16 @@ export function heuristicAscent(
   generator: () => Allocation[],
   numAscents: number = config.allocation.numAscents
 ): Allocation[] {
-  let highestUtility = 0;
+  let highestUtility = -Infinity;
   let bestAllocation: Allocation[] = [];
 
   // Repeat singleHeuristicAscent() numAscents times
   for (let i = 0; i < numAscents; i++) {
     const [allocation, utility] = singleHeuristicAscent(generator());
+    // NaN loses every comparison, so without this it would silently return no allocations.
+    if (Number.isNaN(utility)) {
+      throw new Error("Allocation scoring produced NaN — an applicant or project field is non-numeric.");
+    }
     if (utility > highestUtility) {
       highestUtility = utility;
       bestAllocation = allocation;

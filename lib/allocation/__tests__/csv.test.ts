@@ -47,6 +47,16 @@ describe("parseRawApplicants", () => {
     expect(a.requestedProject).toBe("Alpha");
   });
 
+  it("defaults a blank work preference to neutral", () => {
+    const csv = Papa.unparse([
+      {
+        "What is your full name?": "Blank Pref",
+        "What kind of work do you have a higher preference towards learning/doing within projects?": "",
+      },
+    ]);
+    expect(parseRawApplicants(csv)[0].backendPreference).toBe(3);
+  });
+
   it("returns an empty array for an empty CSV", () => {
     expect(parseRawApplicants("")).toEqual([]);
   });
@@ -96,11 +106,18 @@ describe("parseProcessedApplicants", () => {
     expect(back.skills).toEqual(["x", "y"]);
   });
 
-  it("does not throw on missing columns (yields NaN / empty)", () => {
+  it("does not throw on missing columns", () => {
     const csv = Papa.unparse([{ id: "5" }]);
     const [back] = parseProcessedApplicants(csv);
     expect(back.id).toBe(5);
-    expect(Number.isNaN(back.backendPreference)).toBe(true);
+    expect(back.backendPreference).toBe(3);
     expect(back.projectChoices).toEqual([]);
+  });
+
+  it("round-trips a neutral-defaulted backendPreference", () => {
+    const csv = Papa.unparse([{ id: "1", backendPreference: "" }]);
+    const [back] = parseProcessedApplicants(csv);
+    expect(back.backendPreference).toBe(3);
+    expect(parseProcessedApplicants(applicantsToCsv([back]))[0].backendPreference).toBe(3);
   });
 });

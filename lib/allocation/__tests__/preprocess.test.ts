@@ -1,38 +1,62 @@
 import { describe, expect, it } from "vitest";
 
 import { preprocessApplicants } from "@/lib/allocation/preprocess";
+import type { Applicant } from "@/lib/allocation/models";
 import { makeApplicant } from "./factories";
 
 const LONG_BLURB = "x".repeat(120);
 
+/** An applicant who clears every review rule, so each test only varies the field it exercises. */
+function placeable(overrides: Partial<Applicant> = {}): Applicant {
+  return makeApplicant({ passionBlurb: LONG_BLURB, projectChoices: ["Alpha"], rizzLevel: 3, ...overrides });
+}
+
 describe("preprocessApplicants", () => {
   it("splits designers by creativityHire (case-insensitive)", () => {
     const applicants = [
-      makeApplicant({ id: 0, creativityHire: "Creative Guarantee", passionBlurb: LONG_BLURB }),
-      makeApplicant({ id: 1, creativityHire: "creative maybe", passionBlurb: LONG_BLURB }),
-      makeApplicant({ id: 2, creativityHire: "", passionBlurb: LONG_BLURB }),
+      placeable({ id: 0, creativityHire: "Creative Guarantee" }),
+      placeable({ id: 1, creativityHire: "creative maybe" }),
+      placeable({ id: 2, creativityHire: "" }),
     ];
     const { designers, processed } = preprocessApplicants(applicants);
     expect(designers.map((a) => a.id)).toEqual([0, 1]);
     expect(processed.map((a) => a.id)).toEqual([2]);
   });
 
-  it("flags applicants with a short passion blurb or rizzLevel 1", () => {
+  it("flags applicants with a short or empty passion blurb, or rizzLevel 1", () => {
     const applicants = [
-      makeApplicant({ id: 0, passionBlurb: "too short", rizzLevel: 3 }),
-      makeApplicant({ id: 1, passionBlurb: LONG_BLURB, rizzLevel: 1 }),
-      makeApplicant({ id: 2, passionBlurb: LONG_BLURB, rizzLevel: 3 }),
+      placeable({ id: 0, passionBlurb: "too short" }),
+      placeable({ id: 1, rizzLevel: 1 }),
+      placeable({ id: 2 }),
+      placeable({ id: 3, passionBlurb: "" }),
     ];
     const { flagged, processed } = preprocessApplicants(applicants);
-    expect(flagged.map((a) => a.id)).toEqual([0, 1]);
+    expect(flagged.map((a) => a.id)).toEqual([0, 1, 3]);
     expect(processed.map((a) => a.id)).toEqual([2]);
+  });
+
+  it("flags applicants who picked no projects", () => {
+    const applicants = [placeable({ id: 0, projectChoices: [] }), placeable({ id: 1 })];
+    const { flagged, processed } = preprocessApplicants(applicants);
+    expect(flagged.map((a) => a.id)).toEqual([0]);
+    expect(processed.map((a) => a.id)).toEqual([1]);
+  });
+
+  it("keeps blurbs at the 50-character threshold", () => {
+    const applicants = [
+      placeable({ id: 0, passionBlurb: "x".repeat(49) }),
+      placeable({ id: 1, passionBlurb: "x".repeat(50) }),
+    ];
+    const { flagged, processed } = preprocessApplicants(applicants);
+    expect(flagged.map((a) => a.id)).toEqual([0]);
+    expect(processed.map((a) => a.id)).toEqual([1]);
   });
 
   it("excludes designers and flagged from the processed list (no leaks)", () => {
     const applicants = [
-      makeApplicant({ id: 0, creativityHire: "creative maybe", passionBlurb: LONG_BLURB }),
-      makeApplicant({ id: 1, passionBlurb: "short", rizzLevel: 3 }),
-      makeApplicant({ id: 2, passionBlurb: LONG_BLURB, rizzLevel: 3 }),
+      placeable({ id: 0, creativityHire: "creative maybe" }),
+      placeable({ id: 1, passionBlurb: "short" }),
+      placeable({ id: 2 }),
     ];
     const { processed, designers, flagged } = preprocessApplicants(applicants);
 

@@ -27,8 +27,8 @@ export type Project = {
   name: string;
   backendDifficulty: number; // out of 5
   frontendDifficulty: number; // out of 5
-  backendWeighting: number; // out of 7 (???)
-  priority: number; // 0 is no change, I expect values in range [-2, 2]
+  backendWeighting: number; // out of 5, matching the applicant backendPreference scale
+  priority: number; // out of 5, 3 is no preference; below favours beginners, above favours experience
 };
 
 export type Allocation = {

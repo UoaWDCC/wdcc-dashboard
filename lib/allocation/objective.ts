@@ -1,5 +1,6 @@
 import { Allocation, Applicant, Project } from "./models";
 import { config } from "./config";
+import { centeredPriority } from "./utils";
 
 const { A, B, C, D, E, F } = config.allocation;
 
@@ -34,7 +35,7 @@ export function calculateUtilityOfAllocation(allocation: Allocation, log: boolea
   const feExpScore = feExpSum * project.frontendDifficulty;
 
   // Priority & objective score
-  const priorityExpMultiplier = 1 + E * project.priority;
+  const priorityExpMultiplier = 1 + E * centeredPriority(project);
   const objectiveScore =
     A * projectPrefScore + B * rolePrefScore + priorityExpMultiplier * (C * beExpScore + D * feExpScore);
 

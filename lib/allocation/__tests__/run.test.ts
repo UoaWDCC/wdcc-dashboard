@@ -45,6 +45,12 @@ describe("runAllocation", () => {
     expect(new Set(placedIds).size).toBe(30); // no duplicates
   });
 
+  it("throws rather than returning no teams when an applicant field is NaN", () => {
+    const { projects, applicants } = buildInput(30);
+    applicants[7].backendPreference = NaN;
+    expect(() => runAllocation(applicants, projects)).toThrow(/NaN/);
+  });
+
   it("is deterministic for identical input", () => {
     const { projects, applicants } = buildInput(24);
     const a = runAllocation(applicants, projects);

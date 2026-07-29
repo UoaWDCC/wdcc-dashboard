@@ -48,17 +48,20 @@ describe("calculateUtilityOfAllocation", () => {
     expect(withRequest - withoutRequest).toBe(20);
   });
 
-  it("applies the priority multiplier to experience scores", () => {
-    // beExp=5, backendDifficulty=2 -> beExpScore=10; term = (1+E*priority)*C*10
-    const applicants = [makeApplicant({ backendExperience: 5, backendPreference: 0 })];
-    const base = makeProject({ name: "A", backendDifficulty: 2, priority: 0 });
-    const boosted = makeProject({ name: "A", backendDifficulty: 2, priority: 2 });
+  it("treats priority 3 as neutral and scales experience either side of it", () => {
+    // beExp=5, backendDifficulty=2 -> beExpScore=10; term = (1+E*(priority-3))*C*10
+    const applicants = [makeApplicant({ backendExperience: 5, backendPreference: 1 })];
+    const util = (priority: number) =>
+      calculateUtilityOfAllocation({
+        project: makeProject({ name: "A", backendDifficulty: 2, priority }),
+        applicants,
+      });
 
-    const u0 = calculateUtilityOfAllocation({ project: base, applicants });
-    const u2 = calculateUtilityOfAllocation({ project: boosted, applicants });
-
-    // difference is (mult2 - mult0) * C * beExpScore = (1.2 - 1.0) * 1.1 * 10 = 2.2
-    expect(u2 - u0).toBeCloseTo(2.2, 10);
+    const neutral = util(3);
+    // priority 3 leaves the experience term unmultiplied: C * beExpScore = 1.1 * 10 = 11
+    expect(neutral - util(1)).toBeCloseTo(0.2 * 1.1 * 10, 10); // beginners: down-weighted
+    expect(util(5) - neutral).toBeCloseTo(0.2 * 1.1 * 10, 10); // experienced: up-weighted
+    expect(util(5) - util(1)).toBeCloseTo(0.4 * 1.1 * 10, 10);
   });
 
   it("returns 0 for an empty allocation (no NaN, no throw)", () => {
