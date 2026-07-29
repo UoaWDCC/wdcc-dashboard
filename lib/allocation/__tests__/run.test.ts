@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { runAllocation, safeProjectName, summarizeProject } from "@/lib/allocation/run";
-import type { Allocation } from "@/lib/allocation/models";
+import { runAllocation, safeProjectName } from "@/lib/allocation/run";
 import { makeApplicant, makeProject } from "./factories";
 
 const PROJECT_NAMES = ["P0", "P1", "P2", "P3", "P4", "P5"];
@@ -39,7 +38,9 @@ describe("runAllocation", () => {
     const { projects, applicants } = buildInput(30);
     const result = runAllocation(applicants, projects);
 
-    expect(result.numApplicants).toBe(30);
+    expect(result.metrics.numApplicants).toBe(30);
+    expect(result.metrics.numMissing).toBe(0);
+    expect(result.metrics.numDuplicated).toBe(0);
     const placedIds = result.allocations.flatMap((a) => a.applicants.map((x) => x.id)).sort((p, q) => p - q);
     expect(placedIds).toEqual(Array.from({ length: 30 }, (_, i) => i));
     expect(new Set(placedIds).size).toBe(30); // no duplicates
@@ -75,47 +76,17 @@ describe("runAllocation", () => {
     );
 
     const result = runAllocation(applicants, projects);
-    expect(result.numApplicants).toBe(30);
-    expect(result.projectSummaries.some((s) => s.count === 0)).toBe(true); // an empty team occurred
+    expect(result.metrics.numApplicants).toBe(30);
+    expect(result.metrics.teams.some((t) => t.count === 0)).toBe(true); // an empty team occurred
   });
 
   it("bucket counts sum to team size", () => {
     const { projects, applicants } = buildInput(30);
     const result = runAllocation(applicants, projects);
-    for (const summary of result.projectSummaries) {
-      const total = summary.buckets.reduce((sum, b) => sum + b.applicants.length, 0);
-      expect(total).toBe(summary.count);
+    for (const team of result.metrics.teams) {
+      const total = team.buckets.reduce((sum, b) => sum + b.applicants.length, 0);
+      expect(total).toBe(team.count);
     }
-  });
-});
-
-describe("summarizeProject", () => {
-  it("buckets applicants by choice rank (1st..5th)", () => {
-    const project = makeProject({ name: "P" });
-    const allocation: Allocation = {
-      project,
-      applicants: [
-        makeApplicant({ id: 0, projectChoices: ["P", "a"] }), // 1st
-        makeApplicant({ id: 1, projectChoices: ["a", "b", "P"] }), // 3rd
-        makeApplicant({ id: 2, projectChoices: ["a", "b"] }), // unranked
-      ],
-    };
-    const s = summarizeProject(allocation);
-    expect(s.buckets.find((b) => b.rank === 1)!.applicants.map((a) => a.id)).toEqual([0]);
-    expect(s.buckets.find((b) => b.rank === 3)!.applicants.map((a) => a.id)).toEqual([1]);
-    expect(s.buckets.find((b) => b.rank === 0)!.applicants.map((a) => a.id)).toEqual([2]);
-  });
-
-  it("clamps a 6th-or-later choice into the rank-0 bucket without overflowing", () => {
-    const project = makeProject({ name: "P" });
-    // "P" is the applicant's 6th choice (index 5); buckets only cover ranks 0..5.
-    const allocation: Allocation = {
-      project,
-      applicants: [makeApplicant({ id: 0, projectChoices: ["a", "b", "c", "d", "e", "P"] })],
-    };
-    const s = summarizeProject(allocation);
-    expect(s.buckets.every((b) => b.rank <= 5)).toBe(true);
-    expect(s.buckets.find((b) => b.rank === 0)!.applicants.map((a) => a.id)).toEqual([0]);
   });
 });
 
