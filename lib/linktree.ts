@@ -1,4 +1,4 @@
-import { eq, asc, sql } from "drizzle-orm";
+import { eq, asc, desc, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { goLink, goRedirect } from "@/lib/db/schema";
 import { getTodayIso } from "@/lib/date";
@@ -15,7 +15,7 @@ export async function listGoLinks() {
       // Expired events sink to the bottom
       sql`CASE WHEN ${goLink.eventDate} IS NOT NULL AND ${goLink.eventDate} < CURRENT_DATE THEN 1 ELSE 0 END`,
       asc(goLink.isPermanent),
-      asc(goLink.sortOrder)
+      desc(goLink.sortOrder)
     );
 }
 
