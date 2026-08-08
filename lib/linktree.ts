@@ -1,4 +1,4 @@
-import { eq, asc, desc, sql } from "drizzle-orm";
+import { eq, asc, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { goLink, goRedirect } from "@/lib/db/schema";
 import { getTodayIso } from "@/lib/date";
@@ -15,7 +15,7 @@ export async function listGoLinks() {
       // Expired events sink to the bottom
       sql`CASE WHEN ${goLink.eventDate} IS NOT NULL AND ${goLink.eventDate} < CURRENT_DATE THEN 1 ELSE 0 END`,
       asc(goLink.isPermanent),
-      desc(goLink.sortOrder)
+      asc(goLink.sortOrder)
     );
 }
 
@@ -32,15 +32,17 @@ export async function addGoLink(
   },
   userId: string
 ) {
-  // Insert at sortOrder 0, bumping every other link down by 1. Bumping all rows
-  // (not just same-group) is safe because the read query groups by
-  // (expired, isPermanent) before sortOrder — relative order within each group
-  // is preserved, and the new row lands at the top of whichever group it
-  // belongs to.
+  // Insert at the next available sortOrder so the new link appears at the end
+  // of the current ordering. The read query orders by the expiry group first,
+  // then by sortOrder, so the new row lands at the bottom of whichever group
+  // it belongs to.
   return db.transaction(async (tx) => {
-    await tx
-      .update(goLink)
-      .set({ sortOrder: sql`${goLink.sortOrder} + 1` });
+    const [maxRow] = await tx
+      .select({ maxSortOrder: sql<number>`max(${goLink.sortOrder})` })
+      .from(goLink);
+
+    const nextSortOrder = (maxRow?.maxSortOrder ?? -1) + 1;
+
     const [row] = await tx
       .insert(goLink)
       .values({
@@ -50,13 +52,14 @@ export async function addGoLink(
         iconUrl: data.iconUrl ?? null,
         isPermanent: data.isPermanent ?? false,
         hidden: data.hidden ?? false,
-        sortOrder: 0,
+        sortOrder: nextSortOrder,
         team: data.team ?? null,
         eventDate: data.eventDate ?? null,
         createdBy: userId,
         updatedBy: userId,
       })
       .returning();
+
     return row;
   });
 }
