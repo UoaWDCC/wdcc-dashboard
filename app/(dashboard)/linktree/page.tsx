@@ -1,4 +1,9 @@
-import { listGoLinks, listGoRedirects } from "@/lib/linktree";
+import { after } from "next/server";
+import {
+  hideExpiredGoLinks,
+  listGoLinks,
+  listGoRedirects,
+} from "@/lib/linktree";
 import { getTodayIso } from "@/lib/date";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,6 +17,9 @@ import {
 import GoLinksManager from "./GoLinksManager";
 
 export default async function LinktreePage() {
+  // Runs after the response is sent, so the render itself stays read-only.
+  after(hideExpiredGoLinks);
+
   const [links, redirects] = await Promise.all([
     listGoLinks(),
     listGoRedirects(),

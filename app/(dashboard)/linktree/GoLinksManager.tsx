@@ -341,6 +341,12 @@ function SortableLinkRow({
     isDragging,
   } = useSortable({ id: link.id });
 
+  // hideExpiredGoLinks runs in after(), so on the first load past an eventDate
+  // the row still has hidden = false. Derive it instead of waiting for the
+  // column to catch up, or the row reads as visible while the control is
+  // disabled for being expired.
+  const shownAsHidden = link.hidden || expired;
+
   return (
     <li
       ref={setNodeRef}
@@ -351,7 +357,7 @@ function SortableLinkRow({
       className={cn(
         "grid items-center gap-3 rounded-md border bg-background px-2 py-2 text-sm",
         GRID_COLS,
-        (link.hidden || expired) && "opacity-60",
+        shownAsHidden && "opacity-60",
         isDragging && "z-10 relative shadow-lg ring-2 ring-brand-blue/40"
       )}
     >
@@ -383,7 +389,7 @@ function SortableLinkRow({
       <span className="flex flex-wrap gap-1">
         {link.isPermanent && <Badge variant="secondary">Permanent</Badge>}
         {expired && <Badge variant="destructive">Expired</Badge>}
-        {link.hidden && <Badge variant="outline">Hidden</Badge>}
+        {shownAsHidden && <Badge variant="outline">Hidden</Badge>}
       </span>
       <span className="flex items-center justify-end gap-1">
         <Button variant="ghost" size="sm" onClick={() => onEdit(link.id)}>
@@ -396,7 +402,7 @@ function SortableLinkRow({
           title={expired ? "Expired links stay hidden" : undefined}
           onClick={() => onToggleHidden(link.id, !link.hidden)}
         >
-          {link.hidden ? "Show" : "Hide"}
+          {shownAsHidden ? "Show" : "Hide"}
         </Button>
         <Button
           variant="ghost"
