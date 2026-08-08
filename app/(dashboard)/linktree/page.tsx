@@ -1,4 +1,5 @@
 import { listGoLinks, listGoRedirects } from "@/lib/linktree";
+import { getTodayIso } from "@/lib/date";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -20,7 +21,7 @@ export default async function LinktreePage() {
     <div className="space-y-10 max-w-5xl">
       <h1 className="text-2xl font-semibold">Linktree</h1>
 
-      <GoLinksManager initialLinks={links} />
+      <GoLinksManager initialLinks={links} today={getTodayIso()} />
 
       {/* Go Redirects */}
       <section className="space-y-4">
