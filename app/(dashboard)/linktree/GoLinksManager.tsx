@@ -157,10 +157,9 @@ export default function GoLinksManager({
     startTransition(async () => {
       try {
         const row = await addGoLinkAction(input);
-        // Server bumps existing sortOrders by 1 and inserts the new row at 0.
-        // Mirror that locally by prepending — group placement is recomputed
-        // from the link's own fields, not its sortOrder.
-        setLinks((cur) => [row, ...cur]);
+        // The server assigns the new row the next available sortOrder, so it
+        // should appear at the end. Mirror that locally by appending the row.
+        setLinks((cur) => [...cur, row]);
         toast.success("Link added");
       } catch (err) {
         console.error("addGoLink failed", err);
