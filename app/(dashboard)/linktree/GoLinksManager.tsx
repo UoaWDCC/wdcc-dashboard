@@ -29,6 +29,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
+import { isLinkExpired } from "@/lib/date";
 import {
   addGoLinkAction,
   removeGoLinkAction,
@@ -54,7 +55,7 @@ const GRID_COLS =
   "grid-cols-[40px_minmax(0,1.2fr)_minmax(0,2fr)_minmax(0,0.8fr)_120px_minmax(0,1fr)_200px]";
 
 function groupOf(link: GoLinkRow, today: string): GroupKey {
-  if (link.eventDate !== null && link.eventDate < today) return "expired";
+  if (isLinkExpired(link.eventDate, today)) return "expired";
   if (link.isPermanent) return "permanent";
   return "active";
 }
@@ -62,16 +63,17 @@ function groupOf(link: GoLinkRow, today: string): GroupKey {
 
 export default function GoLinksManager({
   initialLinks,
+  today,
 }: {
   initialLinks: GoLinkRow[];
+  // Passed from the server so client grouping matches the server's ordering.
+  today: string;
 }) {
   const [, startTransition] = useTransition();
   const [links, setLinks] = useState<GoLinkRow[]>(initialLinks);
   const [createOpen, setCreateOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [editingLinkId, setEditingLinkId] = useState<string | null>(null);
-
-  const today = useMemo(() => new Date().toISOString().split("T")[0], []);
 
   const groups = useMemo(() => {
     const out: Record<GroupKey, GoLinkRow[]> = {

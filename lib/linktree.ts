@@ -3,24 +3,23 @@ import { db } from "@/lib/db";
 import { goLink, goRedirect } from "@/lib/db/schema";
 import { getTodayIso } from "@/lib/date";
 
-export function isLinkExpired(eventDate: string | null): boolean {
-  return eventDate !== null && eventDate < getTodayIso();
-}
-
 export async function listGoLinks() {
+  // Bind the app's idea of today rather than CURRENT_DATE, which resolves
+  // against the database session timezone and would disagree with the client.
+  const today = getTodayIso();
   // Expired links auto-hide: flip hidden on any that have passed their eventDate.
   await db
     .update(goLink)
     .set({ hidden: true })
     .where(
-      sql`${goLink.eventDate} IS NOT NULL AND ${goLink.eventDate} < CURRENT_DATE AND ${goLink.hidden} = false`
+      sql`${goLink.eventDate} IS NOT NULL AND ${goLink.eventDate} < ${today}::date AND ${goLink.hidden} = false`
     );
   return db
     .select()
     .from(goLink)
     .orderBy(
       // Expired events sink to the bottom
-      sql`CASE WHEN ${goLink.eventDate} IS NOT NULL AND ${goLink.eventDate} < CURRENT_DATE THEN 1 ELSE 0 END`,
+      sql`CASE WHEN ${goLink.eventDate} IS NOT NULL AND ${goLink.eventDate} < ${today}::date THEN 1 ELSE 0 END`,
       asc(goLink.isPermanent),
       asc(goLink.sortOrder)
     );
