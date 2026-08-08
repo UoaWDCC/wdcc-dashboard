@@ -3,17 +3,25 @@ import { db } from "@/lib/db";
 import { goLink, goRedirect } from "@/lib/db/schema";
 import { getTodayIso } from "@/lib/date";
 
+// Expired links auto-hide: flip hidden on any that have passed their eventDate.
+// Kept out of listGoLinks so reads stay free of write side-effects — call this
+// from an explicit mutation path (see app/(dashboard)/linktree/page.tsx).
+export async function hideExpiredGoLinks() {
+  const today = getTodayIso();
+  const rows = await db
+    .update(goLink)
+    .set({ hidden: true, updatedAt: new Date() })
+    .where(
+      sql`${goLink.eventDate} IS NOT NULL AND ${goLink.eventDate} < ${today}::date AND ${goLink.hidden} = false`
+    )
+    .returning({ id: goLink.id });
+  return rows.length;
+}
+
 export async function listGoLinks() {
   // Bind the app's idea of today rather than CURRENT_DATE, which resolves
   // against the database session timezone and would disagree with the client.
   const today = getTodayIso();
-  // Expired links auto-hide: flip hidden on any that have passed their eventDate.
-  await db
-    .update(goLink)
-    .set({ hidden: true })
-    .where(
-      sql`${goLink.eventDate} IS NOT NULL AND ${goLink.eventDate} < ${today}::date AND ${goLink.hidden} = false`
-    );
   return db
     .select()
     .from(goLink)
