@@ -18,10 +18,12 @@ export async function hideExpiredGoLinks() {
   return rows.length;
 }
 
-export async function listGoLinks() {
+// `today` is passed in so a single render orders and groups against the same
+// date — computing it here too could straddle midnight and disagree with the
+// value handed to the client.
+export async function listGoLinks(today: string) {
   // Bind the app's idea of today rather than CURRENT_DATE, which resolves
   // against the database session timezone and would disagree with the client.
-  const today = getTodayIso();
   return db
     .select()
     .from(goLink)

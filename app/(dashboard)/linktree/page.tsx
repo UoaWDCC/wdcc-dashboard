@@ -5,6 +5,7 @@ import {
   listGoRedirects,
 } from "@/lib/linktree";
 import { getTodayIso } from "@/lib/date";
+import { requireUser } from "@/lib/access";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -17,11 +18,16 @@ import {
 import GoLinksManager from "./GoLinksManager";
 
 export default async function LinktreePage() {
+  // The layout gate renders concurrently with this page, and `after` callbacks
+  // run even when the render redirects — so gate here too before scheduling.
+  await requireUser("/linktree");
+
   // Runs after the response is sent, so the render itself stays read-only.
   after(hideExpiredGoLinks);
 
+  const today = getTodayIso();
   const [links, redirects] = await Promise.all([
-    listGoLinks(),
+    listGoLinks(today),
     listGoRedirects(),
   ]);
 
@@ -29,7 +35,7 @@ export default async function LinktreePage() {
     <div className="space-y-10 max-w-5xl">
       <h1 className="text-2xl font-semibold">Linktree</h1>
 
-      <GoLinksManager initialLinks={links} today={getTodayIso()} />
+      <GoLinksManager initialLinks={links} today={today} />
 
       {/* Go Redirects */}
       <section className="space-y-4">
