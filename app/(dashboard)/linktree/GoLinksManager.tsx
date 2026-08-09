@@ -400,9 +400,9 @@ function SortableLinkRow({
           size="sm"
           disabled={expired}
           title={expired ? "Expired links stay hidden" : undefined}
-          onClick={() => onToggleHidden(link.id, !link.hidden)}
+          onClick={() => onToggleHidden(link.id, !shownAsHidden)}
         >
-          {shownAsHidden ? "Show" : "Hide"}
+          {expired ? "Hidden" : shownAsHidden ? "Show" : "Hide"}
         </Button>
         <Button
           variant="ghost"
