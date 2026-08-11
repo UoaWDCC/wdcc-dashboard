@@ -234,6 +234,7 @@ export async function listUsers(team?: Team) {
       email: profile.email,
       name: profile.name,
       image: user.image,
+      team: profile.team,
     })
     .from(profile)
     .leftJoin(user, eq(user.email, profile.email));
