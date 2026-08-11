@@ -76,7 +76,12 @@ export type MoveTaskInput = {
 	afterId: string | null;
 };
 
-export type BoardUser = { email: string; name: string; image: string | null };
+export type BoardUser = {
+	email: string;
+	name: string;
+	image: string | null;
+	team: Team | null;
+};
 
 export type TagOption = { id: string; name: string; color: string | null };
 

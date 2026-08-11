@@ -5,6 +5,14 @@ import { useQueryClient } from "@tanstack/react-query";
 import { DndContext, DragOverlay } from "@dnd-kit/core";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@/components/ui/select";
+import { TEAMS, type Team } from "@/lib/types";
 import type {
 	BoardUser,
 	TagOption,
@@ -32,10 +40,12 @@ export default function TasksBoard({
 	initialTasks,
 	users,
 	tags,
+	defaultTeam = null,
 }: {
 	initialTasks: TaskView[];
 	users: BoardUser[];
 	tags: TagOption[];
+	defaultTeam?: Team | null;
 }) {
 	const queryClient = useQueryClient();
 
@@ -45,6 +55,7 @@ export default function TasksBoard({
 	const [dialogOpen, setDialogOpen] = useState(false);
 	const [createOpen, setCreateOpen] = useState(false);
 	const [tagManagerOpen, setTagManagerOpen] = useState(false);
+	const [teamFilter, setTeamFilter] = useState<Team | null>(defaultTeam);
 
 	const userById = useMemo(
 		() => new Map(users.map((m) => [m.email, m])),
@@ -56,14 +67,23 @@ export default function TasksBoard({
 	);
 	const tagSuggestions = useMemo(() => tags.map((t) => t.name), [tags]);
 
+	const visibleUsers = useMemo(
+		() => (teamFilter ? users.filter((m) => m.team === teamFilter) : users),
+		[users, teamFilter]
+	);
+	const visibleTasks = useMemo(
+		() => (teamFilter ? tasks.filter((t) => t.team === teamFilter) : tasks),
+		[tasks, teamFilter]
+	);
+
 	const userMeta: ColumnMeta[] = useMemo(
 		() =>
-			users.map((m) => ({
+			visibleUsers.map((m) => ({
 				id: userColId(m.email),
 				label: m.name,
 				accent: "neutral" as const,
 			})),
-		[users]
+		[visibleUsers]
 	);
 	const backlogMeta: ColumnMeta = {
 		id: "backlog",
@@ -93,21 +113,45 @@ export default function TasksBoard({
 			onMove: moveMutation.mutate,
 		});
 
-	const backlogTasks = useMemo(() => colTasks(tasks, "backlog"), [tasks]);
-	const doneTasksList = useMemo(() => colTasks(tasks, "done"), [tasks]);
+	const backlogTasks = useMemo(
+		() => colTasks(visibleTasks, "backlog"),
+		[visibleTasks]
+	);
+	const doneTasksList = useMemo(
+		() => colTasks(visibleTasks, "done"),
+		[visibleTasks]
+	);
 	const userTasksByCol = useMemo(() => {
 		const m: Record<string, ClientTask[]> = {};
-		for (const meta of userMeta) m[meta.id] = colTasks(tasks, meta.id);
+		for (const meta of userMeta) m[meta.id] = colTasks(visibleTasks, meta.id);
 		return m;
-	}, [tasks, userMeta]);
+	}, [visibleTasks, userMeta]);
 
 	return (
 		<div className="flex h-full flex-col gap-4">
 			<div className="flex items-center justify-between">
-				<h1 className="text-2xl font-semibold">Tasks</h1>
+				<div className="flex items-center gap-3">
+					<h1 className="text-2xl font-semibold">Tasks</h1>
+					<Select
+						value={teamFilter ?? "all"}
+						onValueChange={(v) => setTeamFilter(v === "all" ? null : (v as Team))}
+					>
+						<SelectTrigger size="sm" className="w-40">
+							<SelectValue placeholder="All teams" />
+						</SelectTrigger>
+						<SelectContent>
+							<SelectItem value="all">All teams</SelectItem>
+							{TEAMS.map((t) => (
+								<SelectItem key={t} value={t}>
+									{t}
+								</SelectItem>
+							))}
+						</SelectContent>
+					</Select>
+				</div>
 				<div className="flex items-center gap-3">
 					<p className="text-muted-foreground text-xs">
-						{tasks.length} tasks · {users.length} users
+						{visibleTasks.length} tasks · {visibleUsers.length} users
 					</p>
 					<Button
 						size="sm"
@@ -144,7 +188,7 @@ export default function TasksBoard({
 								Ongoing Tasks
 							</h2>
 							<span className="bg-brand-blue text-white text-xs tabular-nums rounded-md px-1.5 py-0.5">
-								{users.length}
+								{visibleUsers.length}
 							</span>
 						</div>
 						<div className="flex-1 overflow-y-auto p-2">
