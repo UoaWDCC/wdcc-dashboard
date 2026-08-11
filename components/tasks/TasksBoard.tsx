@@ -126,6 +126,11 @@ export default function TasksBoard({
 		for (const meta of userMeta) m[meta.id] = colTasks(visibleTasks, meta.id);
 		return m;
 	}, [visibleTasks, userMeta]);
+	const ongoingTasksCount = useMemo(
+		() =>
+			Object.values(userTasksByCol).reduce((sum, list) => sum + list.length, 0),
+		[userTasksByCol]
+	);
 
 	return (
 		<div className="flex h-full flex-col gap-4">
@@ -188,7 +193,7 @@ export default function TasksBoard({
 								Ongoing Tasks
 							</h2>
 							<span className="bg-brand-blue text-white text-xs tabular-nums rounded-md px-1.5 py-0.5">
-								{visibleUsers.length}
+								{ongoingTasksCount}
 							</span>
 						</div>
 						<div className="flex-1 overflow-y-auto p-2">
