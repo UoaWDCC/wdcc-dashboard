@@ -72,7 +72,10 @@ export default function TasksBoard({
 		[users, teamFilter]
 	);
 	const visibleTasks = useMemo(
-		() => (teamFilter ? tasks.filter((t) => t.team === teamFilter) : tasks),
+		() =>
+			teamFilter
+				? tasks.filter((t) => t.team === teamFilter || t.team === null)
+				: tasks,
 		[tasks, teamFilter]
 	);
 
