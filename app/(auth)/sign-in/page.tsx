@@ -1,30 +1,33 @@
-"use client";
+import { redirect } from "next/navigation";
+import { getSession } from "@/lib/access";
+import { SignInCard } from "./sign-in-card";
 
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { signIn } from "@/lib/auth-client";
+/** Only allow same-origin, non-protocol-relative paths as a post-login target. */
+function safePath(value: string | string[] | undefined) {
+  const raw = Array.isArray(value) ? value[0] : value;
+  if (!raw || !raw.startsWith("/") || raw.startsWith("//")) return "/";
+  return raw;
+}
 
-export default function SignInPage() {
+function firstParam(value: string | string[] | undefined) {
+  return (Array.isArray(value) ? value[0] : value) ?? null;
+}
+
+export default async function SignInPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
+  const params = await searchParams;
+  const callbackURL = safePath(params.from);
+
+  const session = await getSession();
+  if (session) redirect(callbackURL);
+
   return (
-    <div className="flex min-h-screen items-center justify-center p-4">
-      <Card className="w-full max-w-sm">
-        <CardHeader>
-          <CardTitle>WDCC Dashboard</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Button
-            className="w-full"
-            onClick={() => {
-              const params = new URLSearchParams(window.location.search);
-              const from = params.get("from");
-              const callbackURL = from && from.startsWith("/") ? from : "/";
-              signIn.social({ provider: "google", callbackURL });
-            }}
-          >
-            Continue with Google
-          </Button>
-        </CardContent>
-      </Card>
-    </div>
+    <SignInCard
+      callbackURL={callbackURL}
+      errorCode={firstParam(params.error)}
+    />
   );
 }
