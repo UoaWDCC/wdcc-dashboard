@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSessionCookie } from "better-auth/cookies";
+import { safePath } from "@/lib/safe-path";
 
 export function proxy(req: NextRequest) {
   const session = getSessionCookie(req);
   if (!session) {
-    const from = req.nextUrl.pathname + req.nextUrl.search;
+    // A path Better Auth would reject as a callbackURL degrades to "/" here
+    // rather than blocking sign-in later.
+    const from = safePath(req.nextUrl.pathname + req.nextUrl.search);
     const url = req.nextUrl.clone();
     url.pathname = "/sign-in";
     url.search = "";

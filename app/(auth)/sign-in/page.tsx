@@ -1,13 +1,7 @@
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/access";
+import { safePath } from "@/lib/safe-path";
 import { SignInCard } from "./sign-in-card";
-
-/** Only allow same-origin, non-protocol-relative paths as a post-login target. */
-function safePath(value: string | string[] | undefined) {
-  const raw = Array.isArray(value) ? value[0] : value;
-  if (!raw || !raw.startsWith("/") || raw.startsWith("//")) return "/";
-  return raw;
-}
 
 function firstParam(value: string | string[] | undefined) {
   return (Array.isArray(value) ? value[0] : value) ?? null;
@@ -27,7 +21,9 @@ export default async function SignInPage({
   return (
     <SignInCard
       callbackURL={callbackURL}
-      errorCode={firstParam(params.error)}
+      // Most callback failures arrive as `?error=`, but Better Auth reports a
+      // missing OAuth state as `?state=state_not_found`.
+      errorCode={firstParam(params.error) ?? firstParam(params.state)}
     />
   );
 }

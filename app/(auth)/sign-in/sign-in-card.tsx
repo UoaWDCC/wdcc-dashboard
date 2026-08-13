@@ -49,7 +49,12 @@ export function SignInCard({
       const res = await signIn.social({
         provider: "google",
         callbackURL,
-        errorCallbackURL: "/sign-in",
+        // Carry the destination through a failed attempt so the retry still
+        // lands where the user was headed.
+        errorCallbackURL:
+          callbackURL === "/"
+            ? "/sign-in"
+            : `/sign-in?from=${encodeURIComponent(callbackURL)}`,
       });
       if (res.error) {
         setClientError(

@@ -51,6 +51,12 @@ export const auth = betterAuth({
   account: {
     accountLinking: { enabled: false },
   },
+  // Failures before the OAuth state is parsed never reach the `errorCallbackURL`
+  // stored in that state, and would otherwise land on Better Auth's own error
+  // page. Point them at our sign-in card instead.
+  onAPIError: {
+    errorURL: "/sign-in",
+  },
   databaseHooks: {
     user: {
       create: {
