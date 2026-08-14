@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { LoaderCircle, TriangleAlert } from "lucide-react";
 import { GoogleMark } from "@/assets/google-mark";
 import { Button } from "@/components/ui/button";
-import { authErrorMessage } from "@/lib/auth-errors";
+import { AUTH_ERROR_FALLBACK, authErrorMessage } from "@/lib/auth-errors";
 import { signIn } from "@/lib/auth-client";
 
 export function SignInCard({
@@ -18,7 +18,19 @@ export function SignInCard({
   // Errors from the OAuth callback arrive in the URL; errors from the request
   // that starts sign-in (offline, server down, rate limited) arrive here.
   const [clientError, setClientError] = useState<string | null>(null);
-  const message = clientError ?? authErrorMessage(errorCode);
+  const message =
+    clientError ??
+    (errorCode ? (authErrorMessage(errorCode) ?? AUTH_ERROR_FALLBACK) : null);
+
+  // Coming back from Google's consent screen restores this page from the
+  // bfcache with `pending` still set, leaving the button stuck disabled.
+  useEffect(() => {
+    function onPageShow(e: PageTransitionEvent) {
+      if (e.persisted) setPending(false);
+    }
+    window.addEventListener("pageshow", onPageShow);
+    return () => window.removeEventListener("pageshow", onPageShow);
+  }, []);
 
   async function handleSignIn() {
     setPending(true);
@@ -36,6 +48,8 @@ export function SignInCard({
       });
       if (res.error) {
         setClientError(
+          // Our own copy first, then whatever Better Auth said, then a guess at
+          // the most likely cause of a request that failed without saying why.
           authErrorMessage(res.error.code) ??
             res.error.message ??
             "We couldn't reach Google sign-in. Check your connection and try again."

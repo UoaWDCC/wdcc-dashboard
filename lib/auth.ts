@@ -1,6 +1,7 @@
 import { betterAuth } from "better-auth";
 import { APIError } from "better-auth/api";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
+import { nextCookies } from "better-auth/next-js";
 import { db } from "@/lib/db";
 import * as schema from "@/lib/db/schema";
 import { env } from "@/lib/env";
@@ -24,7 +25,11 @@ async function checkAllowed(email: string) {
     });
   }
   if (!allowed) {
-    console.warn(`[auth] rejected sign-in for unlisted email ${email}`);
+    // Domain only: the addresses belong to people with no relationship to us,
+    // and the FORBIDDEN response already identifies the event.
+    console.warn(
+      `[auth] rejected sign-in for unlisted email (domain: ${email.split("@")[1] ?? "unknown"})`
+    );
     throw new APIError("FORBIDDEN", {
       message: AUTH_ERROR.emailNotAuthorised,
       code: AUTH_ERROR.emailNotAuthorised,
@@ -51,6 +56,12 @@ export const auth = betterAuth({
   account: {
     accountLinking: { enabled: false },
   },
+  // `auth.api.*` calls made without `asResponse: true` drop the `Set-Cookie`
+  // headers Better Auth builds internally; this replays them onto the Next
+  // response so a server-side signOut actually clears the browser cookie.
+  // Next forbids cookie writes during a Server Component render, so this only
+  // takes effect in Server Actions and route handlers.
+  plugins: [nextCookies()],
   // Failures before the OAuth state is parsed never reach the `errorCallbackURL`
   // stored in that state, and would otherwise land on Better Auth's own error
   // page. Point them at our sign-in card instead.

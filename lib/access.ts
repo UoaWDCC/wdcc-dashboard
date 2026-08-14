@@ -16,7 +16,7 @@ type SessionResult =
  * Resolves the session and, when there isn't a usable one, why — so the
  * sign-in page can explain itself instead of silently reappearing.
  */
-async function resolveSession(): Promise<SessionResult> {
+export async function resolveSession(): Promise<SessionResult> {
   const hdrs = await headers();
   const session = await auth.api.getSession({ headers: hdrs });
   if (!session) return { session: null, error: null };

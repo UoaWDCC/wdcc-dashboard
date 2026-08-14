@@ -6,7 +6,8 @@ export function proxy(req: NextRequest) {
   const session = getSessionCookie(req);
   if (!session) {
     // A path Better Auth would reject as a callbackURL degrades to "/" here
-    // rather than blocking sign-in later.
+    // rather than blocking sign-in later; the query is kept, re-encoded to fit
+    // its charset.
     const from = safePath(req.nextUrl.pathname + req.nextUrl.search);
     const url = req.nextUrl.clone();
     url.pathname = "/sign-in";

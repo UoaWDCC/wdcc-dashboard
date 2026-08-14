@@ -43,12 +43,22 @@ const MESSAGES: Record<string, string> = {
   internal_server_error: "Something broke on our end. Try again shortly.",
 };
 
-/** Turns a `?error=` code into copy we can show. Unknown codes get a fallback. */
+/** Copy for a failure we have nothing more specific to say about. */
+export const AUTH_ERROR_FALLBACK =
+  "Sign-in failed. Try again, and tell an exec with admin access if it keeps happening.";
+
+/**
+ * Turns a `?error=` code into copy we can show, or `null` when we don't
+ * recognise it — callers pick their own fallback, since some of them have a
+ * better one than `AUTH_ERROR_FALLBACK`.
+ *
+ * The lookups are guarded: `?error=` is attacker-controllable, and a bare
+ * `MESSAGES[code]` would resolve `Object.prototype` members like `toString`.
+ */
 export function authErrorMessage(code: string | null | undefined) {
   if (!code) return null;
-  return (
-    MESSAGES[code] ??
-    MESSAGES[code.toLowerCase()] ??
-    "Sign-in failed. Try again, and tell an exec with admin access if it keeps happening."
-  );
+  if (Object.hasOwn(MESSAGES, code)) return MESSAGES[code];
+  const lower = code.toLowerCase();
+  if (Object.hasOwn(MESSAGES, lower)) return MESSAGES[lower];
+  return null;
 }

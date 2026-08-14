@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { getSession } from "@/lib/access";
+import { resolveSession } from "@/lib/access";
 import { safePath } from "@/lib/safe-path";
 import { SignInCard } from "./sign-in-card";
 
@@ -15,15 +15,17 @@ export default async function SignInPage({
   const params = await searchParams;
   const callbackURL = safePath(params.from);
 
-  const session = await getSession();
+  const { session, error } = await resolveSession();
   if (session) redirect(callbackURL);
 
   return (
     <SignInCard
       callbackURL={callbackURL}
-      // Most callback failures arrive as `?error=`, but Better Auth reports a
+      // The resolver's reason wins: someone whose access was just revoked lands
+      // here with no params at all, and would otherwise see a bare card. Most
+      // callback failures arrive as `?error=`, but Better Auth reports a
       // missing OAuth state as `?state=state_not_found`.
-      errorCode={firstParam(params.error) ?? firstParam(params.state)}
+      errorCode={error ?? firstParam(params.error) ?? firstParam(params.state)}
     />
   );
 }
