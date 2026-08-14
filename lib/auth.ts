@@ -1,16 +1,24 @@
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
+import { APIError } from "better-auth/api";
+import { AUTH_ERROR_CODES } from "@/lib/auth-errors";
 import { db } from "@/lib/db";
 import * as schema from "@/lib/db/schema";
 import { env } from "@/lib/env";
 import { getProfile, isAllowed, normalizeEmail } from "@/lib/profile";
 
-export class NotAllowedError extends Error {
-  code = "NOT_ALLOWED";
+export class NotAllowedError extends APIError {
+  constructor() {
+    super("FORBIDDEN", { message: AUTH_ERROR_CODES.EMAIL_NOT_ALLOWED });
+  }
 }
 
-export class AllowlistLookupError extends Error {
-  code = "ALLOWLIST_LOOKUP_FAILED";
+export class AllowlistLookupError extends APIError {
+  constructor() {
+    super("INTERNAL_SERVER_ERROR", {
+      message: AUTH_ERROR_CODES.ALLOWLIST_LOOKUP_FAILED,
+    });
+  }
 }
 
 async function checkAllowed(email: string) {
@@ -19,9 +27,12 @@ async function checkAllowed(email: string) {
     allowed = await isAllowed(email);
   } catch (err) {
     console.error("[auth] profile lookup failed", err);
-    throw new AllowlistLookupError("Allowlist check failed. Try again later.");
+    throw new AllowlistLookupError();
   }
-  if (!allowed) throw new NotAllowedError(`Email ${email} is not authorised.`);
+  if (!allowed) {
+    console.error(`[auth] email ${email} is not on the allowlist`);
+    throw new NotAllowedError();
+  }
 }
 
 export const auth = betterAuth({
@@ -42,6 +53,9 @@ export const auth = betterAuth({
   },
   account: {
     accountLinking: { enabled: false },
+  },
+  onAPIError: {
+    errorURL: "/sign-in",
   },
   databaseHooks: {
     user: {
