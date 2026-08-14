@@ -22,15 +22,32 @@ const SAFE_QUERY = /^[\w\-.+/=&%@!$'()*,;:[\]~?]*$/;
 /** Everything Better Auth's query charset leaves out. */
 const OUTSIDE_CALLBACK_CHARSET = /[^\w\-.+/=&%@]/g;
 
+/**
+ * Percent-encodes from the code point rather than delegating to
+ * `encodeURIComponent`, which by spec leaves `!` `~` `*` `'` `(` `)` alone —
+ * all six pass `SAFE_QUERY` but are rejected by Better Auth. `SAFE_QUERY`
+ * admits only ASCII, so a single byte per character is enough.
+ */
 function encodeForCallback(query: string) {
-  return query.replace(OUTSIDE_CALLBACK_CHARSET, (char) =>
-    encodeURIComponent(char)
+  return query.replace(
+    OUTSIDE_CALLBACK_CHARSET,
+    (char) =>
+      "%" + char.charCodeAt(0).toString(16).toUpperCase().padStart(2, "0")
   );
+}
+
+/**
+ * Takes the first of a search param's values: `searchParams` hands back an
+ * array whenever a key is repeated, and a repeat is the caller's problem to
+ * ignore rather than ours to reject.
+ */
+export function firstParam(value: string | string[] | undefined) {
+  return (Array.isArray(value) ? value[0] : value) ?? null;
 }
 
 /** Narrows a `?from=` value to a same-origin path, falling back to `/`. */
 export function safePath(value: string | string[] | undefined) {
-  const raw = Array.isArray(value) ? value[0] : value;
+  const raw = firstParam(value);
   if (!raw) return "/";
 
   const mark = raw.indexOf("?");
@@ -38,12 +55,15 @@ export function safePath(value: string | string[] | undefined) {
   const query = mark === -1 ? "" : raw.slice(mark + 1);
 
   if (!SAFE_PATHNAME.test(pathname) || !SAFE_QUERY.test(query)) return "/";
-  // `.` and `/` are both inside the charset above, so `/..//evil.com` passes it.
-  // Nothing in this stack normalizes that today, but an upstream proxy that did
-  // would turn it into a protocol-relative URL.
-  if (pathname.split("/").includes("..")) return "/";
-  // A sign-in target that is itself the sign-in page just loops.
-  if (pathname === "/sign-in") return "/";
+  // `.` and `/` are both inside the charset above, so `/..//evil.com` and
+  // `/.//evil.com` pass it. Nothing in this stack normalizes that today, but an
+  // upstream proxy that did would turn either into a protocol-relative URL.
+  if (pathname.split("/").some((seg) => seg === "." || seg === ".."))
+    return "/";
+  // A sign-in target that is itself the sign-in page just loops. Trailing
+  // slashes come off first because `SAFE_PATHNAME` admits `/sign-in/`, which
+  // only fails to reach here while `trailingSlash` is left at its default.
+  if ((pathname.replace(/\/+$/, "") || "/") === "/sign-in") return "/";
 
   return query ? `${pathname}?${encodeForCallback(query)}` : pathname;
 }

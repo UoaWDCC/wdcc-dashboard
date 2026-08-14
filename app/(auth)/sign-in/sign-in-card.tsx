@@ -47,13 +47,11 @@ export function SignInCard({
             : `/sign-in?from=${encodeURIComponent(callbackURL)}`,
       });
       if (res.error) {
-        setClientError(
-          // Our own copy first, then whatever Better Auth said, then a guess at
-          // the most likely cause of a request that failed without saying why.
-          authErrorMessage(res.error.code) ??
-            res.error.message ??
-            "We couldn't reach Google sign-in. Check your connection and try again."
-        );
+        // Better Auth's own messages are written for whoever configured it
+        // (`INVALID_ERROR_CALLBACK_URL`, `Invalid origin`), so they go to the
+        // console and the user gets copy that means something to them.
+        console.error("[sign-in] Google sign-in was rejected", res.error);
+        setClientError(authErrorMessage(res.error.code) ?? AUTH_ERROR_FALLBACK);
         setPending(false);
       }
       // On success the client redirects to Google, so leave the button pending.

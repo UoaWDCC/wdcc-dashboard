@@ -1,10 +1,13 @@
 import { QueryClient, dehydrate, HydrationBoundary } from "@tanstack/react-query";
+import { requireUser } from "@/lib/access";
 import { orgSlugs } from "@/lib/flyio/config";
 import { appsQuery, machinesQuery, metricsQuery } from "@/lib/flyio/queries";
 import { FlyMetrics } from "@/components/tech/FlyDashboard";
 import type { FlyApp } from "@/lib/flyio/types";
 
 export default async function TechPage() {
+  await requireUser("/tech");
+
   if (orgSlugs.length === 0) {
     return (
       <div className="space-y-2">

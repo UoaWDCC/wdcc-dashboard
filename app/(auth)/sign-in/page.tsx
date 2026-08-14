@@ -1,11 +1,7 @@
 import { redirect } from "next/navigation";
 import { resolveSession } from "@/lib/access";
-import { safePath } from "@/lib/safe-path";
+import { firstParam, safePath } from "@/lib/safe-path";
 import { SignInCard } from "./sign-in-card";
-
-function firstParam(value: string | string[] | undefined) {
-  return (Array.isArray(value) ? value[0] : value) ?? null;
-}
 
 export default async function SignInPage({
   searchParams,

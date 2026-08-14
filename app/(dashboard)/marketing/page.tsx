@@ -1,4 +1,8 @@
-export default function MarketingPage() {
+import { requireUser } from "@/lib/access";
+
+export default async function MarketingPage() {
+  await requireUser("/marketing");
+
   return (
     <div className="space-y-2">
       <h1 className="text-2xl font-semibold">Marketing</h1>

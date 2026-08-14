@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
@@ -15,8 +16,12 @@ type SessionResult =
 /**
  * Resolves the session and, when there isn't a usable one, why — so the
  * sign-in page can explain itself instead of silently reappearing.
+ *
+ * Memoized per request: the dashboard layout and its page render in parallel
+ * and both resolve the session, which would otherwise be two `getSession`
+ * calls and two allowlist queries on the critical path.
  */
-export async function resolveSession(): Promise<SessionResult> {
+export const resolveSession = cache(async (): Promise<SessionResult> => {
   const hdrs = await headers();
   const session = await auth.api.getSession({ headers: hdrs });
   if (!session) return { session: null, error: null };
@@ -28,20 +33,23 @@ export async function resolveSession(): Promise<SessionResult> {
     return { session: null, error: AUTH_ERROR.allowlistLookupFailed };
   }
   if (!allowed) {
+    // Deleting the session row is what revokes access; the browser cookie is
+    // left stale on purpose. This runs during a Server Component render, where
+    // Next forbids cookie writes and `nextCookies()` swallows the attempt (see
+    // `lib/auth.ts`) — and the cookie grants nothing anyway, since every
+    // request comes back through this allowlist check.
     try {
       await auth.api.signOut({ headers: hdrs });
     } catch (err) {
-      console.error("[rbac] signOut after profile revoke failed", err);
+      // Belt and braces. Better Auth swallows both known failure modes itself —
+      // the row delete (logged internally, then it still returns success) and
+      // the cookie write — so only a transport-level surprise reaches here.
+      console.error("[rbac] sign-out of revoked session threw", err);
     }
     return { session: null, error: AUTH_ERROR.accessRevoked };
   }
   return { session, error: null };
-}
-
-export async function getSession() {
-  const { session } = await resolveSession();
-  return session;
-}
+});
 
 export async function requireUser(from?: string) {
   const { session, error } = await resolveSession();
