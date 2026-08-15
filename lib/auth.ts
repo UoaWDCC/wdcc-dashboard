@@ -30,7 +30,9 @@ async function checkAllowed(email: string) {
     throw new AllowlistLookupError();
   }
   if (!allowed) {
-    console.error(`[auth] email ${email} is not on the allowlist`);
+    // Deliberately no email: this is the expected outcome for anyone outside
+    // the allowlist, and the log stream is retained.
+    console.warn("[auth] sign-in rejected: email not on allowlist");
     throw new NotAllowedError();
   }
 }
