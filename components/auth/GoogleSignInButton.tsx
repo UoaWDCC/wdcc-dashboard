@@ -33,10 +33,7 @@ export function GoogleSignInButton({ from }: { from?: string }) {
   const query = params.toString();
   const errorCallbackURL = query ? `/sign-in?${query}` : "/sign-in";
 
-  // The client resolves with `{ data, error }` rather than throwing, so a
-  // rejected request (403 INVALID_ORIGIN, 5xx, ...) would otherwise leave the
-  // button stuck on "Redirecting to Google…" forever. Surface it through the
-  // same `?error=` panel the server-side failures use.
+  // Use the `?error=` panel that server-side failures use on client side
   async function onClick() {
     setPending(true);
     try {
