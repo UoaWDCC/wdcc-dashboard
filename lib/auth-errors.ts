@@ -8,7 +8,6 @@ export const AUTH_ERROR_CODES = {
 export type AuthErrorMessage = {
   title: string;
   description: string;
-  code?: string;
 };
 
 const MESSAGES: Record<string, AuthErrorMessage> = {
@@ -62,17 +61,18 @@ const MESSAGES: Record<string, AuthErrorMessage> = {
   },
 };
 
-export function getAuthErrorMessage(
-  code: string,
-  description?: string
-): AuthErrorMessage {
-  const known = MESSAGES[code];
-  if (known) return known;
-  return {
-    title: "Sign-in failed",
-    description:
-      description?.slice(0, 200) ??
-      "We couldn't sign you in. Please try again, or ask an exec for help.",
-    code,
-  };
+const FALLBACK: AuthErrorMessage = {
+  title: "Sign-in failed",
+  description:
+    "We couldn't sign you in. Please try again, or ask an exec for help.",
+};
+
+/**
+ * `code` arrives from the query string, so it is attacker-controlled. Treat it
+ * as a closed enum: anything we don't recognise gets the generic message. Never
+ * render `error_description` — Better Auth forwards the provider's text
+ * verbatim, which would turn the real sign-in page into a phishing surface.
+ */
+export function getAuthErrorMessage(code: string): AuthErrorMessage {
+  return Object.hasOwn(MESSAGES, code) ? MESSAGES[code] : FALLBACK;
 }
