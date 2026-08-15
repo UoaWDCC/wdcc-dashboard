@@ -34,11 +34,6 @@ async function resolveSession(): Promise<ResolvedSession> {
   return { session };
 }
 
-export async function getSession() {
-  const resolved = await resolveSession();
-  return resolved.session;
-}
-
 export async function requireUser(from?: string) {
   const resolved = await resolveSession();
   if (!resolved.session) {
