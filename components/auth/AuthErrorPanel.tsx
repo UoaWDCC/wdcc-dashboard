@@ -7,11 +7,6 @@ import { getAuthErrorMessage } from "@/lib/auth-errors";
 export function AuthErrorPanel({ code }: { code: string }) {
   const message = getAuthErrorMessage(code);
   const ref = useRef<HTMLDivElement>(null);
-
-  // `role="alert"` only announces content inserted into a live region that
-  // already exists. The common path here is a full document load (Better Auth
-  // redirects the OAuth callback to `/sign-in?error=…`), where the region and
-  // its content arrive together and nothing is announced. Move focus instead.
   useEffect(() => {
     ref.current?.focus();
   }, [code]);
