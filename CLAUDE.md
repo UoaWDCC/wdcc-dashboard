@@ -6,14 +6,14 @@ Internal exec dashboard: task board, go-links, Fly.io monitoring, member admin.
 
 ## Stack
 
-| Layer    | Choice                                                        |
-| -------- | ------------------------------------------------------------- |
-| Runtime  | Next.js 16 (App Router, RSC), React 19, TypeScript strict      |
-| Data     | PostgreSQL (Neon) via Drizzle ORM, `pg` Pool                   |
-| Auth     | Better Auth, Google OAuth only, DB-backed allowlist            |
-| UI       | shadcn/ui (`radix-nova` style), Radix, Tailwind v4, lucide     |
-| Client   | TanStack Query, dnd-kit, sonner                                |
-| Package  | pnpm (`packageManager` pinned)                                 |
+| Layer   | Choice                                                     |
+| ------- | ---------------------------------------------------------- |
+| Runtime | Next.js 16 (App Router, RSC), React 19, TypeScript strict  |
+| Data    | PostgreSQL (Neon) via Drizzle ORM, `pg` Pool               |
+| Auth    | Better Auth, Google OAuth only, DB-backed allowlist        |
+| UI      | shadcn/ui (`radix-nova` style), Radix, Tailwind v4, lucide |
+| Client  | TanStack Query, dnd-kit, sonner                            |
+| Package | pnpm (`packageManager` pinned)                             |
 
 ## Commands
 
@@ -34,16 +34,16 @@ No test runner is configured. Do not invent `pnpm test`.
 
 ## Layout
 
-| Path                     | Contents                                                       |
-| ------------------------ | -------------------------------------------------------------- |
-| `app/(dashboard)/`       | Authed pages: `/`, `/admin`, `/tasks`, `/linktree`, `/tech`, `/projects`, `/marketing`. Layout calls `requireUser()`. |
-| `app/(auth)/sign-in/`    | Client page, `signIn.social({ provider: "google" })`            |
-| `app/api/auth/[...all]/` | Better Auth handler via `toNextJsHandler`                       |
-| `proxy.ts`               | Next 16 proxy (NOT `middleware.ts`) — cookie-only redirect gate  |
-| `server/<domain>/`       | `"use server"` actions: `admin`, `tasks`, `linktree`, `flyio`   |
-| `lib/`                   | `access`, `auth`, `profile`, `linktree`, `date`, `env`, `form-parser`, `cloudflare`, `db/`, `tasks/`, `flyio/` |
-| `components/`            | `ui/` is shadcn-generated; feature dirs `admin/`, `tasks/`, `tech/` |
-| `hooks/`                 | `use-mobile`, `use-task-drag-drop`, `use-task-form`             |
+| Path                     | Contents                                                                                                                      |
+| ------------------------ | ----------------------------------------------------------------------------------------------------------------------------- |
+| `app/(dashboard)/`       | Authed pages: `/`, `/admin`, `/tasks`, `/linktree`, `/tech`, `/projects`, `/marketing`. Layout calls `requireUser()`.         |
+| `app/(auth)/sign-in/`    | Server Component; reads `?error=` / `?from=` and renders `components/auth/`                                                   |
+| `app/api/auth/[...all]/` | Better Auth handler via `toNextJsHandler`                                                                                     |
+| `proxy.ts`               | Next 16 proxy (NOT `middleware.ts`) — cookie-only redirect gate                                                               |
+| `server/<domain>/`       | `"use server"` actions: `admin`, `tasks`, `linktree`, `flyio`                                                                 |
+| `lib/`                   | `access`, `auth`, `auth-errors`, `profile`, `linktree`, `date`, `env`, `form-parser`, `cloudflare`, `db/`, `tasks/`, `flyio/` |
+| `components/`            | `ui/` is shadcn-generated; feature dirs `auth/`, `admin/`, `tasks/`, `tech/`                                                  |
+| `hooks/`                 | `use-mobile`, `use-task-drag-drop`, `use-task-form`                                                                           |
 
 Import alias: `@/*` -> repo root.
 
@@ -51,6 +51,7 @@ Import alias: `@/*` -> repo root.
 
 - Sign-in is Google OAuth only; account linking disabled.
 - The allowlist is the `profile` table, keyed by lowercase email. `isAllowed()` = row exists. A `databaseHooks.user.create.before` hook throws `NotAllowedError` for unknown emails, so non-allowlisted users never get a user row.
+- Auth failures surface as `/sign-in?error=<code>` (`onAPIError.errorURL`). **`APIError.message` IS the error code** — `NotAllowedError` / `AllowlistLookupError` pass a key from `AUTH_ERROR_CODES`, and Better Auth forwards that message verbatim as the query param. Giving them a human-readable message instead silently degrades every rejection to the generic "Sign-in failed" panel. Copy lives in `lib/auth-errors.ts`; never render provider-supplied `error_description` (phishing vector).
 - **All signed-in users are admins.** `requireUser` (`lib/access.ts`) is the intended and sufficient gate — including on `/admin` actions. Do not add `requireAdmin` or role checks unless explicitly asked.
 - `getSession()` re-checks the allowlist on every request and signs the user out if their profile was removed; it fails closed on DB errors.
 - `proxy.ts` only checks for a session cookie and its matcher omits `/tasks` and `/linktree` — real enforcement is `requireUser()` in the dashboard layout and in each server action.
