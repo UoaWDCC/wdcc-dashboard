@@ -1,6 +1,7 @@
 import { AuthErrorPanel } from "@/components/auth/AuthErrorPanel";
 import { GoogleSignInButton } from "@/components/auth/GoogleSignInButton";
 import { Card, CardContent } from "@/components/ui/card";
+import { resolveAuthErrorCode } from "@/lib/auth-errors";
 import { getFirstElement, safePath } from "@/lib/utils";
 
 export default async function SignInPage({
@@ -10,11 +11,7 @@ export default async function SignInPage({
 }) {
   const params = await searchParams;
   const from = safePath(getFirstElement(params.from));
-  const stateError =
-    getFirstElement(params.state) === "state_not_found"
-      ? "state_not_found"
-      : undefined;
-  const errorCode = getFirstElement(params.error) ?? stateError;
+  const errorCode = resolveAuthErrorCode(params);
 
   return (
     <div className="relative flex min-h-screen items-center justify-center overflow-hidden p-4">
