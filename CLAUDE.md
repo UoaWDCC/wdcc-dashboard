@@ -53,7 +53,7 @@ Import alias: `@/*` -> repo root.
 - The allowlist is the `profile` table, keyed by lowercase email. `isAllowed()` = row exists. A `databaseHooks.user.create.before` hook throws `NotAllowedError` for unknown emails, so non-allowlisted users never get a user row.
 - Auth failures surface as `/sign-in?error=<code>` (`onAPIError.errorURL`). **`APIError.message` IS the error code** — `NotAllowedError` / `AllowlistLookupError` pass a key from `AUTH_ERROR_CODES`, and Better Auth forwards that message verbatim as the query param. Giving them a human-readable message instead silently degrades every rejection to the generic "Sign-in failed" panel. Copy lives in `lib/auth-errors.ts`; never render provider-supplied `error_description` (phishing vector).
 - **All signed-in users are admins.** `requireUser` (`lib/access.ts`) is the intended and sufficient gate — including on `/admin` actions. Do not add `requireAdmin` or role checks unless explicitly asked.
-- `getSession()` re-checks the allowlist on every request and signs the user out if their profile was removed; it fails closed on DB errors.
+- `requireUser()` (via the internal `resolveSession()` in `lib/access.ts`) re-checks the allowlist on every request and signs the user out if their profile was removed; it fails closed on DB errors.
 - `proxy.ts` only checks for a session cookie and its matcher omits `/tasks` and `/linktree` — real enforcement is `requireUser()` in the dashboard layout and in each server action.
 - Server actions are the trust boundary: every exported action starts with `await requireUser()`.
 
