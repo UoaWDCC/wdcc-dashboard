@@ -36,7 +36,7 @@ No test runner is configured. Do not invent `pnpm test`.
 
 | Path                     | Contents                                                                                                                      |
 | ------------------------ | ----------------------------------------------------------------------------------------------------------------------------- |
-| `app/(dashboard)/`       | Authed pages: `/`, `/admin`, `/tasks`, `/linktree`, `/tech`, `/projects`, `/marketing`. Layout calls `requireUser()`.         |
+| `app/(dashboard)/`       | Authed pages: `/`, `/admin`, `/tasks`, `/linktree`, `/tech`, `/projects`. Layout calls `requireUser()`.         |
 | `app/(auth)/sign-in/`    | Server Component; reads `?error=` / `?from=` and renders `components/auth/`                                                   |
 | `app/api/auth/[...all]/` | Better Auth handler via `toNextJsHandler`                                                                                     |
 | `proxy.ts`               | Next 16 proxy (NOT `middleware.ts`) — cookie-presence redirect, negative matcher; not enforcement                             |
@@ -92,4 +92,4 @@ Column identity is derived, not stored (`lib/tasks/utils.ts`, `lib/tasks/types.t
 - `ALLOWED_EMAILS` appears in `.env.example` but no code reads it. The allowlist is the `profile` table.
 - `lib/flyio/config.ts` uses `fs` at module load: server-only. Tokens come from `FLY_TOKENS` (JSON object of `org-slug -> token`) or a gitignored `fly-tokens.json`. With neither, `/tech` renders an empty state.
 - `syncDocsAccessGroup()` refuses to push an empty allowlist and serializes writes in-process; failures are surfaced through the Resync button on `/admin`.
-- `/projects` and `/marketing` are placeholder pages.
+- `/projects` is a placeholder page.
