@@ -1,3 +1,4 @@
+import { requireUser } from "@/lib/access";
 import { listProfiles } from "@/lib/profile";
 import { ProfileSection, type Row } from "@/components/admin/ProfileSection";
 import { ResyncButton } from "@/components/admin/ResyncButton";
@@ -12,6 +13,9 @@ const byTeam = (a: Row, b: Row) => {
 };
 
 export default async function AdminPage() {
+  // The layout gate renders concurrently with this page, so gate here too.
+  await requireUser("/admin");
+
   const profiles = (await listProfiles()) as Row[];
   const personal = profiles.filter((p) => p.kind === "personal").sort(byTeam);
   const shared = profiles.filter((p) => p.kind === "shared").sort(byTeam);

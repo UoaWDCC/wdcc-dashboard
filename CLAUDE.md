@@ -39,7 +39,7 @@ No test runner is configured. Do not invent `pnpm test`.
 | `app/(dashboard)/`       | Authed pages: `/`, `/admin`, `/tasks`, `/linktree`, `/tech`, `/projects`, `/marketing`. Layout calls `requireUser()`.         |
 | `app/(auth)/sign-in/`    | Server Component; reads `?error=` / `?from=` and renders `components/auth/`                                                   |
 | `app/api/auth/[...all]/` | Better Auth handler via `toNextJsHandler`                                                                                     |
-| `proxy.ts`               | Next 16 proxy (NOT `middleware.ts`) — cookie-only redirect gate                                                               |
+| `proxy.ts`               | Next 16 proxy (NOT `middleware.ts`) — cookie-presence redirect, negative matcher; not enforcement                             |
 | `server/<domain>/`       | `"use server"` actions: `admin`, `tasks`, `linktree`, `flyio`                                                                 |
 | `lib/`                   | `access`, `auth`, `auth-errors`, `profile`, `linktree`, `date`, `env`, `form-parser`, `cloudflare`, `db/`, `tasks/`, `flyio/` |
 | `components/`            | `ui/` is shadcn-generated; feature dirs `auth/`, `admin/`, `tasks/`, `tech/`                                                  |
@@ -54,7 +54,10 @@ Import alias: `@/*` -> repo root.
 - Auth failures surface as `/sign-in?error=<code>` (`onAPIError.errorURL`). **`APIError.message` IS the error code** — `NotAllowedError` / `AllowlistLookupError` pass a key from `AUTH_ERROR_CODES`, and Better Auth forwards that message verbatim as the query param. Giving them a human-readable message instead silently degrades every rejection to the generic "Sign-in failed" panel. Copy lives in `lib/auth-errors.ts`; never render provider-supplied `error_description` (phishing vector).
 - **All signed-in users are admins.** `requireUser` (`lib/access.ts`) is the intended and sufficient gate — including on `/admin` actions. Do not add `requireAdmin` or role checks unless explicitly asked.
 - `requireUser()` (via the internal `resolveSession()` in `lib/access.ts`) re-checks the allowlist on every request and signs the user out if their profile was removed; it fails closed on DB errors.
-- `proxy.ts` only checks for a session cookie and its matcher omits `/tasks` and `/linktree` — real enforcement is `requireUser()` in the dashboard layout and in each server action.
+- `proxy.ts` only checks that a session cookie exists — it never validates it. Its matcher is a negative pattern covering everything except `/sign-in`, `/api/auth`, and static assets, so new routes are gated by default. It saves an RSC render on signed-out requests; it is never enforcement.
+- Call `requireUser()` at **every** entry point: every exported server action, and every page that fetches data or schedules `after()` work. The layout gate is not sufficient on its own — layout and page render concurrently, so the layout's redirect cannot stop the page's fetches from running. Keep the layout call anyway: it supplies the session for `UserMenu` and is the only gate on pages that fetch nothing.
+- Redundant `requireUser()` calls are free. `resolveSession()` is wrapped in React `cache()`, so it resolves once per request no matter how many actions call it.
+- Better Auth is configured with `session.cookieCache` (5 min), so `getSession()` usually reads a signed cookie instead of hitting the database. Session revocation can lag by the TTL; the allowlist check in `resolveSession()` is always live, so removing a profile revokes access immediately.
 - Server actions are the trust boundary: every exported action starts with `await requireUser()`.
 
 ## Data layer
