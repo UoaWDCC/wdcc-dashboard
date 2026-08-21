@@ -1,18 +1,9 @@
 import {
   Boxes,
-  Calendar,
-  Camera,
   Code2,
-  CreditCard,
   FileText,
   Folder,
-  Mail,
-  Megaphone,
-  MessageSquare,
-  Palette,
   Server,
-  Table2,
-  Users,
   type LucideIcon,
 } from "lucide-react";
 import type { Team } from "@/lib/types";
@@ -25,14 +16,20 @@ export type QuickLink = {
   hint?: string;
 };
 
-// Shown to everyone. Edit to change the Quick Links grid on the home page.
+// Shown to everyone. Edit to change the Quick Links list on the home page.
 export const GLOBAL_QUICK_LINKS: QuickLink[] = [
   {
     label: "Drive",
     href: "https://drive.google.com/drive/folders/0AJq-PmFbZ0OLUk9PVA",
     icon: Folder,
+    hint: "Shared WDCC Executive Drive",
   },
-  { label: "Docs", href: "https://docs.wdcc.co.nz/", icon: FileText },
+  {
+    label: "Docs",
+    href: "https://docs.wdcc.co.nz/",
+    icon: FileText,
+    hint: "docs.wdcc.co.nz",
+  },
   { label: "Go", href: "https://go.wdcc.co.nz", icon: Boxes, hint: "Linktree" },
 ];
 
@@ -49,15 +46,16 @@ export const TEAM_QUICK_LINKS: Record<Team, QuickLink[]> = {
     },
     { label: "Fly.io", href: "/tech", icon: Server, hint: "App monitoring" },
     {
-      label: "wdcc",
+      label: "Main Website",
       href: "https://wdcc.co.nz",
       icon: Server,
-      hint: "App monitoring",
+      hint: "wdcc.co.nz",
     },
     {
       label: "Passport",
       href: "https://passport.wdcc.co.nz",
       icon: Server,
+      hint: "passport.wdcc.co.nz",
     },
   ],
   Marketing: [],

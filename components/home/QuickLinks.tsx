@@ -1,5 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { LinkGrid } from "@/components/home/LinkGrid";
+import { LinkList } from "@/components/home/LinkList";
 import { GLOBAL_QUICK_LINKS, teamQuickLinks } from "@/lib/quick-links";
 import type { Team } from "@/lib/types";
 
@@ -18,7 +18,7 @@ export function QuickLinks({ team }: { team: Team | null }) {
             <h3 className="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">
               {team}
             </h3>
-            <LinkGrid links={teamLinks} />
+            <LinkList links={teamLinks} />
           </section>
         )}
         {GLOBAL_QUICK_LINKS.length > 0 && (
@@ -28,7 +28,7 @@ export function QuickLinks({ team }: { team: Team | null }) {
                 Everyone
               </h3>
             )}
-            <LinkGrid links={GLOBAL_QUICK_LINKS} />
+            <LinkList links={GLOBAL_QUICK_LINKS} />
           </section>
         )}
       </CardContent>
