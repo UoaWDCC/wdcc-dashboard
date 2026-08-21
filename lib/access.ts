@@ -13,11 +13,6 @@ type ResolvedSession =
   | { session: ActiveSession }
   | { session: null; reason: "none" | "revoked" | "error" };
 
-// Memoized per request: the dashboard layout and every server action call
-// `requireUser()`, and each uncached call costs two serial round trips to the
-// database (session lookup, then allowlist check). `cache()` collapses them
-// into one without weakening the gate — the allowlist is still re-checked on
-// every request, and a revoked profile still signs the user out.
 const resolveSession = cache(async (): Promise<ResolvedSession> => {
   const hdrs = await headers();
   const session = await auth.api.getSession({ headers: hdrs });

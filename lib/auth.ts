@@ -57,10 +57,6 @@ export const auth = betterAuth({
     accountLinking: { enabled: false },
   },
   session: {
-    // Serves the session from a signed cookie instead of a database round trip.
-    // Safe here because `requireUser()` still re-checks the allowlist against
-    // the database on every request, so removing a profile revokes access
-    // immediately regardless of this cache.
     cookieCache: { enabled: true, maxAge: 5 * 60 },
   },
   onAPIError: {
