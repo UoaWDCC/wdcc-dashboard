@@ -10,7 +10,8 @@ import {
 } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { PRIORITY_DOT, PRIORITY_LABEL } from "@/lib/types";
-import { dueLabel, dueState, type MyTask } from "@/lib/home/summary";
+import { type MyTask } from "@/lib/home/summary";
+import { dueLabel, dueState } from "@/lib/home/utils";
 
 const DUE_CLASS: Record<string, string> = {
   overdue: "border-red-500/40 text-red-600 dark:text-red-400",
