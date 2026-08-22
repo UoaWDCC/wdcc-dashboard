@@ -3,7 +3,7 @@
 import { requireUser } from "@/lib/access";
 import { getTodayIso } from "@/lib/date";
 import { type HomeSummary } from "@/lib/home/summary";
-import { buildHomeSummary } from "@/server/home/home.utils";
+import { buildHomeSummary } from "@/server/home/utils";
 import { getProfile } from "@/lib/profile";
 import { listTasks } from "@/server/tasks/actions";
 
