@@ -22,7 +22,11 @@ export function buildHomeSummary(
   };
 
   for (const t of tasks) {
-    if (t.status === "backlog") pulse.backlog++;
+    if (t.status === "backlog") {
+      if (t.team == null || t.team == team) {
+        pulse.backlog++;
+      }
+    }
     if (t.status === "active") pulse.active++;
     if (t.status === "done") {
       if (t.completedAt && t.completedAt.getTime() >= doneCutoff) {
