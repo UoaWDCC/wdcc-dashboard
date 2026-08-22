@@ -22,7 +22,7 @@ export default async function HomePage() {
 
       <div className="grid gap-4 lg:grid-cols-[1fr_2fr]">
         <QuickLinks team={team} />
-        <MyDayCard tasks={myTasks} today={today} name={session.user.name} />
+        <MyDayCard tasks={myTasks} today={today} name={firstName} />
       </div>
 
       <BoardPulse pulse={pulse} />

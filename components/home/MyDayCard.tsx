@@ -46,8 +46,8 @@ export function MyDayCard({
       <CardContent>
         {tasks.length === 0 ? (
           <p className="text-muted-foreground text-sm">
-            Nothing active assigned to you, {name.split(" ")[0]}. Pull something
-            from the backlog on the{" "}
+            Nothing active assigned to you, {name}. Pull something from the
+            backlog on the{" "}
             <Link href="/tasks" className="text-brand-blue hover:underline">
               task board
             </Link>
