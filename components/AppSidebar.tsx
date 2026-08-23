@@ -10,6 +10,7 @@ import {
   Cpu,
   Link2,
   ListTodo,
+  Users,
 } from "lucide-react";
 import {
   Sidebar,
@@ -30,6 +31,7 @@ const nav = [
   { href: "/tech", label: "Tech", icon: Cpu },
   { href: "/tasks", label: "Tasks", icon: ListTodo },
   { href: "/projects", label: "Projects", icon: Table2 },
+  { href: "/allocation", label: "Project Allocation", icon: Users },
   { href: "/linktree", label: "Linktree", icon: Link2 },
 ];
 
