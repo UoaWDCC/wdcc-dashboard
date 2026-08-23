@@ -42,3 +42,6 @@ fly-tokens.json
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# form export CSVs contain applicant PII — never commit
+/*.csv
