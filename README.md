@@ -49,7 +49,7 @@ Optional — Cloudflare Zero Trust sync (the admin page's Resync button; profile
 | ------------------------------ | --------------------------------------------------------------- |
 | `CLOUDFLARE_API_TOKEN`         | Token with Access: Groups edit                                  |
 | `CLOUDFLARE_ACCOUNT_ID`        | Cloudflare account ID                                           |
-| `CLOUDFLARE_ACCESS_GROUP_ID`   | Access group synced with personal profiles                      |
+| `CLOUDFLARE_ACCESS_GROUP_ID`   | Access group synced with every profile                          |
 | `CLOUDFLARE_ACCESS_GROUP_NAME` | Set to make writes idempotent; otherwise the name is read first |
 
 Optional — Fly.io dashboard (`/tech`):
@@ -114,7 +114,7 @@ Open http://localhost:3000.
 
 Sign in with Google. Access is limited to emails in the `profile` table, managed from `/admin`. Every signed-in user has full access, including the admin page. Removing a profile signs that user out on their next request and revokes their Cloudflare docs access.
 
-Profiles have two kinds: `personal` mailboxes are login identities and are synced to Cloudflare; `shared` mailboxes (e.g. `tech@wdcc.co.nz`) can be assigned tasks but can never sign in or gain docs access.
+Profiles have two kinds, and both can sign in and reach every page, and both are synced to the Cloudflare access group for the docs site. The difference is the task board: `shared` mailboxes (e.g. `tech@wdcc.co.nz`) never appear as assignees or board columns, so a role account can read everything without adding a column nobody works out of.
 
 ## Deployment
 

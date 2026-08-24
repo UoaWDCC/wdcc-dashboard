@@ -104,7 +104,7 @@ async function assertProfilesExist(tx: Tx, emails: string[]): Promise<void> {
   const rows = await tx
     .select({ email: profile.email })
     .from(profile)
-    .where(inArray(profile.email, emails));
+    .where(and(inArray(profile.email, emails), eq(profile.kind, "personal")));
   const known = new Set(rows.map((r) => r.email));
   const unknown = emails.filter((e) => !known.has(e));
   if (unknown.length) {
