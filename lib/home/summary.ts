@@ -1,29 +1,56 @@
-import type { TaskView } from "@/lib/tasks/types";
-import type { Team } from "@/lib/types";
+import { BoardPulse, HomeSummary, MyTask } from "@/lib/home/types";
+import { TaskView } from "@/lib/tasks/types";
+import { Team } from "@/lib/types";
 
-export type MyTask = {
-  id: string;
-  title: string;
-  priority: TaskView["priority"];
-  team: TaskView["team"];
-  dueDate: string | null;
-  position: number;
-  otherAssignees: number;
-};
+const DONE_WINDOW_DAYS = 7;
 
-export type BoardPulse = {
-  backlog: number;
-  active: number;
-  mine: number;
-  overdue: number;
-  doneThisWeek: number;
-};
+export function buildHomeSummary(
+  tasks: TaskView[],
+  email: string,
+  today: string,
+  team: Team | null
+): HomeSummary {
+  const doneCutoff = Date.now() - DONE_WINDOW_DAYS * 24 * 60 * 60 * 1000;
 
-export type HomeSummary = {
-  myTasks: MyTask[];
-  pulse: BoardPulse;
-  today: string;
-  team: Team | null;
-};
+  const myTasks: MyTask[] = [];
+  const pulse: BoardPulse = {
+    backlog: 0,
+    active: 0,
+    mine: 0,
+    overdue: 0,
+    doneThisWeek: 0,
+  };
 
-export type DueState = "overdue" | "today" | "soon" | "later";
+  for (const t of tasks) {
+    if (t.status === "backlog") {
+      if (t.team == null || t.team == team) {
+        pulse.backlog++;
+      }
+    }
+    if (t.status === "active") pulse.active++;
+    if (t.status === "done") {
+      if (t.completedAt && t.completedAt.getTime() >= doneCutoff) {
+        pulse.doneThisWeek++;
+      }
+      continue;
+    }
+    if (t.dueDate && t.dueDate < today) pulse.overdue++;
+    if (t.status != "active") continue;
+
+    const mine = t.assignees.find((a) => a.profileEmail === email);
+    if (!mine) continue;
+
+    pulse.mine++;
+    myTasks.push({
+      id: t.id,
+      title: t.title,
+      priority: t.priority,
+      team: t.team,
+      dueDate: t.dueDate,
+      position: mine.position,
+      otherAssignees: t.assignees.length - 1,
+    });
+  }
+  myTasks.sort((a, b) => a.position - b.position);
+  return { myTasks, pulse, today, team };
+}

@@ -1,9 +1,7 @@
-"use server";
-
 import { requireUser } from "@/lib/access";
 import { getTodayIso } from "@/lib/date";
-import { type HomeSummary } from "@/lib/home/summary";
-import { buildHomeSummary } from "@/server/home/utils";
+import { type HomeSummary } from "@/lib/home/types";
+import { buildHomeSummary } from "@/lib/home/summary";
 import { getProfile } from "@/lib/profile";
 import { listTasks } from "@/server/tasks/actions";
 
@@ -13,6 +11,7 @@ export async function getHomeSummary(): Promise<HomeSummary> {
     listTasks(),
     getProfile(session.user.email),
   ]);
+
   return buildHomeSummary(
     tasks,
     session.user.email,
