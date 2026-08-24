@@ -1,8 +1,7 @@
 # Architecture
 
-Target structure for the WDCC Dashboard. The current tree differs; the
-[Migration](#migration) section maps what moves where. CLAUDE.md describes what
-is; this file describes what it becomes.
+Structure of the WDCC Dashboard. CLAUDE.md describes how it behaves; this file
+describes how it is laid out and why.
 
 ## Layers
 
@@ -98,7 +97,7 @@ the two halves share no helper, so the split needed no `_shared.ts`.
 A domain owns tables, not routes. `server/profile/` rather than
 `server/admin/`; `server/tags/` rather than tags living inside tasks.
 
-Tags are their own domain: `tag` (`lib/db/schema/tasks.ts:77`) is a standalone
+Tags are their own domain: `tag` (`server/db/schema/tasks.ts:77`) is a standalone
 table with its own lifecycle, and `components/tasks/TagManagerDialog.tsx` does
 tag CRUD with no task in scope. Ownership splits by table:
 
@@ -268,7 +267,7 @@ components/
   shell/                   # AppSidebar.tsx, UserMenu.tsx
   auth/  admin/  home/  tasks/
   tech/
-    state-meta.ts            # was lib/flyio/styles.ts — Tailwind class maps are view
+    state-meta.ts            # Tailwind class maps are view concerns
   linktree/
     GoLinksManager.tsx  GoLinksList.tsx  GoLinkRow.tsx  GoLinkDialog.tsx
 ```
@@ -277,73 +276,10 @@ components/
 them on `add`. Feature components are PascalCase, one component per file,
 filename = export name.
 
-## Migration
-
-Ranked by impact. The **Order** column is the sequence to actually execute in.
-One PR per row — rows 1, 2 and 4 touch the import graph repo-wide and are
-unreviewable bundled together. Each PR updates the CLAUDE.md paths it
-invalidates in the same commit; a deferred doc-sync commit never survives
-contact.
-
-| #   | Order | Move                                                                                                                                                                                               | Why                                                                                                                                                                                                                              |
-| --- | ----- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | 4     | `lib/{db,auth,access,cloudflare,env,flyio/config}` -> `server/`                                                                                                                                    | `lib/` stops being a lie; the workaround comment in `lib/date.ts` becomes unnecessary                                                                                                                                            |
-| 2   | 6     | `server/tasks/actions.ts` (743 lines) -> `server/tasks/{queries,mutations}.ts`, `server/tags/*`, a delegates-only `actions.ts` per domain, plus `lib/tags/{types,schemas}.ts` and `getBoardAction` | Splits the god file on real seams; three unbounded reads stop being POST endpoints, replaced by one `getBoardAction`. Carries the `TaskTagView` -> `TagView` collapse, since the tags domain and its type must land together     |
-| 3   | 2     | `server/home/{actions,home.utils}.ts` -> `server/home/queries.ts` + `lib/home/summary.ts`                                                                                                          | Fixes the `home.utils.ts` name, moves a pure reducer out of `server/`, drops action-calls-action                                                                                                                                 |
-| 4   | 7     | `lib/{tasks,flyio}/queries.ts` -> `hooks/<domain>/`; `lib/flyio/styles.ts` -> `components/tech/state-meta.ts` (done)                                                                               | Removes the `lib -> server` back-edge that leaves no layer ordering to reason about, and empties `lib/flyio/` of everything that was never pure in the first place                                                               |
-| 5   | 8     | `app/(dashboard)/linktree/GoLinksManager.tsx` (617 lines) -> `components/linktree/*` (done)                                                                                                        | Only feature component living under `app/`; contains dialog + row + list in one file                                                                                                                                             |
-| 6   | 3     | `import "server-only"` at the top of every `server/**` module; eslint `no-restricted-imports` on `lib/**`; `pnpm add server-only` + `--conditions=react-server` on the `db:*` scripts              | Makes every rule above self-enforcing instead of conventional                                                                                                                                                                    |
-| 7   | 1     | One repo-wide `pnpm format` commit, plus `.prettierignore` (lockfile, `.next/`, `lib/db/drizzle/`) and a plain CI workflow: `pnpm lint`, `pnpm format:check`, `pnpm build`, `tsc --noEmit`         | 18 hand-written files are tab-indented; going first keeps every later diff free of whitespace noise. CI ships here so rows 1-6 land machine-checked instead of on trust                                                          |
-| 8   | 9     | CI ratchet: add row 6's eslint `no-restricted-imports` to the pipeline once `lib/` is actually pure                                                                                                | Row 6's rule is a suggestion until it is enforced, and it can only be enforced after rows 1 and 4 remove the `lib -> server` back-edge                                                                                           |
-| 9   | 5     | Rebaselined the Drizzle migration chain: single `0000_baseline.sql` generated from `server/db/schema/`, `0000`-`0008` dropped, `drizzle.__drizzle_migrations` collapsed to one row (done)          | `meta/0005`-`0008_snapshot.json` shared one `id` and one `prevId`, so `db:generate` aborted on a chain collision; their contents also predated the hand-written SQL in `0006`-`0008`, so a repaired chain would still diff wrong |
-
-Row 7 goes first: the per-file format rule otherwise mixes whitespace churn into
-every migration diff. Review it with `--ignore-all-space` and record its SHA in
-`.git-blame-ignore-revs`. The same PR carries the CI workflow, so the six
-import-graph migrations that follow are gated rather than trusted; `pnpm build`
-needs `DATABASE_URL`, `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` set to dummy
-values, since `lib/env.ts` throws at import. `tsc --noEmit` runs after the build,
-not before: `tsconfig.json` includes `.next/types`, which the build generates.
-
-Row 6's `no-restricted-imports` rule shipped with `lib/flyio/queries.ts` and
-`lib/tasks/queries.ts` exempted in `eslint.config.mjs` — they were the `lib ->
-server` back-edge. Row 4 moved both under `hooks/` and deleted the exemption
-block, so the rule now covers all of `lib/`. Type-only imports are allowed
-through (`allowTypeImports`), which is the boundary rule stated above.
-
-Row 9 landed with row 1 rather than on its own branch. The old chain is
-recoverable from git (`581761d` is where `0006`-`0008` were committed with
-copies of `0005_snapshot.json` in place of generated ones). The baseline was
-generated from `server/db/schema/` after confirming it matched the live database
-by introspection — 12 tables, 95 columns, 4 enums, 16 FKs identical, the only
-differences being how Postgres echoes check-constraint text.
-
-`db:migrate` never saw the corruption: it reads `_journal.json` and the SQL
-files, never the snapshots, which is why this went unnoticed until a `generate`
-was attempted. Environments other than the one in `.env` still hold nine
-bookkeeping rows; each needs the same `DELETE` + `INSERT` before its next
-`db:migrate`, or it will try to apply the baseline over live tables.
-
-Row 1 splits one file across the boundary; the rest is mechanical moves.
-`lib/profile.ts` becomes:
-
-- `normalizeEmail` -> `lib/profile.ts` (the only pure function there)
-- `isAllowed`, `getProfile`, `listProfiles` -> `server/profile/queries.ts`
-- `upsertProfile`, `removeProfile` -> `server/profile/mutations.ts`
-
-`server/auth/index.ts` calls `isAllowed` from its `databaseHooks`, which is a
-legal `server/` -> `server/` edge.
-
-Config paths to update alongside row 1: `drizzle.config.ts` (schema directory),
-`package.json` (`db:seed`). The `@/*` alias in `tsconfig.json` is unaffected.
-
-When the last row lands, delete this file's opening caveat: the tree stops being
-a target and becomes a description.
-
 ## Deliberately unchanged
 
 - The flat `@/*` alias, used consistently. No barrel files beyond
-  `lib/db/schema/index.ts` (Drizzle config points at the directory).
+  `server/db/schema/index.ts` (Drizzle config points at the directory).
 - `components/ui/` kept separate from feature directories.
 - `proxy.ts` as a non-enforcing fast path.
 - `requireUser()` + React `cache()` as the gate design.
