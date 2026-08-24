@@ -17,8 +17,10 @@ Five layers, one-way dependencies:
 | `app/`        | Routes only. `requireUser()` at every fetching entry.  | `lib/`, `hooks/`, `components/`, `server/**/queries.ts`, `server/**/*.action.ts`, `server/auth/access` |
 
 `lib/` means "safe in a client bundle". `server/` means "explodes in a client
-bundle". Both directions are enforceable: the `server-only` package guards one
-side, an eslint `no-restricted-imports` rule on `lib/**` guards the other.
+bundle". Both directions are enforceable: `import "server-only"` guards one side,
+an eslint `no-restricted-imports` rule on `lib/**` guards the other. The package
+needs no install — Next resolves the import itself and ships its own type
+declarations.
 
 Type-only imports cross the boundary freely — `import type { goLink } from
 "@/server/db/schema"` is erased at compile time, so Drizzle row types can live
@@ -296,7 +298,7 @@ contact.
 | 3   | 2     | `server/home/{actions,home.utils}.ts` -> `server/home/queries.ts` + `lib/home/summary.ts`                                                                                                     | Fixes the `home.utils.ts` name, moves a pure reducer out of `server/`, drops action-calls-action                                                                                                                                  |
 | 4   | 6     | `lib/{tasks,flyio}/queries.ts` -> `hooks/<domain>/`; `lib/flyio/styles.ts` -> `components/tech/state-meta.ts`                                                                                 | Removes the `lib -> server` back-edge that leaves no layer ordering to reason about, and empties `lib/flyio/` of everything that was never pure in the first place                                                                |
 | 5   | 7     | `app/(dashboard)/linktree/GoLinksManager.tsx` (617 lines) -> `components/linktree/*`                                                                                                          | Only feature component living under `app/`; contains dialog + row + list in one file                                                                                                                                              |
-| 6   | 3     | `pnpm add server-only`; eslint `no-restricted-imports` on `lib/**`                                                                                                                            | Makes every rule above self-enforcing instead of conventional                                                                                                                                                                     |
+| 6   | 3     | `import "server-only"` at the top of every `server/**` module; eslint `no-restricted-imports` on `lib/**`                                                                                     | Makes every rule above self-enforcing instead of conventional                                                                                                                                                                     |
 | 7   | 1     | One repo-wide `pnpm format` commit, plus `.prettierignore` (lockfile, `.next/`, `lib/db/drizzle/`) and a plain CI workflow: `pnpm lint`, `pnpm format:check`, `pnpm build`, `tsc --noEmit`    | 18 hand-written files are tab-indented; going first keeps every later diff free of whitespace noise. CI ships here so rows 1-6 land machine-checked instead of on trust                                                           |
 | 8   | 8     | CI ratchet: add row 6's eslint `no-restricted-imports` to the pipeline once `lib/` is actually pure                                                                                           | Row 6's rule is a suggestion until it is enforced, and it can only be enforced after rows 1 and 4 remove the `lib -> server` back-edge                                                                                            |
 
