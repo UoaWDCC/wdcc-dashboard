@@ -1,4 +1,10 @@
-export function UtilBar({ label, value }: { label: string; value: number | null }) {
+export function UtilBar({
+  label,
+  value,
+}: {
+  label: string;
+  value: number | null;
+}) {
   const pct = value ?? 0;
   const colorClass =
     value === null
@@ -11,7 +17,9 @@ export function UtilBar({ label, value }: { label: string; value: number | null 
 
   return (
     <div className="grid grid-cols-[36px_1fr_44px] gap-2 items-center">
-      <span className="text-[11px] text-muted-foreground font-medium">{label}</span>
+      <span className="text-[11px] text-muted-foreground font-medium">
+        {label}
+      </span>
       <div className="h-1.5 rounded-full bg-secondary overflow-hidden">
         <div
           className={`h-full rounded-full transition-all ${colorClass}`}
@@ -19,7 +27,11 @@ export function UtilBar({ label, value }: { label: string; value: number | null 
         />
       </div>
       <span className="text-[11px] text-right font-medium tabular-nums">
-        {value === null ? <span className="text-muted-foreground">—</span> : `${pct}%`}
+        {value === null ? (
+          <span className="text-muted-foreground">—</span>
+        ) : (
+          `${pct}%`
+        )}
       </span>
     </div>
   );

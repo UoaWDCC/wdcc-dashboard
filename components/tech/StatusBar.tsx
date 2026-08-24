@@ -2,17 +2,33 @@ import { STATE_META } from "@/lib/flyio/styles";
 import type { AppStatus } from "@/lib/flyio/types";
 import type { StateCounts } from "@/lib/flyio/utils";
 
-const STATE_ORDER: AppStatus[] = ["started", "created", "failed", "suspended", "stopped", "other"];
+const STATE_ORDER: AppStatus[] = [
+  "started",
+  "created",
+  "failed",
+  "suspended",
+  "stopped",
+  "other",
+];
 
-export function StatusBar({ counts, total }: { counts: StateCounts; total: number }) {
+export function StatusBar({
+  counts,
+  total,
+}: {
+  counts: StateCounts;
+  total: number;
+}) {
   if (total === 0) return null;
 
   return (
-    <div className="flex h-1.5 rounded-full overflow-hidden bg-secondary w-20" aria-hidden="true">
+    <div
+      className="flex h-1.5 rounded-full overflow-hidden bg-secondary w-20"
+      aria-hidden="true"
+    >
       {STATE_ORDER.map((state) => {
         const pct = (counts[state] / total) * 100;
         if (!pct) return null;
-        
+
         return (
           <span
             key={state}

@@ -79,7 +79,9 @@ export default async function LinktreePage() {
                 <tr className="border-b text-left text-muted-foreground">
                   <th className="pb-2 font-medium">Key</th>
                   <th className="pb-2 font-medium">Destination</th>
-                  <th className="pb-2 font-medium hidden sm:table-cell">Flags</th>
+                  <th className="pb-2 font-medium hidden sm:table-cell">
+                    Flags
+                  </th>
                   <th className="pb-2" />
                 </tr>
               </thead>
@@ -92,7 +94,9 @@ export default async function LinktreePage() {
                       row.hidden && "opacity-50"
                     )}
                   >
-                    <td className="py-2 pr-4 font-mono font-medium">{row.key}</td>
+                    <td className="py-2 pr-4 font-mono font-medium">
+                      {row.key}
+                    </td>
                     <td className="py-2 pr-4 max-w-[280px]">
                       <a
                         href={row.destinationUrl}

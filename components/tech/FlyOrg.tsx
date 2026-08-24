@@ -21,7 +21,10 @@ export function FlyOrg({
     <details className="group border-b border-border last:border-b-0">
       <summary className="list-none cursor-pointer select-none">
         <div className="grid grid-cols-[18px_1.4fr_1fr_90px] gap-3 items-center px-4 py-3.5 text-sm hover:bg-muted transition-colors">
-          <ChevronRight className="w-3.5 h-3.5 text-muted-foreground transition-transform group-open:rotate-90" aria-hidden="true" />
+          <ChevronRight
+            className="w-3.5 h-3.5 text-muted-foreground transition-transform group-open:rotate-90"
+            aria-hidden="true"
+          />
 
           {/* Org name */}
           <div className="font-heading font-semibold text-[14px]">
