@@ -76,7 +76,7 @@ Import alias: `@/*` -> repo root.
 - CI runs `pnpm db:check` (chain validation) and re-runs `db:generate`, failing if it writes anything — a schema change without a migration, or a hand-written migration with a stale snapshot, both surface as an uncommitted file.
 - `db:*` scripts pass `--conditions=react-server` because drizzle-kit and `db:seed` load `server/` modules outside Next's bundler, where `import "server-only"` otherwise throws.
 - Emails are lowercase everywhere, enforced by `check` constraints on `user.email`, `profile.email`, `tag.name`. Always route through `normalizeEmail()`.
-- `profile.email` is the primary key and the FK target for `task_assignee` (`onUpdate: cascade`). `profile.kind` is `personal` | `shared`; shared mailboxes can be task assignees but are excluded from Cloudflare access sync.
+- `profile.email` is the primary key and the FK target for `task_assignee` (`onUpdate: cascade`). `profile.kind` is `personal` | `shared`. Both kinds sign in, reach every page, and sync to the Cloudflare access group; `shared` differs only on the task board, where `listUsers` and `assertProfilesExist` both filter to `personal` so role accounts get no column and cannot be assigned.
 - Enums come from `lib/types.ts` const arrays (`TASK_STATUSES`, `TASK_PRIORITIES`, `TEAMS`, `PROFILE_KINDS`); add values there, then regenerate.
 
 ## Task board semantics
