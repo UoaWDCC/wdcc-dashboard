@@ -19,7 +19,12 @@ function env() {
       "Missing Cloudflare env vars: CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID, CLOUDFLARE_ACCESS_GROUP_ID"
     );
   }
-  return { token, account, group, groupName: process.env.CLOUDFLARE_ACCESS_GROUP_NAME };
+  return {
+    token,
+    account,
+    group,
+    groupName: process.env.CLOUDFLARE_ACCESS_GROUP_NAME,
+  };
 }
 
 async function cf<T>(path: string, init?: RequestInit): Promise<T> {
@@ -37,7 +42,11 @@ async function cf<T>(path: string, init?: RequestInit): Promise<T> {
   // CF proxies/timeouts can return HTML or plain text on failure. Read as text
   // first so the real status/body appears in the error instead of a SyntaxError.
   const text = await res.text();
-  let body: { success?: boolean; result?: T; errors?: { code: number; message: string }[] };
+  let body: {
+    success?: boolean;
+    result?: T;
+    errors?: { code: number; message: string }[];
+  };
   try {
     body = text ? JSON.parse(text) : {};
   } catch {
@@ -66,14 +75,18 @@ async function runSync() {
   const profiles = await listProfiles();
   // Only personal mailboxes are login identities. Shared mailboxes exist as
   // task assignees but must never be granted Zero Trust access.
-  const emails = profiles.filter((p) => p.kind === "personal").map((p) => p.email);
+  const emails = profiles
+    .filter((p) => p.kind === "personal")
+    .map((p) => p.email);
 
   // Refuse to push an empty allowlist: CF rejects empty include, and writing a
   // deny-all sentinel would lock every admin out of the docs (and out of the
   // admin surface itself if it's fronted by the same access group). If this
   // fires, the DB is in an unexpected state and needs manual reconciliation.
   if (!emails.length) {
-    throw new Error("Refusing to sync empty personal-email allowlist to Cloudflare");
+    throw new Error(
+      "Refusing to sync empty personal-email allowlist to Cloudflare"
+    );
   }
   const include = emails.map((email) => ({ email: { email } }));
 

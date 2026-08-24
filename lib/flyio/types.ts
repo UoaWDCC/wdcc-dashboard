@@ -61,7 +61,9 @@ export type PrometheusQueryResponse = {
 
 export type FlyAppWithMachines = FlyApp & { machines: FlyMachine[] };
 
-export type FlyAppWithMachinesAndMetrics = FlyAppWithMachines & { metrics: FlyAppMetrics };
+export type FlyAppWithMachinesAndMetrics = FlyAppWithMachines & {
+  metrics: FlyAppMetrics;
+};
 
 export type OrgApps = {
   slug: string;
@@ -70,4 +72,10 @@ export type OrgApps = {
 
 // ── Display ───────────────────────────────────────────────────────────
 
-export type AppStatus = "started" | "created" | "suspended" | "stopped" | "failed" | "other";
+export type AppStatus =
+  | "started"
+  | "created"
+  | "suspended"
+  | "stopped"
+  | "failed"
+  | "other";

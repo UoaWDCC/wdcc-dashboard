@@ -119,6 +119,9 @@ export async function resyncDocsAccessGroupAction(): Promise<ResyncResult> {
   } catch (err) {
     // Return the error text instead of throwing: Next masks thrown server-action
     // errors in production, so the client would otherwise show a generic message.
-    return { ok: false, error: err instanceof Error ? err.message : "Sync failed" };
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : "Sync failed",
+    };
   }
 }

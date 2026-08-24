@@ -13,11 +13,7 @@ import {
   updateGoRedirect,
 } from "@/lib/linktree";
 import type { AddGoLinkInput, GoLinkRow } from "./types";
-import {
-  parseString,
-  parseRequiredString,
-  parseBool,
-} from "@/lib/form-parser";
+import { parseString, parseRequiredString, parseBool } from "@/lib/form-parser";
 
 export async function addGoLinkAction(
   input: AddGoLinkInput

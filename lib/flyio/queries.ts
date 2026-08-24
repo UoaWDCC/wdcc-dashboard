@@ -1,5 +1,9 @@
 import { useQueries } from "@tanstack/react-query";
-import { listAppsForOrg, listMachinesForApp, getMetricsForOrg } from "@/server/flyio/actions";
+import {
+  listAppsForOrg,
+  listMachinesForApp,
+  getMetricsForOrg,
+} from "@/server/flyio/actions";
 import type { FlyApp } from "./types";
 
 export const appsQuery = (slug: string) => ({

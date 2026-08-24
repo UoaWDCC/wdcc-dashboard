@@ -60,7 +60,6 @@ function groupOf(link: GoLinkRow, today: string): GroupKey {
   return "active";
 }
 
-
 export default function GoLinksManager({
   initialLinks,
   today,
@@ -138,9 +137,7 @@ export default function GoLinksManager({
 
   function handleToggleHidden(id: string, hidden: boolean) {
     const snapshot = links;
-    setLinks((cur) =>
-      cur.map((l) => (l.id === id ? { ...l, hidden } : l))
-    );
+    setLinks((cur) => cur.map((l) => (l.id === id ? { ...l, hidden } : l)));
     startTransition(async () => {
       try {
         await toggleGoLinkHiddenAction(id, hidden);
@@ -370,7 +367,10 @@ function SortableLinkRow({
       >
         <GripVertical className="size-4" />
       </button>
-      <span className="truncate font-medium" title={link.hoverHint ?? undefined}>
+      <span
+        className="truncate font-medium"
+        title={link.hoverHint ?? undefined}
+      >
         {link.label}
       </span>
       <a
@@ -529,10 +529,7 @@ function GoLinkForm({
             onChange={(e) => setIsPermanent(e.target.checked)}
             className="size-4 cursor-pointer accent-primary"
           />
-          <Label
-            htmlFor={`${fieldId}-is-permanent`}
-            className="cursor-pointer"
-          >
+          <Label htmlFor={`${fieldId}-is-permanent`} className="cursor-pointer">
             Permanent
           </Label>
         </div>

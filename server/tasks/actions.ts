@@ -60,9 +60,7 @@ function midpoint(before: number | null, after: number | null): number {
 
 const teamEnum = z.enum(TEAMS);
 const priorityEnum = z.enum(TASK_PRIORITIES);
-const dateStr = z
-  .string()
-  .regex(/^\d{4}-\d{2}-\d{2}$/, "Expected YYYY-MM-DD");
+const dateStr = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Expected YYYY-MM-DD");
 
 const createTaskSchema = z.object({
   title: z.string().trim().min(1, "Title required"),
@@ -112,8 +110,7 @@ async function assertProfilesExist(tx: Tx, emails: string[]): Promise<void> {
   }
 }
 
-const dedupe = <T>(xs: T[] | undefined): T[] =>
-  xs ? [...new Set(xs)] : [];
+const dedupe = <T>(xs: T[] | undefined): T[] => (xs ? [...new Set(xs)] : []);
 
 function columnLockKey(col: ColumnId): number {
   const s = col.kind === "user" ? `user:${col.profileEmail}` : col.kind;
@@ -145,10 +142,7 @@ export async function listTasks(): Promise<TaskView[]> {
     .where(
       and(
         isNull(task.deletedAt),
-        or(
-          sql`${task.status} <> 'done'`,
-          gte(task.completedAt, doneCutoff)
-        )
+        or(sql`${task.status} <> 'done'`, gte(task.completedAt, doneCutoff))
       )
     )
     .orderBy(asc(task.position));
@@ -178,10 +172,7 @@ export async function listTasks(): Promise<TaskView[]> {
       .from(taskTag)
       .innerJoin(tag, eq(tag.id, taskTag.tagId))
       .where(inArray(taskTag.taskId, ids)),
-    db
-      .select()
-      .from(taskLink)
-      .where(inArray(taskLink.taskId, ids)),
+    db.select().from(taskLink).where(inArray(taskLink.taskId, ids)),
   ]);
 
   const assigneesByTask = new Map<string, TaskAssigneeView[]>();
@@ -380,7 +371,6 @@ export async function updateTask(id: string, patch: UpdateTaskInput) {
   const data = updateTaskSchema.parse(patch);
 
   await db.transaction(async (tx) => {
-
     const fields: Partial<typeof task.$inferInsert> = {
       updatedBy: session.user.id,
     };
@@ -431,9 +421,7 @@ export async function updateTask(id: string, patch: UpdateTaskInput) {
       const existingEmails = new Set(existing.map((e) => e.profileEmail));
       const targetEmails = new Set(targetList);
 
-      const toRemove = [...existingEmails].filter(
-        (u) => !targetEmails.has(u)
-      );
+      const toRemove = [...existingEmails].filter((u) => !targetEmails.has(u));
       const toAdd = [...targetEmails].filter((u) => !existingEmails.has(u));
 
       if (toRemove.length) {
@@ -689,17 +677,23 @@ async function rebalanceColumn(
       .from(taskAssignee)
       .where(eq(taskAssignee.profileEmail, col.profileEmail))
       .orderBy(asc(taskAssignee.position));
-    return assignSpacedPositions(rows, movingTaskId, beforeId, afterId, async (taskId, position) => {
-      await tx
-        .update(taskAssignee)
-        .set({ position })
-        .where(
-          and(
-            eq(taskAssignee.taskId, taskId),
-            eq(taskAssignee.profileEmail, col.profileEmail)
-          )
-        );
-    });
+    return assignSpacedPositions(
+      rows,
+      movingTaskId,
+      beforeId,
+      afterId,
+      async (taskId, position) => {
+        await tx
+          .update(taskAssignee)
+          .set({ position })
+          .where(
+            and(
+              eq(taskAssignee.taskId, taskId),
+              eq(taskAssignee.profileEmail, col.profileEmail)
+            )
+          );
+      }
+    );
   }
   const targetStatus = col.kind === "done" ? "done" : "backlog";
   const rows = await tx
@@ -707,9 +701,15 @@ async function rebalanceColumn(
     .from(task)
     .where(and(eq(task.status, targetStatus), isNull(task.deletedAt)))
     .orderBy(asc(task.position));
-  return assignSpacedPositions(rows, movingTaskId, beforeId, afterId, async (taskId, position) => {
-    await tx.update(task).set({ position }).where(eq(task.id, taskId));
-  });
+  return assignSpacedPositions(
+    rows,
+    movingTaskId,
+    beforeId,
+    afterId,
+    async (taskId, position) => {
+      await tx.update(task).set({ position }).where(eq(task.id, taskId));
+    }
+  );
 }
 
 async function assignSpacedPositions(
