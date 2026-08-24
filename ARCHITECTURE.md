@@ -297,12 +297,16 @@ contact.
 | 4   | 6     | `lib/{tasks,flyio}/queries.ts` -> `hooks/<domain>/`; `lib/flyio/styles.ts` -> `components/tech/state-meta.ts`                                                                                 | Removes the `lib -> server` back-edge that leaves no layer ordering to reason about, and empties `lib/flyio/` of everything that was never pure in the first place                                                                |
 | 5   | 7     | `app/(dashboard)/linktree/GoLinksManager.tsx` (617 lines) -> `components/linktree/*`                                                                                                          | Only feature component living under `app/`; contains dialog + row + list in one file                                                                                                                                              |
 | 6   | 3     | `pnpm add server-only`; eslint `no-restricted-imports` on `lib/**`                                                                                                                            | Makes every rule above self-enforcing instead of conventional                                                                                                                                                                     |
-| 7   | 1     | One repo-wide `pnpm format` commit                                                                                                                                                            | 18 hand-written files are tab-indented; going first keeps every later diff free of whitespace noise                                                                                                                               |
-| 8   | 8     | GitHub Actions: `pnpm lint`, `pnpm format:check`, `tsc --noEmit`, `pnpm build`                                                                                                                | No CI exists today, so row 6's eslint rule is a suggestion; this is what turns the prose above into constraint                                                                                                                    |
+| 7   | 1     | One repo-wide `pnpm format` commit, plus `.prettierignore` (lockfile, `.next/`, `lib/db/drizzle/`) and a plain CI workflow: `pnpm lint`, `pnpm format:check`, `pnpm build`, `tsc --noEmit`    | 18 hand-written files are tab-indented; going first keeps every later diff free of whitespace noise. CI ships here so rows 1-6 land machine-checked instead of on trust                                                           |
+| 8   | 8     | CI ratchet: add row 6's eslint `no-restricted-imports` to the pipeline once `lib/` is actually pure                                                                                           | Row 6's rule is a suggestion until it is enforced, and it can only be enforced after rows 1 and 4 remove the `lib -> server` back-edge                                                                                            |
 
 Row 7 goes first: the per-file format rule otherwise mixes whitespace churn into
 every migration diff. Review it with `--ignore-all-space` and record its SHA in
-`.git-blame-ignore-revs`.
+`.git-blame-ignore-revs`. The same PR carries the CI workflow, so the six
+import-graph migrations that follow are gated rather than trusted; `pnpm build`
+needs `DATABASE_URL`, `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` set to dummy
+values, since `lib/env.ts` throws at import. `tsc --noEmit` runs after the build,
+not before: `tsconfig.json` includes `.next/types`, which the build generates.
 
 Row 1 splits one file across the boundary; the rest is mechanical moves.
 `lib/profile.ts` becomes:
