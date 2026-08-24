@@ -1,4 +1,5 @@
-import { listUsers, listTags, listTasks } from "@/server/tasks/actions";
+import { listTasks, listUsers } from "@/server/tasks/queries";
+import { listTags } from "@/server/tags/queries";
 import TasksBoard from "@/components/tasks/TasksBoard";
 import { requireUser } from "@/server/auth/access";
 import { getProfile } from "@/server/profile/queries";

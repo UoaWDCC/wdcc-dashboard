@@ -5,7 +5,7 @@ import { getTodayIso } from "@/lib/date";
 import { type HomeSummary } from "@/lib/home/types";
 import { buildHomeSummary } from "@/lib/home/summary";
 import { getProfile } from "@/server/profile/queries";
-import { listTasks } from "@/server/tasks/actions";
+import { listTasks } from "@/server/tasks/queries";
 
 export async function getHomeSummary(): Promise<HomeSummary> {
   const session = await requireUser("/");
