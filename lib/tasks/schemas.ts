@@ -4,7 +4,7 @@ import { TASK_PRIORITIES, TEAMS } from "@/lib/types";
 const teamEnum = z.enum(TEAMS);
 const priorityEnum = z.enum(TASK_PRIORITIES);
 const dateStr = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Expected YYYY-MM-DD");
-const email = z.email().trim().toLowerCase();
+const email = z.string().trim().toLowerCase().pipe(z.email());
 
 export const createTaskSchema = z.object({
   title: z.string().trim().min(1, "Title required"),
