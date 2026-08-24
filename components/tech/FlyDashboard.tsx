@@ -4,7 +4,7 @@ import {
   useFlyAppsQueries,
   useFlyMachinesQueries,
   useFlyMetricsQueries,
-} from "@/lib/flyio/queries";
+} from "@/hooks/flyio/use-fly-queries";
 import { FlySummary } from "./FlySummary";
 import { FlyOrg } from "./FlyOrg";
 import type { FlyMachine, OrgApps, AppMetricsByName } from "@/lib/flyio/types";

@@ -3,7 +3,7 @@ import {
   machineTypeLabel,
   uniqueRegions,
 } from "@/lib/flyio/utils";
-import { STATE_META } from "@/lib/flyio/styles";
+import { STATE_META } from "@/components/tech/state-meta";
 import { UtilBar } from "./UtilBar";
 import type { FlyAppWithMachinesAndMetrics } from "@/lib/flyio/types";
 

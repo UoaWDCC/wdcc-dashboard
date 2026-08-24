@@ -1,4 +1,4 @@
-import { STATE_META } from "@/lib/flyio/styles";
+import { STATE_META } from "@/components/tech/state-meta";
 import type { AppStatus } from "@/lib/flyio/types";
 import type { StateCounts } from "@/lib/flyio/utils";
 

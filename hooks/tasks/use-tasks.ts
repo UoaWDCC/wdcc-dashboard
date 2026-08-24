@@ -1,8 +1,9 @@
+"use client";
+
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
   createTaskAction,
-  getBoardAction,
   moveTaskAction,
   softDeleteTaskAction,
   updateTaskAction,
@@ -16,20 +17,14 @@ import type {
 import {
   applyDragLocal,
   colIdToColumnId,
-  fromServer,
   neighborsOf,
 } from "@/lib/tasks/utils";
+import { boardQuery, taskKeys } from "./query-options";
 
-export const taskKeys = {
-  all: ["tasks"] as const,
-};
+export { taskKeys };
 
 export function useTasksQuery(initialTasks: TaskView[]) {
-  return useQuery({
-    queryKey: taskKeys.all,
-    queryFn: async () => fromServer((await getBoardAction()).tasks),
-    initialData: () => fromServer(initialTasks),
-  });
+  return useQuery(boardQuery(initialTasks));
 }
 
 export function useUpdateTaskMutation(tagIdByName: Map<string, string>) {

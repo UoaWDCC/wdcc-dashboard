@@ -290,7 +290,7 @@ contact.
 | 1   | 4     | `lib/{db,auth,access,cloudflare,env,flyio/config}` -> `server/`                                                                                                                                    | `lib/` stops being a lie; the workaround comment in `lib/date.ts` becomes unnecessary                                                                                                                                            |
 | 2   | 6     | `server/tasks/actions.ts` (743 lines) -> `server/tasks/{queries,mutations}.ts`, `server/tags/*`, a delegates-only `actions.ts` per domain, plus `lib/tags/{types,schemas}.ts` and `getBoardAction` | Splits the god file on real seams; three unbounded reads stop being POST endpoints, replaced by one `getBoardAction`. Carries the `TaskTagView` -> `TagView` collapse, since the tags domain and its type must land together     |
 | 3   | 2     | `server/home/{actions,home.utils}.ts` -> `server/home/queries.ts` + `lib/home/summary.ts`                                                                                                          | Fixes the `home.utils.ts` name, moves a pure reducer out of `server/`, drops action-calls-action                                                                                                                                 |
-| 4   | 7     | `lib/{tasks,flyio}/queries.ts` -> `hooks/<domain>/`; `lib/flyio/styles.ts` -> `components/tech/state-meta.ts`                                                                                      | Removes the `lib -> server` back-edge that leaves no layer ordering to reason about, and empties `lib/flyio/` of everything that was never pure in the first place                                                               |
+| 4   | 7     | `lib/{tasks,flyio}/queries.ts` -> `hooks/<domain>/`; `lib/flyio/styles.ts` -> `components/tech/state-meta.ts` (done)                                                                               | Removes the `lib -> server` back-edge that leaves no layer ordering to reason about, and empties `lib/flyio/` of everything that was never pure in the first place                                                               |
 | 5   | 8     | `app/(dashboard)/linktree/GoLinksManager.tsx` (617 lines) -> `components/linktree/*`                                                                                                               | Only feature component living under `app/`; contains dialog + row + list in one file                                                                                                                                             |
 | 6   | 3     | `import "server-only"` at the top of every `server/**` module; eslint `no-restricted-imports` on `lib/**`; `pnpm add server-only` + `--conditions=react-server` on the `db:*` scripts              | Makes every rule above self-enforcing instead of conventional                                                                                                                                                                    |
 | 7   | 1     | One repo-wide `pnpm format` commit, plus `.prettierignore` (lockfile, `.next/`, `lib/db/drizzle/`) and a plain CI workflow: `pnpm lint`, `pnpm format:check`, `pnpm build`, `tsc --noEmit`         | 18 hand-written files are tab-indented; going first keeps every later diff free of whitespace noise. CI ships here so rows 1-6 land machine-checked instead of on trust                                                          |
@@ -305,11 +305,11 @@ needs `DATABASE_URL`, `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` set to dummy
 values, since `lib/env.ts` throws at import. `tsc --noEmit` runs after the build,
 not before: `tsconfig.json` includes `.next/types`, which the build generates.
 
-Row 6's `no-restricted-imports` rule ships with `lib/flyio/queries.ts` and
-`lib/tasks/queries.ts` exempted in `eslint.config.mjs` — they are the `lib ->
-server` back-edge, and row 4 is what removes them. Delete the exemption block
-with row 4. Type-only imports are allowed through (`allowTypeImports`), which is
-the boundary rule stated above.
+Row 6's `no-restricted-imports` rule shipped with `lib/flyio/queries.ts` and
+`lib/tasks/queries.ts` exempted in `eslint.config.mjs` — they were the `lib ->
+server` back-edge. Row 4 moved both under `hooks/` and deleted the exemption
+block, so the rule now covers all of `lib/`. Type-only imports are allowed
+through (`allowTypeImports`), which is the boundary rule stated above.
 
 Row 9 landed with row 1 rather than on its own branch. The old chain is
 recoverable from git (`581761d` is where `0006`-`0008` were committed with
