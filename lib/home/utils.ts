@@ -1,4 +1,4 @@
-import { DueState } from "@/lib/home/summary";
+import { DueState } from "@/lib/home/types";
 
 export function dueState(dueDate: string, today: string): DueState {
   if (dueDate < today) return "overdue";

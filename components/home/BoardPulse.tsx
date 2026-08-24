@@ -7,7 +7,7 @@ import {
   UserRound,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { BoardPulse as Pulse } from "@/lib/home/summary";
+import type { BoardPulse as Pulse } from "@/lib/home/types";
 
 type Tile = {
   label: string;
