@@ -1,5 +1,3 @@
-import "server-only";
-
 import type { goLink } from "@/server/db/schema";
 
 export type GoLinkRow = typeof goLink.$inferSelect;
