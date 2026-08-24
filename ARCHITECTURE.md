@@ -1,18 +1,20 @@
 # Architecture
 
 Target structure for the WDCC Dashboard. The current tree differs; the
-[Migration](#migration) section maps what moves where.
+[Migration](#migration) section maps what moves where. CLAUDE.md describes what
+is; this file describes what it becomes.
 
 ## Layers
 
-Four layers, one-way dependencies:
+Five layers, one-way dependencies:
 
-| Layer         | Invariant                                              | May import                                         |
-| ------------- | ------------------------------------------------------ | -------------------------------------------------- |
-| `lib/`        | Browser-safe. No value imports from `@/server/`.       | `lib/` only (type-only `@/server/db/schema` is OK) |
-| `server/`     | Server-only. Every file starts `import "server-only"`. | `lib/`, `server/`                                  |
-| `hooks/`      | Client data + interaction layer.                       | `lib/`, `server/**/*.action.ts`                    |
-| `components/` | UI.                                                    | `lib/`, `hooks/`, `server/**/*.action.ts`          |
+| Layer         | Invariant                                              | May import                                                                                             |
+| ------------- | ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------ |
+| `lib/`        | Browser-safe. No value imports from `@/server/`.       | `lib/` only (type-only `@/server/db/schema` is OK)                                                     |
+| `server/`     | Server-only. Every file starts `import "server-only"`. | `lib/`, `server/`                                                                                      |
+| `hooks/`      | Client data + interaction layer.                       | `lib/`, `server/**/*.action.ts`                                                                        |
+| `components/` | UI.                                                    | `lib/`, `hooks/`, `server/**/*.action.ts`                                                              |
+| `app/`        | Routes only. `requireUser()` at every fetching entry.  | `lib/`, `hooks/`, `components/`, `server/**/queries.ts`, `server/**/*.action.ts`, `server/auth/access` |
 
 `lib/` means "safe in a client bundle". `server/` means "explodes in a client
 bundle". Both directions are enforceable: the `server-only` package guards one
@@ -22,27 +24,37 @@ Type-only imports cross the boundary freely — `import type { goLink } from
 "@/server/db/schema"` is erased at compile time, so Drizzle row types can live
 in `lib/`.
 
+A page never imports `server/db` or a schema table directly. Queries live in
+`server/<domain>/queries.ts` so a second caller can reuse them.
+
 ### Inside a server domain
 
 - `queries.ts` — reads. Plain async functions, no `"use server"`.
 - `mutations.ts` — writes. Plain async functions, no `"use server"`.
 - `<verb-noun>.action.ts` — one file per action, each `"use server"`, flat in
-  the domain directory. Thin: `requireUser()` -> validate -> delegate ->
-  `revalidatePath()`. Nothing else.
+  the domain directory. Two shapes, nothing else in either:
+  - **write** — `requireUser()` -> validate -> delegate -> `revalidatePath()`
+  - **read** — `requireUser()` -> delegate -> return. No zod (there is no
+    untrusted input beyond the session), no revalidation. Only for reads the
+    client actually triggers: `get-board.action.ts` and `server/flyio/*`.
 
 RSCs import `queries.ts` directly. Client components import `*.action.ts`. A
 read consumed only by an RSC must never be exported from a `"use server"`
 module — that publishes it as a reachable POST endpoint for no reason. A domain
-with no client-triggered writes has no `.action.ts` file at all.
+the client never calls has no `.action.ts` file at all: `server/home/` is
+RSC-only, so it is queries and nothing else.
 
 #### Naming: the suffix goes on both the file and the export
 
 `server/tasks/move-task.action.ts` exporting `moveTaskAction`. Each half earns
 its place for a different reason:
 
-- **File suffix** is mechanical. Eslint can glob `**/*.action.ts` and enforce
-  "starts with `requireUser()`", "declares `"use server"`", "contains no raw
-  `db.` calls". The rule follows the file if it moves.
+- **File suffix** is mechanical: it makes the contract above checkable. A
+  custom eslint rule globbing `**/*.action.ts` _could_ enforce "starts with
+  `requireUser()`", "declares `"use server"`", "contains no raw `db.` calls" —
+  that is a rule to write, not config to add, so it is a follow-up rather than
+  part of the migration. The naming earns its place either way: the property
+  follows the file if it moves.
 - **Export suffix** is at the call site. `await deleteTagAction(id)` reads as a
   network round trip crossing the trust boundary; the current
   `deleteTag(t.id)` in `components/tasks/TagManagerDialog.tsx:83` is
@@ -141,6 +153,16 @@ deliberately not filed under an `integrations/` directory: one member is not a
 category, and Fly.io would contradict it anyway by being an outbound
 integration _and_ a full domain backing `/tech`.
 
+Reads the client genuinely needs are published deliberately and counted. The
+task board needs exactly one: `server/tasks/get-board.action.ts`, returning
+tasks + users + tags in a single round trip so TanStack Query can refetch after
+a mutation without three waterfalled endpoints. It is the one action that
+composes another domain's queries (`server/tags/queries.ts`); `listTasks`,
+`listUsers` and `listTags` stay unexported from any `"use server"` module.
+
+`server/flyio/` is the other case where reads are endpoints — there it is the
+point, since nothing renders them server-side.
+
 ## Tree
 
 ```
@@ -199,8 +221,8 @@ server/                    # server-only; every file: import "server-only"
     access.ts              # requireUser, resolveSession (React cache())
   cloudflare.ts            # syncDocsAccessGroup — not a domain, so it stays flat
   profile/                 # domain-named, not route-named; replaces server/admin/
-    queries.ts             # isAllowed, listProfiles
-    mutations.ts           # add/remove/update + Cloudflare sync
+    queries.ts             # isAllowed, getProfile, listProfiles
+    mutations.ts           # upsertProfile, removeProfile + Cloudflare sync
     add-profile.action.ts     remove-profile.action.ts
     update-profile.action.ts  resync-access.action.ts
   tasks/
@@ -208,6 +230,7 @@ server/                    # server-only; every file: import "server-only"
     mutations.ts           # createTask, updateTask, softDeleteTask, moveTask
     create-task.action.ts       update-task.action.ts
     soft-delete-task.action.ts  move-task.action.ts
+    get-board.action.ts         # the one published read; composes tags/queries
   tags/                    # own table, own lifecycle; task_tag stays with tasks
     queries.ts             # listTags
     mutations.ts           # createTag, updateTag, deleteTag
@@ -230,7 +253,7 @@ server/                    # server-only; every file: import "server-only"
 hooks/                     # client data layer
   use-mobile.ts
   tasks/
-    query-options.ts       # queryKey + queryFn -> actions; no directive, RSC-prefetchable
+    query-options.ts       # queryKey + queryFn -> getBoardAction; no directive, RSC-prefetchable
     use-tasks.ts           # "use client" — optimistic mutations + snapshot rollback
     use-task-drag-drop.ts
     use-task-form.ts
@@ -254,30 +277,48 @@ components/
     GoLinksManager.tsx  GoLinksList.tsx  GoLinkRow.tsx  GoLinkDialog.tsx
 ```
 
+`ui/` is kebab-case because the shadcn CLI writes those files and overwrites
+them on `add`. Feature components are PascalCase, one component per file,
+filename = export name.
+
 ## Migration
 
-Ranked by impact.
+Ranked by impact. The **Order** column is the sequence to actually execute in.
+One PR per row — rows 1, 2 and 4 touch the import graph repo-wide and are
+unreviewable bundled together. Each PR updates the CLAUDE.md paths it
+invalidates in the same commit; a deferred doc-sync commit never survives
+contact.
 
-| #   | Move                                                                                                                            | Why                                                                                                        |
-| --- | ------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
-| 1   | `lib/{db,auth,access,cloudflare,env,flyio/config}` -> `server/`                                                                 | `lib/` stops being a lie; the workaround comment in `lib/date.ts` becomes unnecessary                      |
-| 2   | `server/tasks/actions.ts` (743 lines) -> `server/tasks/{queries,mutations}.ts`, `server/tags/*`, one `*.action.ts` per endpoint | Splits the god file on real seams; stops publishing `listTasks`, `listUsers`, `listTags` as POST endpoints |
-| 3   | `server/home/{actions,home.utils}.ts` -> `server/home/queries.ts` + `lib/home/summary.ts`                                       | Fixes the `home.utils.ts` name, moves a pure reducer out of `server/`, drops action-calls-action           |
-| 4   | `lib/{tasks,flyio}/queries.ts` -> `hooks/<domain>/`                                                                             | Removes the `lib -> server` back-edge that leaves no layer ordering to reason about                        |
-| 5   | `app/(dashboard)/linktree/GoLinksManager.tsx` (617 lines) -> `components/linktree/*`                                            | Only feature component living under `app/`; contains dialog + row + list in one file                       |
-| 6   | `pnpm add server-only`; eslint `no-restricted-imports` on `lib/**`                                                              | Makes every rule above self-enforcing instead of conventional                                              |
-| 7   | One repo-wide `pnpm format` commit                                                                                              | 18 hand-written files are tab-indented; the per-file format rule guarantees diff noise                     |
+| #   | Order | Move                                                                                                                                                                                          | Why                                                                                                                                                                                                                               |
+| --- | ----- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | 4     | `lib/{db,auth,access,cloudflare,env,flyio/config}` -> `server/`                                                                                                                               | `lib/` stops being a lie; the workaround comment in `lib/date.ts` becomes unnecessary                                                                                                                                             |
+| 2   | 5     | `server/tasks/actions.ts` (743 lines) -> `server/tasks/{queries,mutations}.ts`, `server/tags/*`, one `*.action.ts` per endpoint, plus `lib/tags/{types,schemas}.ts` and `get-board.action.ts` | Splits the god file on real seams; three unbounded reads stop being POST endpoints, replaced by one `get-board.action.ts`. Carries the `TaskTagView` -> `TagView` collapse, since the tags domain and its type must land together |
+| 3   | 2     | `server/home/{actions,home.utils}.ts` -> `server/home/queries.ts` + `lib/home/summary.ts`                                                                                                     | Fixes the `home.utils.ts` name, moves a pure reducer out of `server/`, drops action-calls-action                                                                                                                                  |
+| 4   | 6     | `lib/{tasks,flyio}/queries.ts` -> `hooks/<domain>/`; `lib/flyio/styles.ts` -> `components/tech/state-meta.ts`                                                                                 | Removes the `lib -> server` back-edge that leaves no layer ordering to reason about, and empties `lib/flyio/` of everything that was never pure in the first place                                                                |
+| 5   | 7     | `app/(dashboard)/linktree/GoLinksManager.tsx` (617 lines) -> `components/linktree/*`                                                                                                          | Only feature component living under `app/`; contains dialog + row + list in one file                                                                                                                                              |
+| 6   | 3     | `pnpm add server-only`; eslint `no-restricted-imports` on `lib/**`                                                                                                                            | Makes every rule above self-enforcing instead of conventional                                                                                                                                                                     |
+| 7   | 1     | One repo-wide `pnpm format` commit                                                                                                                                                            | 18 hand-written files are tab-indented; going first keeps every later diff free of whitespace noise                                                                                                                               |
+| 8   | 8     | GitHub Actions: `pnpm lint`, `pnpm format:check`, `tsc --noEmit`, `pnpm build`                                                                                                                | No CI exists today, so row 6's eslint rule is a suggestion; this is what turns the prose above into constraint                                                                                                                    |
 
-Suggested order: 3 (smallest, already in flight) -> 6 (rule first, so the rest
-is guided) -> 1 -> 2 -> 4 -> 5 -> 7.
+Row 7 goes first: the per-file format rule otherwise mixes whitespace churn into
+every migration diff. Review it with `--ignore-all-space` and record its SHA in
+`.git-blame-ignore-revs`.
 
-Config paths to update alongside move 1: `drizzle.config.ts` (schema
-directory), `package.json` (`db:seed`). The `@/*` alias in `tsconfig.json` is
-unaffected.
+Row 1 splits one file across the boundary; the rest is mechanical moves.
+`lib/profile.ts` becomes:
 
-After move 2, `buildHomeSummary`, `lib/tasks/utils.ts`, and the
-midpoint/rebalance logic become trivially unit-testable pure functions. That is
-the moment to add a test runner, not before.
+- `normalizeEmail` -> `lib/profile.ts` (the only pure function there)
+- `isAllowed`, `getProfile`, `listProfiles` -> `server/profile/queries.ts`
+- `upsertProfile`, `removeProfile` -> `server/profile/mutations.ts`
+
+`server/auth/index.ts` calls `isAllowed` from its `databaseHooks`, which is a
+legal `server/` -> `server/` edge.
+
+Config paths to update alongside row 1: `drizzle.config.ts` (schema directory),
+`package.json` (`db:seed`). The `@/*` alias in `tsconfig.json` is unaffected.
+
+When the last row lands, delete this file's opening caveat: the tree stops being
+a target and becomes a description.
 
 ## Deliberately unchanged
 
@@ -288,3 +329,10 @@ the moment to add a test runner, not before.
 - `requireUser()` + React `cache()` as the gate design.
 - Const-array enums in `lib/types.ts` feeding both Drizzle and the client.
 - One `(dashboard)` route group. Revisit past roughly 15 routes.
+- Each directory is named by what you search it _by_, so the three naming
+  schemes do not need reconciling: `server/` by domain (`profile/`, not
+  `admin/` — you look for the table's owner), `components/` by route
+  (`admin/`, not `profile/` — you look for what is on the page), and
+  `db/schema/` by table cluster (`golinks.ts`). Renaming `components/admin/`
+  to match the server domain would break the only lookup that directory
+  exists to serve.
