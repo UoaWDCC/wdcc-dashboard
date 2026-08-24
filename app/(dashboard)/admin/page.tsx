@@ -1,5 +1,5 @@
-import { requireUser } from "@/lib/access";
-import { listProfiles } from "@/lib/profile";
+import { requireUser } from "@/server/auth/access";
+import { listProfiles } from "@/server/profile/queries";
 import { ProfileSection, type Row } from "@/components/admin/ProfileSection";
 import { ResyncButton } from "@/components/admin/ResyncButton";
 

@@ -5,7 +5,7 @@ import {
 } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { UserMenu } from "@/components/UserMenu";
-import { requireUser } from "@/lib/access";
+import { requireUser } from "@/server/auth/access";
 
 export default async function DashboardLayout({
   children,

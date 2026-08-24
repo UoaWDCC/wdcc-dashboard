@@ -1,3 +1,5 @@
+import "server-only";
+
 import { pgTable, text, timestamp, check } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { user } from "./auth";

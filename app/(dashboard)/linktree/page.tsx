@@ -1,11 +1,8 @@
 import { after } from "next/server";
-import {
-  hideExpiredGoLinks,
-  listGoLinks,
-  listGoRedirects,
-} from "@/lib/linktree";
+import { listGoLinks, listGoRedirects } from "@/server/linktree/queries";
+import { hideExpiredGoLinks } from "@/server/linktree/mutations";
 import { getTodayIso } from "@/lib/date";
-import { requireUser } from "@/lib/access";
+import { requireUser } from "@/server/auth/access";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";

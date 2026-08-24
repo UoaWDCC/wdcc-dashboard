@@ -3,7 +3,7 @@
 import "server-only";
 
 import { revalidatePath } from "next/cache";
-import { requireUser } from "@/lib/access";
+import { requireUser } from "@/server/auth/access";
 import {
   addGoLink,
   updateGoLink,
@@ -13,7 +13,7 @@ import {
   addGoRedirect,
   removeGoRedirect,
   updateGoRedirect,
-} from "@/lib/linktree";
+} from "@/server/linktree/mutations";
 import type { AddGoLinkInput, GoLinkRow } from "./types";
 import { parseString, parseRequiredString, parseBool } from "@/lib/form-parser";
 

@@ -5,7 +5,7 @@ import "server-only";
 import { revalidatePath } from "next/cache";
 import { and, asc, eq, gte, inArray, isNull, or, sql } from "drizzle-orm";
 import { z } from "zod";
-import { db } from "@/lib/db";
+import { db } from "@/server/db";
 import {
   task,
   taskAssignee,
@@ -14,8 +14,8 @@ import {
   tag,
   user,
   profile,
-} from "@/lib/db/schema";
-import { requireUser } from "@/lib/access";
+} from "@/server/db/schema";
+import { requireUser } from "@/server/auth/access";
 import {
   TASK_PRIORITIES,
   TEAMS,

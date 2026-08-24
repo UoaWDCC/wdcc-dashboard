@@ -23,34 +23,34 @@ pnpm build          # next build
 pnpm start          # next start
 pnpm lint           # eslint (flat config, next + prettier)
 pnpm format         # prettier --write .
-pnpm db:generate    # drizzle-kit generate (writes lib/db/drizzle/)
+pnpm db:generate    # drizzle-kit generate (writes server/db/drizzle/)
 pnpm db:migrate     # apply migrations
 pnpm db:push        # dev only
 pnpm db:studio      # drizzle studio
-pnpm db:seed        # tsx --env-file=.env lib/db/seed.ts
+pnpm db:seed        # tsx --env-file=.env server/db/seed.ts
 ```
 
 No test runner is configured. Do not invent `pnpm test`.
 
 CI (`.github/workflows/ci.yml`) runs `lint`, `format:check`, `build`, then
 `tsc --noEmit` on every PR. The build step needs dummy `DATABASE_URL` /
-`GOOGLE_CLIENT_*` because `lib/env.ts` throws at import; `tsc` runs after the
+`GOOGLE_CLIENT_*` because `server/env.ts` throws at import; `tsc` runs after the
 build because `tsconfig.json` includes the `.next/types` the build generates.
-Prettier skips `pnpm-lock.yaml`, `.next/` and `lib/db/drizzle/` — generated
+Prettier skips `pnpm-lock.yaml`, `.next/` and `server/db/drizzle/` — generated
 files would fail `format:check` after the next `db:generate`.
 
 ## Layout
 
-| Path                     | Contents                                                                                                                      |
-| ------------------------ | ----------------------------------------------------------------------------------------------------------------------------- |
-| `app/(dashboard)/`       | Authed pages: `/`, `/admin`, `/tasks`, `/linktree`, `/tech`, `/projects`. Layout calls `requireUser()`.                       |
-| `app/(auth)/sign-in/`    | Server Component; reads `?error=` / `?from=` and renders `components/auth/`                                                   |
-| `app/api/auth/[...all]/` | Better Auth handler via `toNextJsHandler`                                                                                     |
-| `proxy.ts`               | Next 16 proxy (NOT `middleware.ts`) — cookie-presence redirect, negative matcher; not enforcement                             |
-| `server/<domain>/`       | `"use server"` actions: `admin`, `tasks`, `linktree`, `flyio`                                                                 |
-| `lib/`                   | `access`, `auth`, `auth-errors`, `profile`, `linktree`, `date`, `env`, `form-parser`, `cloudflare`, `db/`, `tasks/`, `flyio/` |
-| `components/`            | `ui/` is shadcn-generated; feature dirs `auth/`, `admin/`, `tasks/`, `tech/`                                                  |
-| `hooks/`                 | `use-mobile`, `use-task-drag-drop`, `use-task-form`                                                                           |
+| Path                     | Contents                                                                                                                                                                                                   |
+| ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `app/(dashboard)/`       | Authed pages: `/`, `/admin`, `/tasks`, `/linktree`, `/tech`, `/projects`. Layout calls `requireUser()`.                                                                                                    |
+| `app/(auth)/sign-in/`    | Server Component; reads `?error=` / `?from=` and renders `components/auth/`                                                                                                                                |
+| `app/api/auth/[...all]/` | Better Auth handler via `toNextJsHandler`                                                                                                                                                                  |
+| `proxy.ts`               | Next 16 proxy (NOT `middleware.ts`) — cookie-presence redirect, negative matcher; not enforcement                                                                                                          |
+| `server/`                | Server-only; every file starts `import "server-only"`. `env`, `cloudflare`, `db/`, `auth/` (`index`, `access`), `profile/` (`queries`, `mutations`), and the domains `admin`, `tasks`, `linktree`, `flyio` |
+| `lib/`                   | Browser-safe: `auth-client`, `auth-errors`, `profile` (`normalizeEmail` only), `date`, `form-parser`, `types`, `utils`, `tasks/`, `home/`, `flyio/` (types, utils)                                         |
+| `components/`            | `ui/` is shadcn-generated; feature dirs `auth/`, `admin/`, `tasks/`, `tech/`                                                                                                                               |
+| `hooks/`                 | `use-mobile`, `use-task-drag-drop`, `use-task-form`                                                                                                                                                        |
 
 Import alias: `@/*` -> repo root.
 
@@ -59,8 +59,8 @@ Import alias: `@/*` -> repo root.
 - Sign-in is Google OAuth only; account linking disabled.
 - The allowlist is the `profile` table, keyed by lowercase email. `isAllowed()` = row exists. A `databaseHooks.user.create.before` hook throws `NotAllowedError` for unknown emails, so non-allowlisted users never get a user row.
 - Auth failures surface as `/sign-in?error=<code>` (`onAPIError.errorURL`). **`APIError.message` IS the error code** — `NotAllowedError` / `AllowlistLookupError` pass a key from `AUTH_ERROR_CODES`, and Better Auth forwards that message verbatim as the query param. Giving them a human-readable message instead silently degrades every rejection to the generic "Sign-in failed" panel. Copy lives in `lib/auth-errors.ts`; never render provider-supplied `error_description` (phishing vector).
-- **All signed-in users are admins.** `requireUser` (`lib/access.ts`) is the intended and sufficient gate — including on `/admin` actions. Do not add `requireAdmin` or role checks unless explicitly asked.
-- `requireUser()` (via the internal `resolveSession()` in `lib/access.ts`) re-checks the allowlist on every request and signs the user out if their profile was removed; it fails closed on DB errors.
+- **All signed-in users are admins.** `requireUser` (`server/auth/access.ts`) is the intended and sufficient gate — including on `/admin` actions. Do not add `requireAdmin` or role checks unless explicitly asked.
+- `requireUser()` (via the internal `resolveSession()` in `server/auth/access.ts`) re-checks the allowlist on every request and signs the user out if their profile was removed; it fails closed on DB errors.
 - `proxy.ts` only checks that a session cookie exists — it never validates it. Its matcher is a negative pattern covering everything except `/sign-in`, `/api/auth`, and static assets, so new routes are gated by default. It saves an RSC render on signed-out requests; it is never enforcement.
 - Call `requireUser()` at **every** entry point: every exported server action, and every page that fetches data or schedules `after()` work. The layout gate is not sufficient on its own — layout and page render concurrently, so the layout's redirect cannot stop the page's fetches from running. Keep the layout call anyway: it supplies the session for `UserMenu` and is the only gate on pages that fetch nothing.
 - Redundant `requireUser()` calls are free. `resolveSession()` is wrapped in React `cache()`, so it resolves once per request no matter how many actions call it.
@@ -69,8 +69,8 @@ Import alias: `@/*` -> repo root.
 
 ## Data layer
 
-- Schema: `lib/db/schema/{auth,profile,golinks,tasks,enums}.ts`, re-exported from `index.ts`; `drizzle.config.ts` points at the directory.
-- Migrations are committed SQL in `lib/db/drizzle/` with `meta/_journal.json`. Change schema -> `pnpm db:generate` -> commit the generated SQL. Never hand-edit applied migrations.
+- Schema: `server/db/schema/{auth,profile,golinks,tasks,enums}.ts`, re-exported from `index.ts`; `drizzle.config.ts` points at the directory.
+- Migrations are committed SQL in `server/db/drizzle/` with `meta/_journal.json`. Change schema -> `pnpm db:generate` -> commit the generated SQL. Never hand-edit applied migrations.
 - Emails are lowercase everywhere, enforced by `check` constraints on `user.email`, `profile.email`, `tag.name`. Always route through `normalizeEmail()`.
 - `profile.email` is the primary key and the FK target for `task_assignee` (`onUpdate: cascade`). `profile.kind` is `personal` | `shared`; shared mailboxes can be task assignees but are excluded from Cloudflare access sync.
 - Enums come from `lib/types.ts` const arrays (`TASK_STATUSES`, `TASK_PRIORITIES`, `TEAMS`, `PROFILE_KINDS`); add values there, then regenerate.
@@ -95,8 +95,8 @@ Column identity is derived, not stored (`lib/tasks/utils.ts`, `lib/tasks/types.t
 ## Gotchas
 
 - Next 16: the request-interception file is `proxy.ts` exporting `proxy()`, not `middleware.ts`. Read `node_modules/next/dist/docs/` before using any Next API.
-- `lib/env.ts` validates only `DATABASE_URL`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` and throws at import. `BETTER_AUTH_SECRET` / `BETTER_AUTH_URL` are read by Better Auth itself; `CLOUDFLARE_*` are read lazily in `lib/cloudflare.ts`.
+- `server/env.ts` validates only `DATABASE_URL`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` and throws at import. `BETTER_AUTH_SECRET` / `BETTER_AUTH_URL` are read by Better Auth itself; `CLOUDFLARE_*` are read lazily in `server/cloudflare.ts`.
 - `ALLOWED_EMAILS` appears in `.env.example` but no code reads it. The allowlist is the `profile` table.
-- `lib/flyio/config.ts` uses `fs` at module load: server-only. Tokens come from `FLY_TOKENS` (JSON object of `org-slug -> token`) or a gitignored `fly-tokens.json`. With neither, `/tech` renders an empty state.
+- `server/flyio/config.ts` uses `fs` at module load: server-only. Tokens come from `FLY_TOKENS` (JSON object of `org-slug -> token`) or a gitignored `fly-tokens.json`. With neither, `/tech` renders an empty state.
 - `syncDocsAccessGroup()` refuses to push an empty allowlist and serializes writes in-process; failures are surfaced through the Resync button on `/admin`.
 - `/projects` is a placeholder page.

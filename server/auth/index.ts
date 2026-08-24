@@ -1,11 +1,14 @@
+import "server-only";
+
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { APIError } from "better-auth/api";
 import { AUTH_ERROR_CODES } from "@/lib/auth-errors";
-import { db } from "@/lib/db";
-import * as schema from "@/lib/db/schema";
-import { env } from "@/lib/env";
-import { getProfile, isAllowed, normalizeEmail } from "@/lib/profile";
+import { db } from "@/server/db";
+import * as schema from "@/server/db/schema";
+import { env } from "@/server/env";
+import { normalizeEmail } from "@/lib/profile";
+import { getProfile, isAllowed } from "@/server/profile/queries";
 
 export class NotAllowedError extends APIError {
   constructor() {

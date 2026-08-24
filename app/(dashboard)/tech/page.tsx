@@ -3,7 +3,7 @@ import {
   dehydrate,
   HydrationBoundary,
 } from "@tanstack/react-query";
-import { orgSlugs } from "@/lib/flyio/config";
+import { orgSlugs } from "@/server/flyio/config";
 import { appsQuery, machinesQuery, metricsQuery } from "@/lib/flyio/queries";
 import { FlyMetrics } from "@/components/tech/FlyDashboard";
 import type { FlyApp } from "@/lib/flyio/types";

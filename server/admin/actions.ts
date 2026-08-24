@@ -5,11 +5,12 @@ import "server-only";
 import { revalidatePath } from "next/cache";
 import { after } from "next/server";
 import { and, eq, inArray, isNull, sql } from "drizzle-orm";
-import { db } from "@/lib/db";
-import { profile, task, taskAssignee } from "@/lib/db/schema";
-import { requireUser } from "@/lib/access";
-import { upsertProfile, normalizeEmail } from "@/lib/profile";
-import { syncDocsAccessGroup } from "@/lib/cloudflare";
+import { db } from "@/server/db";
+import { profile, task, taskAssignee } from "@/server/db/schema";
+import { requireUser } from "@/server/auth/access";
+import { normalizeEmail } from "@/lib/profile";
+import { upsertProfile } from "@/server/profile/mutations";
+import { syncDocsAccessGroup } from "@/server/cloudflare";
 import { TEAMS, PROFILE_KINDS } from "@/lib/types";
 import {
   parseEmail,
