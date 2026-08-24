@@ -302,7 +302,7 @@ contact.
 | 6   | 3     | `import "server-only"` at the top of every `server/**` module; eslint `no-restricted-imports` on `lib/**`; `pnpm add server-only` + `--conditions=react-server` on the `db:*` scripts         | Makes every rule above self-enforcing instead of conventional                                                                                                                                                                     |
 | 7   | 1     | One repo-wide `pnpm format` commit, plus `.prettierignore` (lockfile, `.next/`, `lib/db/drizzle/`) and a plain CI workflow: `pnpm lint`, `pnpm format:check`, `pnpm build`, `tsc --noEmit`    | 18 hand-written files are tab-indented; going first keeps every later diff free of whitespace noise. CI ships here so rows 1-6 land machine-checked instead of on trust                                                           |
 | 8   | 9     | CI ratchet: add row 6's eslint `no-restricted-imports` to the pipeline once `lib/` is actually pure                                                                                           | Row 6's rule is a suggestion until it is enforced, and it can only be enforced after rows 1 and 4 remove the `lib -> server` back-edge                                                                                            |
-| 9   | 5     | Rebaseline the Drizzle migration chain: `introspect` a fresh `0000` from the live database, archive `0000`-`0008`, insert the baseline row into `__drizzle_migrations`                        | `meta/0005`-`0008_snapshot.json` share one `id` and one `prevId`, so `db:generate` aborts on a chain collision; their contents also predate the hand-written SQL in `0006`-`0008`, so a repaired chain would still diff wrong     |
+| 9   | 5     | Rebaselined the Drizzle migration chain: single `0000_baseline.sql` generated from `server/db/schema/`, `0000`-`0008` dropped, `drizzle.__drizzle_migrations` collapsed to one row (done)     | `meta/0005`-`0008_snapshot.json` shared one `id` and one `prevId`, so `db:generate` aborted on a chain collision; their contents also predated the hand-written SQL in `0006`-`0008`, so a repaired chain would still diff wrong  |
 
 Row 7 goes first: the per-file format rule otherwise mixes whitespace churn into
 every migration diff. Review it with `--ignore-all-space` and record its SHA in
@@ -318,13 +318,18 @@ server` back-edge, and row 4 is what removes them. Delete the exemption block
 with row 4. Type-only imports are allowed through (`allowTypeImports`), which is
 the boundary rule stated above.
 
-Row 9 is unrelated to the layer work and needs a live database, so it gets its
-own branch rather than riding along with a code-motion PR. It is not urgent —
-rows 2-5 change no schema — but it blocks the next `server/db/schema/` edit, and
-it must land after row 1 so it writes into `server/db/drizzle/` rather than a
-directory that is still moving. `db:migrate` is unaffected throughout: it reads
-`_journal.json` and the SQL files, never the snapshots, which is why this went
-unnoticed.
+Row 9 landed with row 1 rather than on its own branch. The old chain is
+recoverable from git (`581761d` is where `0006`-`0008` were committed with
+copies of `0005_snapshot.json` in place of generated ones). The baseline was
+generated from `server/db/schema/` after confirming it matched the live database
+by introspection — 12 tables, 95 columns, 4 enums, 16 FKs identical, the only
+differences being how Postgres echoes check-constraint text.
+
+`db:migrate` never saw the corruption: it reads `_journal.json` and the SQL
+files, never the snapshots, which is why this went unnoticed until a `generate`
+was attempted. Environments other than the one in `.env` still hold nine
+bookkeeping rows; each needs the same `DELETE` + `INSERT` before its next
+`db:migrate`, or it will try to apply the baseline over live tables.
 
 Row 1 splits one file across the boundary; the rest is mechanical moves.
 `lib/profile.ts` becomes:
