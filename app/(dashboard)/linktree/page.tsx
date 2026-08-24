@@ -12,7 +12,7 @@ import {
   removeGoRedirectAction,
   toggleGoRedirectHiddenAction,
 } from "@/server/linktree/actions";
-import GoLinksManager from "./GoLinksManager";
+import GoLinksManager from "@/components/linktree/GoLinksManager";
 
 export default async function LinktreePage() {
   // The layout gate renders concurrently with this page, and `after` callbacks

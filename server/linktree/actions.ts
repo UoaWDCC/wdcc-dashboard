@@ -14,7 +14,7 @@ import {
   removeGoRedirect,
   updateGoRedirect,
 } from "@/server/linktree/mutations";
-import type { AddGoLinkInput, GoLinkRow } from "./types";
+import type { AddGoLinkInput, GoLinkRow } from "@/lib/linktree/types";
 import { parseString, parseRequiredString, parseBool } from "@/lib/form-parser";
 
 export async function addGoLinkAction(
