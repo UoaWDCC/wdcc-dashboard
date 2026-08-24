@@ -16,6 +16,7 @@ import {
 } from "@/server/linktree/mutations";
 import type { AddGoLinkInput, GoLinkRow } from "@/lib/linktree/types";
 import { parseString, parseRequiredString, parseBool } from "@/lib/form-parser";
+import { scheduleGoRevalidate } from "@/server/go";
 
 export async function addGoLinkAction(
   input: AddGoLinkInput
@@ -36,6 +37,7 @@ export async function addGoLinkAction(
     },
     session.user.id
   );
+  scheduleGoRevalidate("addGoLinkAction");
   revalidatePath("/linktree");
   return row;
 }
@@ -58,24 +60,28 @@ export async function updateGoLinkAction(id: string, input: AddGoLinkInput) {
     },
     session.user.id
   );
+  scheduleGoRevalidate("updateGoLinkAction");
   revalidatePath("/linktree");
 }
 
 export async function removeGoLinkAction(id: string) {
   await requireUser("/linktree");
   await removeGoLink(id);
+  scheduleGoRevalidate("removeGoLinkAction");
   revalidatePath("/linktree");
 }
 
 export async function toggleGoLinkHiddenAction(id: string, hidden: boolean) {
   const session = await requireUser("/linktree");
   await toggleGoLinkHidden(id, hidden, session.user.id);
+  scheduleGoRevalidate("toggleGoLinkHiddenAction");
   revalidatePath("/linktree");
 }
 
 export async function reorderGoLinksAction(orderedIds: string[]) {
   const session = await requireUser("/linktree");
   await reorderGoLinks(orderedIds, session.user.id);
+  scheduleGoRevalidate("reorderGoLinksAction");
   revalidatePath("/linktree");
 }
 
