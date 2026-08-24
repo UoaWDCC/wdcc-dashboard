@@ -10,6 +10,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "db:generate": "NODE_OPTIONS=--conditions=react-server drizzle-kit generate",
+    "db:check": "NODE_OPTIONS=--conditions=react-server drizzle-kit check",
     "db:migrate": "NODE_OPTIONS=--conditions=react-server drizzle-kit migrate",
     "db:push": "NODE_OPTIONS=--conditions=react-server drizzle-kit push",
     "db:studio": "NODE_OPTIONS=--conditions=react-server drizzle-kit studio",
