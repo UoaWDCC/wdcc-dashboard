@@ -33,12 +33,6 @@ const eslintConfig = defineConfig([
       ],
     },
   },
-  // Row 4 of ARCHITECTURE.md moves these two to hooks/; until then they are the
-  // lib -> server back-edge the rule above exists to prevent.
-  {
-    files: ["lib/flyio/queries.ts", "lib/tasks/queries.ts"],
-    rules: { "no-restricted-imports": "off" },
-  },
 ]);
 
 export default eslintConfig;

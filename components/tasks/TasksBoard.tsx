@@ -21,7 +21,7 @@ import type {
 } from "@/lib/tasks/types";
 import type { TagView } from "@/lib/tags/types";
 import { userColId, colTasks } from "@/lib/tasks/utils";
-import { useTaskDragDrop } from "@/hooks/use-task-drag-drop";
+import { useTaskDragDrop } from "@/hooks/tasks/use-task-drag-drop";
 import {
   taskKeys,
   useTasksQuery,
@@ -29,7 +29,7 @@ import {
   useCreateTaskMutation,
   useDeleteTaskMutation,
   useMoveTaskMutation,
-} from "@/lib/tasks/queries";
+} from "@/hooks/tasks/use-tasks";
 import { TaskCard } from "@/components/tasks/TaskCard";
 import { TaskColumn } from "@/components/tasks/TaskColumn";
 import { TagManagerDialog } from "@/components/tasks/TagManagerDialog";

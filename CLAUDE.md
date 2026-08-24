@@ -42,16 +42,16 @@ files would fail `format:check` after the next `db:generate`.
 
 ## Layout
 
-| Path                     | Contents                                                                                                                                                                                                           |
-| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `app/(dashboard)/`       | Authed pages: `/`, `/admin`, `/tasks`, `/linktree`, `/tech`, `/projects`. Layout calls `requireUser()`.                                                                                                            |
-| `app/(auth)/sign-in/`    | Server Component; reads `?error=` / `?from=` and renders `components/auth/`                                                                                                                                        |
-| `app/api/auth/[...all]/` | Better Auth handler via `toNextJsHandler`                                                                                                                                                                          |
-| `proxy.ts`               | Next 16 proxy (NOT `middleware.ts`) — cookie-presence redirect, negative matcher; not enforcement                                                                                                                  |
-| `server/`                | Server-only; every file starts `import "server-only"`. `env`, `cloudflare`, `db/`, `auth/` (`index`, `access`), `profile/` (`queries`, `mutations`), and the domains `admin`, `tasks`, `tags`, `linktree`, `flyio` |
-| `lib/`                   | Browser-safe: `auth-client`, `auth-errors`, `profile` (`normalizeEmail` only), `date`, `form-parser`, `types`, `utils`, `tasks/`, `tags/`, `home/`, `flyio/` (types, utils)                                        |
-| `components/`            | `ui/` is shadcn-generated; feature dirs `auth/`, `admin/`, `tasks/`, `tech/`                                                                                                                                       |
-| `hooks/`                 | `use-mobile`, `use-task-drag-drop`, `use-task-form`                                                                                                                                                                |
+| Path                     | Contents                                                                                                                                                                                                                                              |
+| ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `app/(dashboard)/`       | Authed pages: `/`, `/admin`, `/tasks`, `/linktree`, `/tech`, `/projects`. Layout calls `requireUser()`.                                                                                                                                               |
+| `app/(auth)/sign-in/`    | Server Component; reads `?error=` / `?from=` and renders `components/auth/`                                                                                                                                                                           |
+| `app/api/auth/[...all]/` | Better Auth handler via `toNextJsHandler`                                                                                                                                                                                                             |
+| `proxy.ts`               | Next 16 proxy (NOT `middleware.ts`) — cookie-presence redirect, negative matcher; not enforcement                                                                                                                                                     |
+| `server/`                | Server-only; every file starts `import "server-only"`. `env`, `cloudflare`, `db/`, `auth/` (`index`, `access`), `profile/` (`queries`, `mutations`), and the domains `admin`, `tasks`, `tags`, `linktree`, `flyio`                                    |
+| `lib/`                   | Browser-safe, pure: `auth-client`, `auth-errors`, `profile` (`normalizeEmail` only), `date`, `form-parser`, `types`, `utils`, `tasks/`, `tags/`, `home/`, `flyio/` (types, utils). No value imports from `@/server/` (eslint `no-restricted-imports`) |
+| `components/`            | `ui/` is shadcn-generated; feature dirs `auth/`, `admin/`, `tasks/`, `tech/`                                                                                                                                                                          |
+| `hooks/`                 | `use-mobile`, `use-task-drag-drop`, `use-task-form`                                                                                                                                                                                                   |
 
 Import alias: `@/*` -> repo root.
 
@@ -87,7 +87,7 @@ Column identity is derived, not stored (`lib/tasks/utils.ts`, `lib/tasks/types.t
 - per-user column = status `active` and that email in `task_assignee`.
 - `done` = status `done`; `completedAt` set on entry, cleared on exit; `listTasks` drops done tasks older than 30 days and any `deletedAt` row.
 - Ordering: `task.position` for backlog/done; `task_assignee.position` for user columns. Active rows have `task.position` zeroed. Positions are fractional midpoints; `moveTask` (`server/tasks/mutations/move.ts`) takes `pg_advisory_xact_lock` on both columns and rebalances when the gap falls under `1e-6`. Task record writes live in `mutations/task.ts`; the two files share no helper.
-- Mutations flow through TanStack Query hooks in `lib/tasks/queries.ts` with optimistic updates plus a snapshot rollback; server actions revalidate `/tasks`.
+- Mutations flow through TanStack Query hooks in `hooks/tasks/use-tasks.ts` with optimistic updates plus a snapshot rollback; server actions revalidate `/tasks`.
 
 ## Conventions
 

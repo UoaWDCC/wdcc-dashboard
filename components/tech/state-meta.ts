@@ -1,4 +1,4 @@
-import type { AppStatus } from "./types";
+import type { AppStatus } from "@/lib/flyio/types";
 
 export const STATE_META: Record<
   AppStatus,
