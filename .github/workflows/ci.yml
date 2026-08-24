@@ -36,7 +36,7 @@ jobs:
       # migration, or a hand-written migration whose snapshot was not
       # regenerated, both show up here as an uncommitted file.
       - name: Migrations are in sync with the schema
-        timeout-minutes: 5
+        timeout-minutes: 2
         run: |
           pnpm db:generate < /dev/null
           if [ -n "$(git status --porcelain server/db/drizzle)" ]; then
