@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { PRIORITY_DOT, PRIORITY_LABEL } from "@/lib/types";
-import { type MyTask } from "@/lib/home/summary";
+import { type MyTask } from "@/lib/home/types";
 import { dueLabel, dueState } from "@/lib/home/utils";
 
 const DUE_CLASS: Record<string, string> = {
