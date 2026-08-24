@@ -35,27 +35,27 @@ cp .env.example .env
 
 Required:
 
-| Variable               | Description                                            |
-| ---------------------- | ------------------------------------------------------ |
-| `DATABASE_URL`         | PostgreSQL connection string (Neon)                    |
-| `BETTER_AUTH_SECRET`   | Random string, 32+ chars                               |
-| `BETTER_AUTH_URL`      | App URL, e.g. `http://localhost:3000`                  |
-| `GOOGLE_CLIENT_ID`     | Google OAuth client ID                                 |
-| `GOOGLE_CLIENT_SECRET` | Google OAuth client secret                             |
+| Variable               | Description                           |
+| ---------------------- | ------------------------------------- |
+| `DATABASE_URL`         | PostgreSQL connection string (Neon)   |
+| `BETTER_AUTH_SECRET`   | Random string, 32+ chars              |
+| `BETTER_AUTH_URL`      | App URL, e.g. `http://localhost:3000` |
+| `GOOGLE_CLIENT_ID`     | Google OAuth client ID                |
+| `GOOGLE_CLIENT_SECRET` | Google OAuth client secret            |
 
 Optional — Cloudflare Zero Trust sync (the admin page's Resync button; profile changes fail loudly without these):
 
-| Variable                        | Description                                                     |
-| ------------------------------- | --------------------------------------------------------------- |
-| `CLOUDFLARE_API_TOKEN`          | Token with Access: Groups edit                                  |
-| `CLOUDFLARE_ACCOUNT_ID`         | Cloudflare account ID                                           |
-| `CLOUDFLARE_ACCESS_GROUP_ID`    | Access group synced with personal profiles                      |
-| `CLOUDFLARE_ACCESS_GROUP_NAME`  | Set to make writes idempotent; otherwise the name is read first |
+| Variable                       | Description                                                     |
+| ------------------------------ | --------------------------------------------------------------- |
+| `CLOUDFLARE_API_TOKEN`         | Token with Access: Groups edit                                  |
+| `CLOUDFLARE_ACCOUNT_ID`        | Cloudflare account ID                                           |
+| `CLOUDFLARE_ACCESS_GROUP_ID`   | Access group synced with personal profiles                      |
+| `CLOUDFLARE_ACCESS_GROUP_NAME` | Set to make writes idempotent; otherwise the name is read first |
 
 Optional — Fly.io dashboard (`/tech`):
 
-| Variable     | Description                                                        |
-| ------------ | ------------------------------------------------------------------- |
+| Variable     | Description                                                              |
+| ------------ | ------------------------------------------------------------------------ |
 | `FLY_TOKENS` | JSON object mapping org slug to Fly API token, e.g. `{"wdcc":"tok_..."}` |
 
 Locally you can instead copy `fly-tokens.example.json` to `fly-tokens.json` (gitignored). Without either, `/tech` shows an empty state.
@@ -96,19 +96,19 @@ Open http://localhost:3000.
 
 ## Scripts
 
-| Command            | Description                       |
-| ------------------ | --------------------------------- |
-| `pnpm dev`         | Start dev server                   |
-| `pnpm build`       | Production build                   |
-| `pnpm start`       | Start production server            |
-| `pnpm lint`        | Run ESLint                         |
-| `pnpm format`      | Format with Prettier               |
-| `pnpm format:check`| Check formatting                   |
-| `pnpm db:generate` | Generate Drizzle migrations        |
-| `pnpm db:migrate`  | Apply migrations                   |
-| `pnpm db:push`     | Push schema directly (dev only)    |
-| `pnpm db:studio`   | Open Drizzle Studio                |
-| `pnpm db:seed`     | Seed profiles, tags and demo tasks |
+| Command             | Description                        |
+| ------------------- | ---------------------------------- |
+| `pnpm dev`          | Start dev server                   |
+| `pnpm build`        | Production build                   |
+| `pnpm start`        | Start production server            |
+| `pnpm lint`         | Run ESLint                         |
+| `pnpm format`       | Format with Prettier               |
+| `pnpm format:check` | Check formatting                   |
+| `pnpm db:generate`  | Generate Drizzle migrations        |
+| `pnpm db:migrate`   | Apply migrations                   |
+| `pnpm db:push`      | Push schema directly (dev only)    |
+| `pnpm db:studio`    | Open Drizzle Studio                |
+| `pnpm db:seed`      | Seed profiles, tags and demo tasks |
 
 ## Auth
 

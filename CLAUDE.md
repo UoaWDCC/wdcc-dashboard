@@ -32,11 +32,18 @@ pnpm db:seed        # tsx --env-file=.env lib/db/seed.ts
 
 No test runner is configured. Do not invent `pnpm test`.
 
+CI (`.github/workflows/ci.yml`) runs `lint`, `format:check`, `build`, then
+`tsc --noEmit` on every PR. The build step needs dummy `DATABASE_URL` /
+`GOOGLE_CLIENT_*` because `lib/env.ts` throws at import; `tsc` runs after the
+build because `tsconfig.json` includes the `.next/types` the build generates.
+Prettier skips `pnpm-lock.yaml`, `.next/` and `lib/db/drizzle/` — generated
+files would fail `format:check` after the next `db:generate`.
+
 ## Layout
 
 | Path                     | Contents                                                                                                                      |
 | ------------------------ | ----------------------------------------------------------------------------------------------------------------------------- |
-| `app/(dashboard)/`       | Authed pages: `/`, `/admin`, `/tasks`, `/linktree`, `/tech`, `/projects`. Layout calls `requireUser()`.         |
+| `app/(dashboard)/`       | Authed pages: `/`, `/admin`, `/tasks`, `/linktree`, `/tech`, `/projects`. Layout calls `requireUser()`.                       |
 | `app/(auth)/sign-in/`    | Server Component; reads `?error=` / `?from=` and renders `components/auth/`                                                   |
 | `app/api/auth/[...all]/` | Better Auth handler via `toNextJsHandler`                                                                                     |
 | `proxy.ts`               | Next 16 proxy (NOT `middleware.ts`) — cookie-presence redirect, negative matcher; not enforcement                             |
