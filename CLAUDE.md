@@ -71,6 +71,8 @@ Import alias: `@/*` -> repo root.
 
 - Schema: `server/db/schema/{auth,profile,golinks,tasks,enums}.ts`, re-exported from `index.ts`; `drizzle.config.ts` points at the directory.
 - Migrations are committed SQL in `server/db/drizzle/` with `meta/_journal.json`. Change schema -> `pnpm db:generate` -> commit the generated SQL. Never hand-edit applied migrations.
+- History was rebaselined to a single `0000_baseline.sql` (generated from the schema, verified against the live DB by introspection). `meta/` snapshots are the generator's state, not decoration: hand-writing SQL is fine, but the snapshot must still come from `db:generate`, which is the step that mints the `id`/`prevId` chain. Copying a previous snapshot forward breaks `generate` and nothing else, so it surfaces long after the fact.
+- `db:*` scripts pass `--conditions=react-server` because drizzle-kit and `db:seed` load `server/` modules outside Next's bundler, where `import "server-only"` otherwise throws.
 - Emails are lowercase everywhere, enforced by `check` constraints on `user.email`, `profile.email`, `tag.name`. Always route through `normalizeEmail()`.
 - `profile.email` is the primary key and the FK target for `task_assignee` (`onUpdate: cascade`). `profile.kind` is `personal` | `shared`; shared mailboxes can be task assignees but are excluded from Cloudflare access sync.
 - Enums come from `lib/types.ts` const arrays (`TASK_STATUSES`, `TASK_PRIORITIES`, `TEAMS`, `PROFILE_KINDS`); add values there, then regenerate.
