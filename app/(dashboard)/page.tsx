@@ -1,5 +1,5 @@
 import { requireUser } from "@/lib/access";
-import { getHomeSummary } from "@/server/home/actions";
+import { getHomeSummary } from "@/server/home/queries";
 import { BoardPulse } from "@/components/home/BoardPulse";
 import { MyDayCard } from "@/components/home/MyDayCard";
 import { QuickLinks } from "@/components/home/QuickLinks";
