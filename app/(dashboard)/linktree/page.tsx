@@ -1,6 +1,7 @@
 import { after } from "next/server";
 import { listGoLinks, listGoRedirects } from "@/server/linktree/queries";
 import { hideExpiredGoLinks } from "@/server/linktree/mutations";
+import { revalidateGoSite } from "@/server/go";
 import { getTodayIso } from "@/lib/date";
 import { requireUser } from "@/server/auth/access";
 import { Button } from "@/components/ui/button";
@@ -20,7 +21,16 @@ export default async function LinktreePage() {
   await requireUser("/linktree");
 
   // Runs after the response is sent, so the render itself stays read-only.
-  after(hideExpiredGoLinks);
+  after(async () => {
+    // Auto-hiding an expired link changes what the go app serves, so purge its
+    // cache too — but only when a row actually flipped.
+    if ((await hideExpiredGoLinks()) === 0) return;
+    try {
+      await revalidateGoSite();
+    } catch (err) {
+      console.error("[hideExpiredGoLinks] revalidateGoSite failed:", err);
+    }
+  });
 
   const today = getTodayIso();
   const [links, redirects] = await Promise.all([
