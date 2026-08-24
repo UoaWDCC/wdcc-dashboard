@@ -1,3 +1,5 @@
+import "server-only";
+
 import { flyTokens } from "../../lib/flyio/config";
 
 export async function flyFetch<T>(url: string, orgSlug: string): Promise<T> {

@@ -1,3 +1,5 @@
+import "server-only";
+
 import { requireUser } from "@/lib/access";
 import { getTodayIso } from "@/lib/date";
 import { type HomeSummary } from "@/lib/home/types";

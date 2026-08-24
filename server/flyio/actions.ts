@@ -1,5 +1,7 @@
 "use server";
 
+import "server-only";
+
 import { requireUser } from "@/lib/access";
 import { flyFetch } from "@/server/flyio/fetcher";
 import type {
