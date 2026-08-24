@@ -18,9 +18,10 @@ Five layers, one-way dependencies:
 
 `lib/` means "safe in a client bundle". `server/` means "explodes in a client
 bundle". Both directions are enforceable: `import "server-only"` guards one side,
-an eslint `no-restricted-imports` rule on `lib/**` guards the other. The package
-needs no install — Next resolves the import itself and ships its own type
-declarations.
+an eslint `no-restricted-imports` rule on `lib/**` guards the other. Next
+resolves the import itself, but drizzle-kit and `db:seed` load `server/env.ts`
+and `server/db/` outside the bundler, so the package is a real dependency and
+those scripts pass `--conditions=react-server`.
 
 Type-only imports cross the boundary freely — `import type { goLink } from
 "@/server/db/schema"` is erased at compile time, so Drizzle row types can live
@@ -294,13 +295,14 @@ contact.
 | #   | Order | Move                                                                                                                                                                                          | Why                                                                                                                                                                                                                               |
 | --- | ----- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 1   | 4     | `lib/{db,auth,access,cloudflare,env,flyio/config}` -> `server/`                                                                                                                               | `lib/` stops being a lie; the workaround comment in `lib/date.ts` becomes unnecessary                                                                                                                                             |
-| 2   | 5     | `server/tasks/actions.ts` (743 lines) -> `server/tasks/{queries,mutations}.ts`, `server/tags/*`, one `*.action.ts` per endpoint, plus `lib/tags/{types,schemas}.ts` and `get-board.action.ts` | Splits the god file on real seams; three unbounded reads stop being POST endpoints, replaced by one `get-board.action.ts`. Carries the `TaskTagView` -> `TagView` collapse, since the tags domain and its type must land together |
+| 2   | 6     | `server/tasks/actions.ts` (743 lines) -> `server/tasks/{queries,mutations}.ts`, `server/tags/*`, one `*.action.ts` per endpoint, plus `lib/tags/{types,schemas}.ts` and `get-board.action.ts` | Splits the god file on real seams; three unbounded reads stop being POST endpoints, replaced by one `get-board.action.ts`. Carries the `TaskTagView` -> `TagView` collapse, since the tags domain and its type must land together |
 | 3   | 2     | `server/home/{actions,home.utils}.ts` -> `server/home/queries.ts` + `lib/home/summary.ts`                                                                                                     | Fixes the `home.utils.ts` name, moves a pure reducer out of `server/`, drops action-calls-action                                                                                                                                  |
-| 4   | 6     | `lib/{tasks,flyio}/queries.ts` -> `hooks/<domain>/`; `lib/flyio/styles.ts` -> `components/tech/state-meta.ts`                                                                                 | Removes the `lib -> server` back-edge that leaves no layer ordering to reason about, and empties `lib/flyio/` of everything that was never pure in the first place                                                                |
-| 5   | 7     | `app/(dashboard)/linktree/GoLinksManager.tsx` (617 lines) -> `components/linktree/*`                                                                                                          | Only feature component living under `app/`; contains dialog + row + list in one file                                                                                                                                              |
-| 6   | 3     | `import "server-only"` at the top of every `server/**` module; eslint `no-restricted-imports` on `lib/**`                                                                                     | Makes every rule above self-enforcing instead of conventional                                                                                                                                                                     |
+| 4   | 7     | `lib/{tasks,flyio}/queries.ts` -> `hooks/<domain>/`; `lib/flyio/styles.ts` -> `components/tech/state-meta.ts`                                                                                 | Removes the `lib -> server` back-edge that leaves no layer ordering to reason about, and empties `lib/flyio/` of everything that was never pure in the first place                                                                |
+| 5   | 8     | `app/(dashboard)/linktree/GoLinksManager.tsx` (617 lines) -> `components/linktree/*`                                                                                                          | Only feature component living under `app/`; contains dialog + row + list in one file                                                                                                                                              |
+| 6   | 3     | `import "server-only"` at the top of every `server/**` module; eslint `no-restricted-imports` on `lib/**`; `pnpm add server-only` + `--conditions=react-server` on the `db:*` scripts         | Makes every rule above self-enforcing instead of conventional                                                                                                                                                                     |
 | 7   | 1     | One repo-wide `pnpm format` commit, plus `.prettierignore` (lockfile, `.next/`, `lib/db/drizzle/`) and a plain CI workflow: `pnpm lint`, `pnpm format:check`, `pnpm build`, `tsc --noEmit`    | 18 hand-written files are tab-indented; going first keeps every later diff free of whitespace noise. CI ships here so rows 1-6 land machine-checked instead of on trust                                                           |
-| 8   | 8     | CI ratchet: add row 6's eslint `no-restricted-imports` to the pipeline once `lib/` is actually pure                                                                                           | Row 6's rule is a suggestion until it is enforced, and it can only be enforced after rows 1 and 4 remove the `lib -> server` back-edge                                                                                            |
+| 8   | 9     | CI ratchet: add row 6's eslint `no-restricted-imports` to the pipeline once `lib/` is actually pure                                                                                           | Row 6's rule is a suggestion until it is enforced, and it can only be enforced after rows 1 and 4 remove the `lib -> server` back-edge                                                                                            |
+| 9   | 5     | Rebaseline the Drizzle migration chain: `introspect` a fresh `0000` from the live database, archive `0000`-`0008`, insert the baseline row into `__drizzle_migrations`                        | `meta/0005`-`0008_snapshot.json` share one `id` and one `prevId`, so `db:generate` aborts on a chain collision; their contents also predate the hand-written SQL in `0006`-`0008`, so a repaired chain would still diff wrong     |
 
 Row 7 goes first: the per-file format rule otherwise mixes whitespace churn into
 every migration diff. Review it with `--ignore-all-space` and record its SHA in
@@ -315,6 +317,14 @@ Row 6's `no-restricted-imports` rule ships with `lib/flyio/queries.ts` and
 server` back-edge, and row 4 is what removes them. Delete the exemption block
 with row 4. Type-only imports are allowed through (`allowTypeImports`), which is
 the boundary rule stated above.
+
+Row 9 is unrelated to the layer work and needs a live database, so it gets its
+own branch rather than riding along with a code-motion PR. It is not urgent —
+rows 2-5 change no schema — but it blocks the next `server/db/schema/` edit, and
+it must land after row 1 so it writes into `server/db/drizzle/` rather than a
+directory that is still moving. `db:migrate` is unaffected throughout: it reads
+`_journal.json` and the SQL files, never the snapshots, which is why this went
+unnoticed.
 
 Row 1 splits one file across the boundary; the rest is mechanical moves.
 `lib/profile.ts` becomes:

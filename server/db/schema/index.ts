@@ -1,3 +1,5 @@
+import "server-only";
+
 export * from "./enums";
 export * from "./auth";
 export * from "./profile";

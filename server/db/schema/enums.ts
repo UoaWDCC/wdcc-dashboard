@@ -1,3 +1,5 @@
+import "server-only";
+
 import { pgEnum } from "drizzle-orm/pg-core";
 import {
   TASK_STATUSES,

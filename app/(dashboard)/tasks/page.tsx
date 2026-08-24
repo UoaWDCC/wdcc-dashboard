@@ -1,7 +1,7 @@
 import { listUsers, listTags, listTasks } from "@/server/tasks/actions";
 import TasksBoard from "@/components/tasks/TasksBoard";
-import { requireUser } from "@/lib/access";
-import { getProfile } from "@/lib/profile";
+import { requireUser } from "@/server/auth/access";
+import { getProfile } from "@/server/profile/queries";
 
 export default async function TasksPage() {
   const session = await requireUser("/tasks");

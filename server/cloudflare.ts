@@ -1,4 +1,7 @@
-import { listProfiles } from "@/lib/profile";
+import "server-only";
+
+import { z } from "zod";
+import { listProfiles } from "@/server/profile/queries";
 
 const API = "https://api.cloudflare.com/client/v4";
 
@@ -10,24 +13,37 @@ type AccessGroup = {
   require?: unknown[];
 };
 
+const envSchema = z.object({
+  CLOUDFLARE_API_TOKEN: z.string().min(1),
+  CLOUDFLARE_ACCOUNT_ID: z.string().min(1),
+  CLOUDFLARE_ACCESS_GROUP_ID: z.string().min(1),
+  CLOUDFLARE_ACCESS_GROUP_NAME: z.string().min(1).optional(),
+});
+
 function env() {
-  const token = process.env.CLOUDFLARE_API_TOKEN;
-  const account = process.env.CLOUDFLARE_ACCOUNT_ID;
-  const group = process.env.CLOUDFLARE_ACCESS_GROUP_ID;
-  if (!token || !account || !group) {
-    throw new Error(
-      "Missing Cloudflare env vars: CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID, CLOUDFLARE_ACCESS_GROUP_ID"
-    );
+  const parsed = envSchema.safeParse({
+    CLOUDFLARE_API_TOKEN: process.env.CLOUDFLARE_API_TOKEN,
+    CLOUDFLARE_ACCOUNT_ID: process.env.CLOUDFLARE_ACCOUNT_ID,
+    CLOUDFLARE_ACCESS_GROUP_ID: process.env.CLOUDFLARE_ACCESS_GROUP_ID,
+    // "" means unset here — it selects the GET-then-PUT fallback in runSync.
+    CLOUDFLARE_ACCESS_GROUP_NAME:
+      process.env.CLOUDFLARE_ACCESS_GROUP_NAME || undefined,
+  });
+  if (!parsed.success) {
+    const issues = parsed.error.issues
+      .map((i) => `  - ${i.path.join(".")}: ${i.message}`)
+      .join("\n");
+    throw new Error(`Invalid Cloudflare environment variables:\n${issues}`);
   }
   return {
-    token,
-    account,
-    group,
-    groupName: process.env.CLOUDFLARE_ACCESS_GROUP_NAME,
+    token: parsed.data.CLOUDFLARE_API_TOKEN,
+    account: parsed.data.CLOUDFLARE_ACCOUNT_ID,
+    group: parsed.data.CLOUDFLARE_ACCESS_GROUP_ID,
+    groupName: parsed.data.CLOUDFLARE_ACCESS_GROUP_NAME,
   };
 }
 
-async function cf<T>(path: string, init?: RequestInit): Promise<T> {
+async function cloudflare<T>(path: string, init?: RequestInit): Promise<T> {
   const { token } = env();
   const res = await fetch(`${API}${path}`, {
     ...init,
@@ -97,7 +113,7 @@ async function runSync() {
   let exclude: unknown[] = [];
   let require: unknown[] = [];
   if (!name) {
-    const current = await cf<AccessGroup>(
+    const current = await cloudflare<AccessGroup>(
       `/accounts/${account}/access/groups/${group}`
     );
     name = current.name;
@@ -105,7 +121,7 @@ async function runSync() {
     require = current.require ?? [];
   }
 
-  await cf<AccessGroup>(`/accounts/${account}/access/groups/${group}`, {
+  await cloudflare<AccessGroup>(`/accounts/${account}/access/groups/${group}`, {
     method: "PUT",
     body: JSON.stringify({ name, include, exclude, require }),
   });

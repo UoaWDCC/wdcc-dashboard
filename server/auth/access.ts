@@ -1,9 +1,11 @@
+import "server-only";
+
 import { cache } from "react";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { AUTH_ERROR_CODES } from "@/lib/auth-errors";
-import { auth } from "@/lib/auth";
-import { isAllowed } from "@/lib/profile";
+import { auth } from "@/server/auth";
+import { isAllowed } from "@/server/profile/queries";
 
 type ActiveSession = NonNullable<
   Awaited<ReturnType<typeof auth.api.getSession>>

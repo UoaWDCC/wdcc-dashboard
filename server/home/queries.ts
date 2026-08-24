@@ -1,10 +1,10 @@
 import "server-only";
 
-import { requireUser } from "@/lib/access";
+import { requireUser } from "@/server/auth/access";
 import { getTodayIso } from "@/lib/date";
 import { type HomeSummary } from "@/lib/home/types";
 import { buildHomeSummary } from "@/lib/home/summary";
-import { getProfile } from "@/lib/profile";
+import { getProfile } from "@/server/profile/queries";
 import { listTasks } from "@/server/tasks/actions";
 
 export async function getHomeSummary(): Promise<HomeSummary> {

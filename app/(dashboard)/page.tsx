@@ -1,4 +1,4 @@
-import { requireUser } from "@/lib/access";
+import { requireUser } from "@/server/auth/access";
 import { getHomeSummary } from "@/server/home/queries";
 import { BoardPulse } from "@/components/home/BoardPulse";
 import { MyDayCard } from "@/components/home/MyDayCard";
