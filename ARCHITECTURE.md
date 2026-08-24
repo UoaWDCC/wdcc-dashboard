@@ -310,6 +310,12 @@ needs `DATABASE_URL`, `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` set to dummy
 values, since `lib/env.ts` throws at import. `tsc --noEmit` runs after the build,
 not before: `tsconfig.json` includes `.next/types`, which the build generates.
 
+Row 6's `no-restricted-imports` rule ships with `lib/flyio/queries.ts` and
+`lib/tasks/queries.ts` exempted in `eslint.config.mjs` — they are the `lib ->
+server` back-edge, and row 4 is what removes them. Delete the exemption block
+with row 4. Type-only imports are allowed through (`allowTypeImports`), which is
+the boundary rule stated above.
+
 Row 1 splits one file across the boundary; the rest is mechanical moves.
 `lib/profile.ts` becomes:
 
