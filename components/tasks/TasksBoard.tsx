@@ -15,11 +15,11 @@ import {
 import { TEAMS, type Team } from "@/lib/types";
 import type {
   BoardUser,
-  TagOption,
   ClientTask,
   ColumnMeta,
   TaskView,
 } from "@/lib/tasks/types";
+import type { TagView } from "@/lib/tags/types";
 import { userColId, colTasks } from "@/lib/tasks/utils";
 import { useTaskDragDrop } from "@/hooks/use-task-drag-drop";
 import {
@@ -44,7 +44,7 @@ export default function TasksBoard({
 }: {
   initialTasks: TaskView[];
   users: BoardUser[];
-  tags: TagOption[];
+  tags: TagView[];
   defaultTeam?: Team | null;
 }) {
   const queryClient = useQueryClient();

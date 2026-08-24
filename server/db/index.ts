@@ -8,3 +8,5 @@ import * as schema from "./schema";
 export const pool = new Pool({ connectionString: env.DATABASE_URL });
 
 export const db = drizzle(pool, { schema });
+
+export type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];

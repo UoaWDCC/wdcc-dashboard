@@ -1,11 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
-  createTask,
-  listTasks,
-  moveTask,
-  softDeleteTask,
-  updateTask,
+  createTaskAction,
+  getBoardAction,
+  moveTaskAction,
+  softDeleteTaskAction,
+  updateTaskAction,
 } from "@/server/tasks/actions";
 import type {
   ClientMoveTask,
@@ -27,7 +27,7 @@ export const taskKeys = {
 export function useTasksQuery(initialTasks: TaskView[]) {
   return useQuery({
     queryKey: taskKeys.all,
-    queryFn: async () => fromServer(await listTasks()),
+    queryFn: async () => fromServer((await getBoardAction()).tasks),
     initialData: () => fromServer(initialTasks),
   });
 }
@@ -36,7 +36,7 @@ export function useUpdateTaskMutation(tagIdByName: Map<string, string>) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ next }: { next: ClientTask }) => {
-      await updateTask(next.id, {
+      await updateTaskAction(next.id, {
         title: next.title,
         description: next.description,
         priority: next.priority,
@@ -71,7 +71,7 @@ export function useUpdateTaskMutation(tagIdByName: Map<string, string>) {
     },
     onSuccess: () => toast.success("Task updated"),
     onError: (err, _vars, ctx) => {
-      console.error("updateTask failed", err);
+      console.error("updateTaskAction failed", err);
       toast.error("Failed to update task");
       if (ctx?.snapshot) queryClient.setQueryData(taskKeys.all, ctx.snapshot);
     },
@@ -83,11 +83,11 @@ export function useCreateTaskMutation() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (input: CreateTaskInput) => {
-      await createTask(input);
+      await createTaskAction(input);
     },
     onSuccess: () => toast.success("Task created"),
     onError: (err) => {
-      console.error("createTask failed", err);
+      console.error("createTaskAction failed", err);
       toast.error("Failed to create task");
     },
     onSettled: () => queryClient.invalidateQueries({ queryKey: taskKeys.all }),
@@ -98,7 +98,7 @@ export function useDeleteTaskMutation() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
-      await softDeleteTask(id);
+      await softDeleteTaskAction(id);
     },
     onMutate: async (id) => {
       await queryClient.cancelQueries({ queryKey: taskKeys.all });
@@ -110,7 +110,7 @@ export function useDeleteTaskMutation() {
     },
     onSuccess: () => toast.success("Task deleted"),
     onError: (err, _id, ctx) => {
-      console.error("softDeleteTask failed", err);
+      console.error("softDeleteTaskAction failed", err);
       toast.error("Failed to delete task");
       if (ctx?.snapshot) queryClient.setQueryData(taskKeys.all, ctx.snapshot);
     },
@@ -146,7 +146,7 @@ export function useMoveTaskMutation() {
         input.taskId,
         input.toCol
       );
-      await moveTask({
+      await moveTaskAction({
         taskId: input.taskId,
         from: colIdToColumnId(input.fromCol),
         to: colIdToColumnId(input.toCol),
@@ -155,7 +155,7 @@ export function useMoveTaskMutation() {
       });
     },
     onError: (err, _input, ctx) => {
-      console.error("moveTask failed", err);
+      console.error("moveTaskAction failed", err);
       toast.error("Failed to move task");
       if (ctx?.snapshot) queryClient.setQueryData(taskKeys.all, ctx.snapshot);
     },

@@ -11,9 +11,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { deleteTag, updateTag } from "@/server/tasks/actions";
+import { deleteTagAction, updateTagAction } from "@/server/tags/actions";
 import { toast } from "sonner";
-import type { TagOption } from "@/lib/tasks/types";
+import type { TagView } from "@/lib/tags/types";
 
 export function TagManagerDialog({
   open,
@@ -23,7 +23,7 @@ export function TagManagerDialog({
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
-  tags: TagOption[];
+  tags: TagView[];
   onChanged: () => void;
 }) {
   const [pending, startTransition] = useTransition();
@@ -44,17 +44,17 @@ export function TagManagerDialog({
     setDrafts((d) => ({ ...d, [id]: { name: value } }));
   }
 
-  function startEdit(t: TagOption) {
+  function startEdit(t: TagView) {
     setDrafts((d) => ({ ...d, [t.id]: { name: t.name } }));
     setEditingId(t.id);
   }
 
-  function cancelEdit(t: TagOption) {
+  function cancelEdit(t: TagView) {
     setDrafts((d) => ({ ...d, [t.id]: { name: t.name } }));
     setEditingId(null);
   }
 
-  function save(t: TagOption) {
+  function save(t: TagView) {
     const d = drafts[t.id];
     if (!d) return;
     const name = d.name.trim().toLowerCase();
@@ -65,27 +65,27 @@ export function TagManagerDialog({
     const patch = { name };
     startTransition(async () => {
       try {
-        await updateTag(t.id, patch);
+        await updateTagAction(t.id, patch);
         setEditingId(null);
         onChanged();
         toast.success("Tag updated");
       } catch (e) {
-        console.error("updateTag failed", e);
+        console.error("updateTagAction failed", e);
         toast.error("Failed to update tag");
       }
     });
   }
 
-  function remove(t: TagOption) {
+  function remove(t: TagView) {
     if (!confirm(`Delete tag "${t.name}"? It will be removed from all tasks.`))
       return;
     startTransition(async () => {
       try {
-        await deleteTag(t.id);
+        await deleteTagAction(t.id);
         onChanged();
         toast.success("Tag deleted");
       } catch (e) {
-        console.error("deleteTag failed", e);
+        console.error("deleteTagAction failed", e);
         toast.error("Failed to delete tag");
       }
     });

@@ -8,13 +8,13 @@ is; this file describes what it becomes.
 
 Five layers, one-way dependencies:
 
-| Layer         | Invariant                                              | May import                                                                                             |
-| ------------- | ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------ |
-| `lib/`        | Browser-safe. No value imports from `@/server/`.       | `lib/` only (type-only `@/server/db/schema` is OK)                                                     |
-| `server/`     | Server-only. Every file starts `import "server-only"`. | `lib/`, `server/`                                                                                      |
-| `hooks/`      | Client data + interaction layer.                       | `lib/`, `server/**/*.action.ts`                                                                        |
-| `components/` | UI.                                                    | `lib/`, `hooks/`, `server/**/*.action.ts`                                                              |
-| `app/`        | Routes only. `requireUser()` at every fetching entry.  | `lib/`, `hooks/`, `components/`, `server/**/queries.ts`, `server/**/*.action.ts`, `server/auth/access` |
+| Layer         | Invariant                                              | May import                                                                                            |
+| ------------- | ------------------------------------------------------ | ----------------------------------------------------------------------------------------------------- |
+| `lib/`        | Browser-safe. No value imports from `@/server/`.       | `lib/` only (type-only `@/server/db/schema` is OK)                                                    |
+| `server/`     | Server-only. Every file starts `import "server-only"`. | `lib/`, `server/`                                                                                     |
+| `hooks/`      | Client data + interaction layer.                       | `lib/`, `server/**/actions.ts`                                                                        |
+| `components/` | UI.                                                    | `lib/`, `hooks/`, `server/**/actions.ts`                                                              |
+| `app/`        | Routes only. `requireUser()` at every fetching entry.  | `lib/`, `hooks/`, `components/`, `server/**/queries.ts`, `server/**/actions.ts`, `server/auth/access` |
 
 `lib/` means "safe in a client bundle". `server/` means "explodes in a client
 bundle". Both directions are enforceable: `import "server-only"` guards one side,
@@ -34,63 +34,42 @@ A page never imports `server/db` or a schema table directly. Queries live in
 
 - `queries.ts` — reads. Plain async functions, no `"use server"`.
 - `mutations.ts` — writes. Plain async functions, no `"use server"`.
-- `<verb-noun>.action.ts` — one file per action, each `"use server"`, flat in
-  the domain directory. Two shapes, nothing else in either:
+- `actions.ts` — one file per domain, `"use server"`, thin delegates only.
+  Two shapes, nothing else in the file:
   - **write** — `requireUser()` -> validate -> delegate -> `revalidatePath()`
   - **read** — `requireUser()` -> delegate -> return. No zod (there is no
     untrusted input beyond the session), no revalidation. Only for reads the
-    client actually triggers: `get-board.action.ts` and `server/flyio/*`.
+    client actually triggers: `getBoardAction` and `server/flyio/*`.
 
-RSCs import `queries.ts` directly. Client components import `*.action.ts`. A
+RSCs import `queries.ts` directly. Client components import `actions.ts`. A
 read consumed only by an RSC must never be exported from a `"use server"`
 module — that publishes it as a reachable POST endpoint for no reason. A domain
-the client never calls has no `.action.ts` file at all: `server/home/` is
+the client never calls has no `actions.ts` file at all: `server/home/` is
 RSC-only, so it is queries and nothing else.
 
-#### Naming: the suffix goes on both the file and the export
+#### Naming: the `Action` suffix is on the export
 
-`server/tasks/move-task.action.ts` exporting `moveTaskAction`. Each half earns
-its place for a different reason:
-
-- **File suffix** is mechanical: it makes the contract above checkable. A
-  custom eslint rule globbing `**/*.action.ts` _could_ enforce "starts with
-  `requireUser()`", "declares `"use server"`", "contains no raw `db.` calls" —
-  that is a rule to write, not config to add, so it is a follow-up rather than
-  part of the migration. The naming earns its place either way: the property
-  follows the file if it moves.
-- **Export suffix** is at the call site. `await deleteTagAction(id)` reads as a
-  network round trip crossing the trust boundary; the current
-  `deleteTag(t.id)` in `components/tasks/TagManagerDialog.tsx:83` is
-  indistinguishable from a local call.
-
-There is no `actions/` subdirectory — `actions/move-task.action.ts` states it
-twice, the same redundancy that makes `home.utils.ts` wrong. The surface stays
-one command: `ls server/*/*.action.ts`.
-
-The suffix also removes the collision between `moveTask` (mutation) and
+`server/tasks/actions.ts` exporting `moveTaskAction`. The suffix earns its place
+at the call site: `await deleteTagAction(id)` reads as a network round trip
+crossing the trust boundary; a bare `deleteTag(t.id)` is indistinguishable from
+a local call. It also removes the collision between `moveTask` (mutation) and
 `moveTaskAction` (action), so nothing needs import aliasing.
 
-#### Why actions are one-per-file and the DAL is not
+One `actions.ts` per domain, not one file per action. Every domain in the repo
+uses this shape, so `server/tasks/` and `server/tags/` are not exceptions, and
+the surface is still one command: `grep -n "^export async function" server/*/actions.ts`.
 
-Actions are the trust boundary, so isolation wins:
-
-- `ls server/*/*.action.ts` prints the whole network surface of the app.
-- Adding an endpoint is a file addition in the diff, not a line buried in a
-  large module — it is reviewable.
-- "Everything exported from a `"use server"` file is public" stops being a
-  footgun when each file exports exactly one thing.
-- The zod schema for a single-use action sits next to it.
-
-Queries and mutations are internal, so cohesion wins. They share select shapes,
-join logic, position math, and lock helpers; one-per-file forces either a web of
-cross-imports or a `_shared.ts` that is the grouped file with extra steps.
-
-Split the DAL by **sub-domain**, never by function, and only past roughly 300
-lines — `mutations/task.ts` + `mutations/position.ts`, not
-`mutations/move-task.ts`.
+The footgun that "everything exported from a `"use server"` file is public"
+warns about is real, but file count is not what defuses it. What defuses it is
+that reads and writes live in `queries.ts` / `mutations.ts` as plain modules —
+the three unbounded reads that leaked as POST endpoints did so because they sat
+in a `"use server"` file, not because that file was large. The rule that keeps
+`actions.ts` honest is that it contains delegates and nothing else: no `db.`
+calls, no join logic, no position math. A file of four-line functions stays
+reviewable at any length.
 
 ```ts
-// server/tasks/move-task.action.ts
+// server/tasks/actions.ts
 "use server";
 import { revalidatePath } from "next/cache";
 import { moveTaskSchema } from "@/lib/tasks/schemas";
@@ -98,11 +77,21 @@ import { requireUser } from "@/server/auth/access";
 import { moveTask } from "@/server/tasks/mutations";
 
 export async function moveTaskAction(raw: unknown) {
-  await requireUser();
-  await moveTask(moveTaskSchema.parse(raw));
+  const session = await requireUser();
+  await moveTask(moveTaskSchema.parse(raw), session.user.id);
   revalidatePath("/tasks");
 }
 ```
+
+Queries and mutations are grouped for a different reason: they share select
+shapes, join logic, position math, and lock helpers, so one-per-file would force
+either a web of cross-imports or a `_shared.ts` that is the grouped file with
+extra steps.
+
+Split the DAL by **sub-domain**, never by function, and only past roughly 300
+lines — `mutations/task.ts` + `mutations/move.ts`, not
+`mutations/move-task.ts`. `server/tasks/` is the one domain past the threshold:
+the two halves share no helper, so the split needed no `_shared.ts`.
 
 ### What counts as a domain
 
@@ -157,7 +146,7 @@ category, and Fly.io would contradict it anyway by being an outbound
 integration _and_ a full domain backing `/tech`.
 
 Reads the client genuinely needs are published deliberately and counted. The
-task board needs exactly one: `server/tasks/get-board.action.ts`, returning
+task board needs exactly one: `getBoardAction`, returning
 tasks + users + tags in a single round trip so TanStack Query can refetch after
 a mutation without three waterfalled endpoints. It is the one action that
 composes another domain's queries (`server/tags/queries.ts`); `listTasks`,
@@ -226,30 +215,34 @@ server/                    # server-only; every file: import "server-only"
   profile/                 # domain-named, not route-named; replaces server/admin/
     queries.ts             # isAllowed, getProfile, listProfiles
     mutations.ts           # upsertProfile, removeProfile + Cloudflare sync
-    add-profile.action.ts     remove-profile.action.ts
-    update-profile.action.ts  resync-access.action.ts
+    actions.ts             # addProfileAction, removeProfileAction,
+                           # updateProfileAction, resyncAccessAction
   tasks/
     queries.ts             # listTasks, listUsers  <- RSCs import these
-    mutations.ts           # createTask, updateTask, softDeleteTask, moveTask
-    create-task.action.ts       update-task.action.ts
-    soft-delete-task.action.ts  move-task.action.ts
-    get-board.action.ts         # the one published read; composes tags/queries
+    mutations/
+      task.ts              # createTask, updateTask, softDeleteTask
+      move.ts              # moveTask + advisory locks, fractional positions,
+                           # rebalance — no helper shared with task.ts
+    actions.ts             # createTaskAction, updateTaskAction,
+                           # softDeleteTaskAction, moveTaskAction, and
+                           # getBoardAction — the one published read,
+                           # composing tags/queries
   tags/                    # own table, own lifecycle; task_tag stays with tasks
     queries.ts             # listTags
     mutations.ts           # createTag, updateTag, deleteTag
-    create-tag.action.ts  update-tag.action.ts  delete-tag.action.ts
+    actions.ts             # createTagAction, updateTagAction, deleteTagAction
   home/
     queries.ts             # getHomeSummary — no "use server", no action file at all
   linktree/
     queries.ts  mutations.ts
-    add-go-link.action.ts     update-go-link.action.ts
-    delete-go-link.action.ts  reorder-go-links.action.ts
+    actions.ts             # addGoLinkAction, updateGoLinkAction,
+                           # removeGoLinkAction, reorderGoLinksAction, ...
   flyio/
     config.ts              # reads fs at module load
     fetcher.ts
-    list-apps.action.ts  list-machines.action.ts  get-metrics.action.ts
-                           # reads, but client-triggered via TanStack —
-                           # being endpoints is the point here
+    actions.ts             # listAppsAction, listMachinesAction,
+                           # getMetricsAction — reads, but client-triggered
+                           # via TanStack, so being endpoints is the point
 ```
 
 ```
@@ -292,17 +285,17 @@ unreviewable bundled together. Each PR updates the CLAUDE.md paths it
 invalidates in the same commit; a deferred doc-sync commit never survives
 contact.
 
-| #   | Order | Move                                                                                                                                                                                          | Why                                                                                                                                                                                                                               |
-| --- | ----- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | 4     | `lib/{db,auth,access,cloudflare,env,flyio/config}` -> `server/`                                                                                                                               | `lib/` stops being a lie; the workaround comment in `lib/date.ts` becomes unnecessary                                                                                                                                             |
-| 2   | 6     | `server/tasks/actions.ts` (743 lines) -> `server/tasks/{queries,mutations}.ts`, `server/tags/*`, one `*.action.ts` per endpoint, plus `lib/tags/{types,schemas}.ts` and `get-board.action.ts` | Splits the god file on real seams; three unbounded reads stop being POST endpoints, replaced by one `get-board.action.ts`. Carries the `TaskTagView` -> `TagView` collapse, since the tags domain and its type must land together |
-| 3   | 2     | `server/home/{actions,home.utils}.ts` -> `server/home/queries.ts` + `lib/home/summary.ts`                                                                                                     | Fixes the `home.utils.ts` name, moves a pure reducer out of `server/`, drops action-calls-action                                                                                                                                  |
-| 4   | 7     | `lib/{tasks,flyio}/queries.ts` -> `hooks/<domain>/`; `lib/flyio/styles.ts` -> `components/tech/state-meta.ts`                                                                                 | Removes the `lib -> server` back-edge that leaves no layer ordering to reason about, and empties `lib/flyio/` of everything that was never pure in the first place                                                                |
-| 5   | 8     | `app/(dashboard)/linktree/GoLinksManager.tsx` (617 lines) -> `components/linktree/*`                                                                                                          | Only feature component living under `app/`; contains dialog + row + list in one file                                                                                                                                              |
-| 6   | 3     | `import "server-only"` at the top of every `server/**` module; eslint `no-restricted-imports` on `lib/**`; `pnpm add server-only` + `--conditions=react-server` on the `db:*` scripts         | Makes every rule above self-enforcing instead of conventional                                                                                                                                                                     |
-| 7   | 1     | One repo-wide `pnpm format` commit, plus `.prettierignore` (lockfile, `.next/`, `lib/db/drizzle/`) and a plain CI workflow: `pnpm lint`, `pnpm format:check`, `pnpm build`, `tsc --noEmit`    | 18 hand-written files are tab-indented; going first keeps every later diff free of whitespace noise. CI ships here so rows 1-6 land machine-checked instead of on trust                                                           |
-| 8   | 9     | CI ratchet: add row 6's eslint `no-restricted-imports` to the pipeline once `lib/` is actually pure                                                                                           | Row 6's rule is a suggestion until it is enforced, and it can only be enforced after rows 1 and 4 remove the `lib -> server` back-edge                                                                                            |
-| 9   | 5     | Rebaselined the Drizzle migration chain: single `0000_baseline.sql` generated from `server/db/schema/`, `0000`-`0008` dropped, `drizzle.__drizzle_migrations` collapsed to one row (done)     | `meta/0005`-`0008_snapshot.json` shared one `id` and one `prevId`, so `db:generate` aborted on a chain collision; their contents also predated the hand-written SQL in `0006`-`0008`, so a repaired chain would still diff wrong  |
+| #   | Order | Move                                                                                                                                                                                               | Why                                                                                                                                                                                                                              |
+| --- | ----- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | 4     | `lib/{db,auth,access,cloudflare,env,flyio/config}` -> `server/`                                                                                                                                    | `lib/` stops being a lie; the workaround comment in `lib/date.ts` becomes unnecessary                                                                                                                                            |
+| 2   | 6     | `server/tasks/actions.ts` (743 lines) -> `server/tasks/{queries,mutations}.ts`, `server/tags/*`, a delegates-only `actions.ts` per domain, plus `lib/tags/{types,schemas}.ts` and `getBoardAction` | Splits the god file on real seams; three unbounded reads stop being POST endpoints, replaced by one `getBoardAction`. Carries the `TaskTagView` -> `TagView` collapse, since the tags domain and its type must land together     |
+| 3   | 2     | `server/home/{actions,home.utils}.ts` -> `server/home/queries.ts` + `lib/home/summary.ts`                                                                                                          | Fixes the `home.utils.ts` name, moves a pure reducer out of `server/`, drops action-calls-action                                                                                                                                 |
+| 4   | 7     | `lib/{tasks,flyio}/queries.ts` -> `hooks/<domain>/`; `lib/flyio/styles.ts` -> `components/tech/state-meta.ts`                                                                                      | Removes the `lib -> server` back-edge that leaves no layer ordering to reason about, and empties `lib/flyio/` of everything that was never pure in the first place                                                               |
+| 5   | 8     | `app/(dashboard)/linktree/GoLinksManager.tsx` (617 lines) -> `components/linktree/*`                                                                                                               | Only feature component living under `app/`; contains dialog + row + list in one file                                                                                                                                             |
+| 6   | 3     | `import "server-only"` at the top of every `server/**` module; eslint `no-restricted-imports` on `lib/**`; `pnpm add server-only` + `--conditions=react-server` on the `db:*` scripts              | Makes every rule above self-enforcing instead of conventional                                                                                                                                                                    |
+| 7   | 1     | One repo-wide `pnpm format` commit, plus `.prettierignore` (lockfile, `.next/`, `lib/db/drizzle/`) and a plain CI workflow: `pnpm lint`, `pnpm format:check`, `pnpm build`, `tsc --noEmit`         | 18 hand-written files are tab-indented; going first keeps every later diff free of whitespace noise. CI ships here so rows 1-6 land machine-checked instead of on trust                                                          |
+| 8   | 9     | CI ratchet: add row 6's eslint `no-restricted-imports` to the pipeline once `lib/` is actually pure                                                                                                | Row 6's rule is a suggestion until it is enforced, and it can only be enforced after rows 1 and 4 remove the `lib -> server` back-edge                                                                                           |
+| 9   | 5     | Rebaselined the Drizzle migration chain: single `0000_baseline.sql` generated from `server/db/schema/`, `0000`-`0008` dropped, `drizzle.__drizzle_migrations` collapsed to one row (done)          | `meta/0005`-`0008_snapshot.json` shared one `id` and one `prevId`, so `db:generate` aborted on a chain collision; their contents also predated the hand-written SQL in `0006`-`0008`, so a repaired chain would still diff wrong |
 
 Row 7 goes first: the per-file format rule otherwise mixes whitespace churn into
 every migration diff. Review it with `--ignore-all-space` and record its SHA in

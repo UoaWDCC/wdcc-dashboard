@@ -1,4 +1,5 @@
 import type { TaskPriority, TaskStatus, Team } from "@/lib/types";
+import type { TagView } from "@/lib/tags/types";
 
 export type ColumnId =
   | { kind: "backlog" }
@@ -9,12 +10,6 @@ export type TaskAssigneeView = {
   profileEmail: string;
   name: string;
   position: number;
-};
-
-export type TaskTagView = {
-  id: string;
-  name: string;
-  color: string | null;
 };
 
 export type TaskLinkView = {
@@ -38,7 +33,7 @@ export type TaskView = {
   createdAt: Date;
   updatedAt: Date;
   assignees: TaskAssigneeView[];
-  tags: TaskTagView[];
+  tags: TagView[];
   links: TaskLinkView[];
 };
 
@@ -76,14 +71,18 @@ export type MoveTaskInput = {
   afterId: string | null;
 };
 
+export type BoardData = {
+  tasks: TaskView[];
+  users: BoardUser[];
+  tags: TagView[];
+};
+
 export type BoardUser = {
   email: string;
   name: string;
   image: string | null;
   team: Team | null;
 };
-
-export type TagOption = { id: string; name: string; color: string | null };
 
 export type ClientAssignee = { profileEmail: string; position: number };
 

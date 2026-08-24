@@ -42,16 +42,16 @@ files would fail `format:check` after the next `db:generate`.
 
 ## Layout
 
-| Path                     | Contents                                                                                                                                                                                                   |
-| ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `app/(dashboard)/`       | Authed pages: `/`, `/admin`, `/tasks`, `/linktree`, `/tech`, `/projects`. Layout calls `requireUser()`.                                                                                                    |
-| `app/(auth)/sign-in/`    | Server Component; reads `?error=` / `?from=` and renders `components/auth/`                                                                                                                                |
-| `app/api/auth/[...all]/` | Better Auth handler via `toNextJsHandler`                                                                                                                                                                  |
-| `proxy.ts`               | Next 16 proxy (NOT `middleware.ts`) — cookie-presence redirect, negative matcher; not enforcement                                                                                                          |
-| `server/`                | Server-only; every file starts `import "server-only"`. `env`, `cloudflare`, `db/`, `auth/` (`index`, `access`), `profile/` (`queries`, `mutations`), and the domains `admin`, `tasks`, `linktree`, `flyio` |
-| `lib/`                   | Browser-safe: `auth-client`, `auth-errors`, `profile` (`normalizeEmail` only), `date`, `form-parser`, `types`, `utils`, `tasks/`, `home/`, `flyio/` (types, utils)                                         |
-| `components/`            | `ui/` is shadcn-generated; feature dirs `auth/`, `admin/`, `tasks/`, `tech/`                                                                                                                               |
-| `hooks/`                 | `use-mobile`, `use-task-drag-drop`, `use-task-form`                                                                                                                                                        |
+| Path                     | Contents                                                                                                                                                                                                           |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `app/(dashboard)/`       | Authed pages: `/`, `/admin`, `/tasks`, `/linktree`, `/tech`, `/projects`. Layout calls `requireUser()`.                                                                                                            |
+| `app/(auth)/sign-in/`    | Server Component; reads `?error=` / `?from=` and renders `components/auth/`                                                                                                                                        |
+| `app/api/auth/[...all]/` | Better Auth handler via `toNextJsHandler`                                                                                                                                                                          |
+| `proxy.ts`               | Next 16 proxy (NOT `middleware.ts`) — cookie-presence redirect, negative matcher; not enforcement                                                                                                                  |
+| `server/`                | Server-only; every file starts `import "server-only"`. `env`, `cloudflare`, `db/`, `auth/` (`index`, `access`), `profile/` (`queries`, `mutations`), and the domains `admin`, `tasks`, `tags`, `linktree`, `flyio` |
+| `lib/`                   | Browser-safe: `auth-client`, `auth-errors`, `profile` (`normalizeEmail` only), `date`, `form-parser`, `types`, `utils`, `tasks/`, `tags/`, `home/`, `flyio/` (types, utils)                                        |
+| `components/`            | `ui/` is shadcn-generated; feature dirs `auth/`, `admin/`, `tasks/`, `tech/`                                                                                                                                       |
+| `hooks/`                 | `use-mobile`, `use-task-drag-drop`, `use-task-form`                                                                                                                                                                |
 
 Import alias: `@/*` -> repo root.
 
@@ -86,12 +86,14 @@ Column identity is derived, not stored (`lib/tasks/utils.ts`, `lib/tasks/types.t
 - `backlog` = status `backlog`, zero assignees (invariant).
 - per-user column = status `active` and that email in `task_assignee`.
 - `done` = status `done`; `completedAt` set on entry, cleared on exit; `listTasks` drops done tasks older than 30 days and any `deletedAt` row.
-- Ordering: `task.position` for backlog/done; `task_assignee.position` for user columns. Active rows have `task.position` zeroed. Positions are fractional midpoints; `moveTask` takes `pg_advisory_xact_lock` on both columns and rebalances when the gap falls under `1e-6`.
+- Ordering: `task.position` for backlog/done; `task_assignee.position` for user columns. Active rows have `task.position` zeroed. Positions are fractional midpoints; `moveTask` (`server/tasks/mutations/move.ts`) takes `pg_advisory_xact_lock` on both columns and rebalances when the gap falls under `1e-6`. Task record writes live in `mutations/task.ts`; the two files share no helper.
 - Mutations flow through TanStack Query hooks in `lib/tasks/queries.ts` with optimistic updates plus a snapshot rollback; server actions revalidate `/tasks`.
 
 ## Conventions
 
-- Server actions validate input with zod (`server/tasks/actions.ts`) or the `lib/form-parser.ts` helpers for `FormData`; they throw plain `Error` with a readable message.
+- Server actions validate input with zod (schemas live in `lib/<domain>/schemas.ts`) or the `lib/form-parser.ts` helpers for `FormData`; they throw plain `Error` with a readable message.
+- Inside a server domain: `queries.ts` (reads) and `mutations.ts` (writes) are plain functions with no `"use server"`; `actions.ts` is the domain's `"use server"` file and holds thin delegates only — `requireUser()` -> parse -> call the mutation -> `revalidatePath()`, no `db.` calls. Exports carry the `Action` suffix. RSCs import `queries.ts`; client components import `actions.ts`. `requireUser()` lives in the action (and in the page), not in the query. `grep -n "^export async function" server/*/actions.ts` is the whole network surface.
+- The task board publishes exactly one read: `getBoardAction` (tasks + users + tags in one round trip). `listTasks`, `listUsers` and `listTags` are never exported from a `"use server"` module.
 - Reads stay side-effect free. Deferred work uses `after()` from `next/server` (expired go-links hidden after render, Cloudflare sync after admin writes). Exception: `removeProfileAction` syncs Cloudflare inline because revoking access must complete before returning.
 - "Today" is always `getTodayIso()` from `lib/date.ts` (Pacific/Auckland) and is passed into queries rather than using `CURRENT_DATE`.
 - Prettier: double quotes, semicolons, 2 spaces, width 80. Several files were committed with tabs; run `pnpm format` on files you touch.
