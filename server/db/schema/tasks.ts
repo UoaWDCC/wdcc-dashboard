@@ -3,7 +3,6 @@ import "server-only";
 import {
   pgTable,
   text,
-  integer,
   doublePrecision,
   timestamp,
   date,
@@ -28,8 +27,6 @@ export const task = pgTable(
     priority: taskPriority("priority"),
     team: taskTeam("team"),
     dueDate: date("due_date"),
-    startDate: date("start_date"),
-    estimateHours: integer("estimate_hours"),
     position: doublePrecision("position").notNull().default(0),
     completedAt: timestamp("completed_at"),
     deletedAt: timestamp("deleted_at"),

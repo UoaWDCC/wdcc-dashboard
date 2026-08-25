@@ -26,8 +26,6 @@ export type TaskView = {
   priority: TaskPriority | null;
   team: Team | null;
   dueDate: string | null;
-  startDate: string | null;
-  estimateHours: number | null;
   position: number;
   completedAt: Date | null;
   createdAt: Date;
@@ -43,8 +41,6 @@ export type CreateTaskInput = {
   priority?: TaskPriority;
   team?: Team;
   dueDate?: string;
-  startDate?: string;
-  estimateHours?: number;
   tagIds?: string[];
   links?: { url: string; title?: string }[];
   assigneeEmails?: string[];
@@ -56,8 +52,6 @@ export type UpdateTaskInput = {
   priority?: TaskPriority | null;
   team?: Team | null;
   dueDate?: string | null;
-  startDate?: string | null;
-  estimateHours?: number | null;
   tagIds?: string[];
   links?: { url: string; title?: string | null }[];
   assigneeEmails?: string[];

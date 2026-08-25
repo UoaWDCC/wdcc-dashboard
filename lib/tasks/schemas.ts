@@ -12,8 +12,6 @@ export const createTaskSchema = z.object({
   priority: priorityEnum.optional(),
   team: teamEnum.optional(),
   dueDate: dateStr.optional(),
-  startDate: dateStr.optional(),
-  estimateHours: z.number().int().nonnegative().optional(),
   tagIds: z.array(z.string().min(1)).optional(),
   links: z
     .array(z.object({ url: z.string().min(1), title: z.string().optional() }))
@@ -27,8 +25,6 @@ export const updateTaskSchema = z.object({
   priority: priorityEnum.nullable().optional(),
   team: teamEnum.nullable().optional(),
   dueDate: dateStr.nullable().optional(),
-  startDate: dateStr.nullable().optional(),
-  estimateHours: z.number().int().nonnegative().nullable().optional(),
   tagIds: z.array(z.string().min(1)).optional(),
   links: z
     .array(
