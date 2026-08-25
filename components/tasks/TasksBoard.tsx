@@ -244,6 +244,7 @@ export default function TasksBoard({
             description: input.description ?? undefined,
             priority: input.priority ?? undefined,
             team: input.team ?? undefined,
+            dueDate: input.dueDate ?? undefined,
             tagIds: input.tags
               .map((name) => tagIdByName.get(name))
               .filter((id): id is string => !!id),

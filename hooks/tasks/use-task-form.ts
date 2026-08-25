@@ -15,6 +15,7 @@ export type TaskFormValues = {
   tags: string[];
   links: TaskLink[];
   linkDraft: string;
+  dueDate: string;
   priority: TaskPriority | "";
   team: Team | "";
   assigneeEmails: string[];
@@ -26,6 +27,7 @@ const EMPTY: TaskFormValues = {
   tags: [],
   links: [],
   linkDraft: "",
+  dueDate: "",
   priority: "",
   team: "",
   assigneeEmails: [],

@@ -11,14 +11,7 @@ import {
 import { cn } from "@/lib/utils";
 import { PRIORITY_DOT, PRIORITY_LABEL } from "@/lib/types";
 import { type MyTask } from "@/lib/home/types";
-import { dueLabel, dueState } from "@/lib/home/utils";
-
-const DUE_CLASS: Record<string, string> = {
-  overdue: "border-red-500/40 text-red-600 dark:text-red-400",
-  today: "border-amber-500/40 text-amber-600 dark:text-amber-400",
-  soon: "border-foreground/20 text-muted-foreground",
-  later: "border-foreground/15 text-muted-foreground",
-};
+import { DUE_CLASS, dueLabel, dueState } from "@/lib/date";
 
 export function MyDayCard({
   tasks,

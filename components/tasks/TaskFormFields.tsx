@@ -60,7 +60,7 @@ export function TaskFormFields({
           onChange={(e) => setField("description", e.target.value)}
         />
       </div>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-3 gap-3">
         <div className="flex flex-col gap-1.5">
           <Label htmlFor={`${idPrefix}-priority`}>Priority</Label>
           <Select
@@ -96,6 +96,15 @@ export function TaskFormFields({
               ))}
             </SelectContent>
           </Select>
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor={`${idPrefix}-due`}>Due date</Label>
+          <Input
+            id={`${idPrefix}-due`}
+            type="date"
+            value={values.dueDate}
+            onChange={(e) => setField("dueDate", e.target.value)}
+          />
         </div>
       </div>
       <div className="flex flex-col gap-1.5">

@@ -36,6 +36,7 @@ export function useUpdateTaskMutation(tagIdByName: Map<string, string>) {
         description: next.description,
         priority: next.priority,
         team: next.team,
+        dueDate: next.dueDate,
         tagIds: next.tags
           .map((name) => tagIdByName.get(name))
           .filter((id): id is string => !!id),
