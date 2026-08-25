@@ -15,6 +15,13 @@
       "when": 1787664328566,
       "tag": "0001_shiny_purple_man",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1787665084401,
+      "tag": "0002_true_wind_dancer",
+      "breakpoints": true
     }
   ]
 }

@@ -81,7 +81,14 @@ export function TaskEditDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Edit task</DialogTitle>
+          <DialogTitle className="flex items-baseline gap-2">
+            Edit task
+            {task && (
+              <span className="text-muted-foreground text-sm font-normal tabular-nums">
+                #{task.number}
+              </span>
+            )}
+          </DialogTitle>
         </DialogHeader>
         <TaskFormFields
           form={form}

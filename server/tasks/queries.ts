@@ -90,6 +90,7 @@ export async function listTasks(): Promise<TaskView[]> {
 
   return rows.map((r) => ({
     id: r.id,
+    number: r.number,
     title: r.title,
     description: r.description,
     status: r.status,

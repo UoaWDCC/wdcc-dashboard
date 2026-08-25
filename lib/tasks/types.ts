@@ -20,6 +20,7 @@ export type TaskLinkView = {
 
 export type TaskView = {
   id: string;
+  number: number;
   title: string;
   description: string | null;
   status: TaskStatus;
@@ -89,6 +90,7 @@ export type ClientMoveTask = {
 
 export type ClientTask = {
   id: string;
+  number: number;
   title: string;
   description: string | null;
   status: TaskStatus;
