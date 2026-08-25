@@ -96,8 +96,6 @@ export async function listTasks(): Promise<TaskView[]> {
     priority: r.priority,
     team: r.team,
     dueDate: r.dueDate,
-    startDate: r.startDate,
-    estimateHours: r.estimateHours,
     position: r.position,
     completedAt: r.completedAt,
     createdAt: r.createdAt,

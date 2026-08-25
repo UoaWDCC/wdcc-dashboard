@@ -64,8 +64,6 @@ export async function createTask(data: CreateTaskInput, userId: string) {
         priority: data.priority,
         team: data.team,
         dueDate: data.dueDate,
-        startDate: data.startDate,
-        estimateHours: data.estimateHours,
         position: newPosition,
         createdBy: userId,
         updatedBy: userId,
@@ -126,9 +124,6 @@ export async function updateTask(
     if (data.priority !== undefined) fields.priority = data.priority;
     if (data.team !== undefined) fields.team = data.team;
     if (data.dueDate !== undefined) fields.dueDate = data.dueDate;
-    if (data.startDate !== undefined) fields.startDate = data.startDate;
-    if (data.estimateHours !== undefined)
-      fields.estimateHours = data.estimateHours;
 
     await tx.update(task).set(fields).where(eq(task.id, id));
 
