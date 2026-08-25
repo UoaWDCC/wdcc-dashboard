@@ -18,6 +18,7 @@ export type CreateTaskFormInput = {
   description: string | null;
   priority: TaskPriority | null;
   team: Team | null;
+  dueDate: string | null;
   tags: string[];
   links: { url: string; title: string | null }[];
   assigneeEmails: string[];
@@ -47,6 +48,7 @@ export function TaskCreateDialog({
       description: values.description.trim() || null,
       priority: values.priority || null,
       team: values.team || null,
+      dueDate: values.dueDate || null,
       tags: values.tags,
       links: finalLinks(),
       assigneeEmails: values.assigneeEmails,

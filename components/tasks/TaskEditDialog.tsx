@@ -20,6 +20,7 @@ function taskToValues(task: ClientTask): TaskFormValues {
     tags: task.tags,
     links: task.links,
     linkDraft: "",
+    dueDate: task.dueDate ?? "",
     priority: task.priority ?? "",
     team: task.team ?? "",
     assigneeEmails: task.assignees.map((a) => a.profileEmail),
@@ -57,6 +58,7 @@ export function TaskEditDialog({
       description: values.description.trim() || null,
       tags: values.tags,
       links: finalLinks(),
+      dueDate: values.dueDate || null,
       priority: values.priority || null,
       team: values.team || null,
       assignees: values.assigneeEmails.map((email, i) => ({

@@ -4,6 +4,7 @@ import { Link2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { DUE_CLASS, dueLabel, dueState, getTodayIso } from "@/lib/date";
 import { PRIORITY_DOT, PRIORITY_LABEL } from "@/lib/types";
 import type { BoardUser, ClientTask } from "@/lib/tasks/types";
 import { userFromCol } from "@/lib/tasks/utils";
@@ -19,6 +20,7 @@ export function TaskCard({
   dragging?: boolean;
   userById: Map<string, BoardUser>;
 }) {
+  const today = getTodayIso();
   const colEmail = columnId ? userFromCol(columnId) : null;
   const shownAssignees = colEmail
     ? task.assignees.filter((a) => a.profileEmail !== colEmail)
@@ -53,6 +55,7 @@ export function TaskCard({
       {(task.description ||
         task.tags.length ||
         task.team ||
+        task.dueDate ||
         task.links.length ||
         shownAssignees.length > 0) && (
         <CardContent className="flex flex-col gap-2">
@@ -61,9 +64,21 @@ export function TaskCard({
           )}
           {(task.tags.length ||
             task.team ||
+            task.dueDate ||
             task.links.length ||
             shownAssignees.length > 0) && (
             <div className="flex flex-wrap items-center gap-1">
+              {task.dueDate && (
+                <Badge
+                  variant="outline"
+                  className={cn(
+                    "text-[10px]",
+                    DUE_CLASS[dueState(task.dueDate, today)]
+                  )}
+                >
+                  {dueLabel(task.dueDate, today)}
+                </Badge>
+              )}
               {task.team && (
                 <Badge variant="outline" className="text-[10px]">
                   {task.team}

@@ -25,5 +25,3 @@ export type HomeSummary = {
   today: string;
   team: Team | null;
 };
-
-export type DueState = "overdue" | "today" | "soon" | "later";
