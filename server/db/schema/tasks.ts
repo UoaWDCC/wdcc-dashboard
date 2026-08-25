@@ -9,6 +9,7 @@ import {
   index,
   primaryKey,
   check,
+  integer,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { user } from "./auth";
@@ -21,6 +22,7 @@ export const task = pgTable(
     id: text("id")
       .primaryKey()
       .$defaultFn(() => crypto.randomUUID()),
+    number: integer("number").generatedByDefaultAsIdentity().notNull().unique(),
     title: text("title").notNull(),
     description: text("description"),
     status: taskStatus("status").notNull().default("backlog"),

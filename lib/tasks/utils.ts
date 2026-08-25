@@ -19,6 +19,7 @@ export const sortableId = (colId: string, taskId: string) =>
 export function fromServer(tasks: TaskView[]): ClientTask[] {
   return tasks.map((t) => ({
     id: t.id,
+    number: t.number,
     title: t.title,
     description: t.description,
     status: t.status,

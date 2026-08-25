@@ -44,6 +44,9 @@ export function TaskCard({
               )}
             />
           )}
+          <span className="text-muted-foreground shrink-0 text-[10px] tabular-nums">
+            #{task.number}
+          </span>
           <span className="min-w-0 truncate">{task.title}</span>
         </CardTitle>
       </CardHeader>
