@@ -31,6 +31,7 @@ import {
   useDeleteTaskMutation,
   useMoveTaskMutation,
 } from "@/hooks/tasks/use-tasks";
+import { BoardSyncStatus } from "@/components/tasks/BoardSyncStatus";
 import { TaskCard } from "@/components/tasks/TaskCard";
 import { TaskColumn } from "@/components/tasks/TaskColumn";
 import { TagManagerDialog } from "@/components/tasks/TagManagerDialog";
@@ -183,6 +184,7 @@ export default function TasksBoard({
           </Select>
         </div>
         <div className="flex items-center gap-3">
+          <BoardSyncStatus probe={sync.probe} />
           <p className="text-muted-foreground text-xs">
             {visibleTasks.length} tasks · {visibleUsers.length} users
           </p>
