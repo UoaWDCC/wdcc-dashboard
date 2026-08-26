@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { DndContext, DragOverlay } from "@dnd-kit/core";
 import { Plus } from "lucide-react";
@@ -14,8 +14,6 @@ import {
 } from "@/components/ui/select";
 import { TEAMS, type Team } from "@/lib/types";
 import type {
-  BoardData,
-  BoardMeta,
   BoardUser,
   ClientTask,
   ColumnMeta,
@@ -24,9 +22,9 @@ import type {
 import type { TagView } from "@/lib/tags/types";
 import { userColId, colTasks } from "@/lib/tasks/utils";
 import { useTaskDragDrop } from "@/hooks/tasks/use-task-drag-drop";
+import { useBoardSync } from "@/hooks/tasks/use-board-sync";
 import {
   taskKeys,
-  useBoardMetaQuery,
   useTasksQuery,
   useUpdateTaskMutation,
   useCreateTaskMutation,
@@ -41,39 +39,30 @@ import { TaskEditDialog } from "@/components/tasks/TaskEditDialog";
 
 export default function TasksBoard({
   initialTasks,
+  initialVersion,
   users,
   tags,
   defaultTeam = null,
 }: {
   initialTasks: TaskView[];
+  initialVersion: string;
   users: BoardUser[];
   tags: TagView[];
   defaultTeam?: Team | null;
 }) {
   const queryClient = useQueryClient();
 
-  // The board read carries users and tags too; fan them out so they refresh
-  // with every board refetch instead of staying frozen at the initial props.
-  const onBoard = useCallback(
-    (board: BoardData) => {
-      queryClient.setQueryData<BoardMeta>(taskKeys.meta, {
-        users: board.users,
-        tags: board.tags,
-      });
-    },
-    [queryClient]
-  );
-
-  const { data: tasks = [] } = useTasksQuery(initialTasks, onBoard);
-  // skipToken widens data to optional; the seed doubles as the fallback.
-  const { data: boardMeta = { users, tags } } = useBoardMetaQuery({
-    users,
-    tags,
-  });
-  const liveUsers = boardMeta.users;
-  const liveTags = boardMeta.tags;
-
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
+
+  const sync = useBoardSync({
+    initialVersion,
+    initialMeta: { users, tags },
+    dragging: activeTaskId !== null,
+  });
+
+  const { data: tasks = [] } = useTasksQuery(initialTasks, sync.onBoard);
+  const { users: liveUsers, tags: liveTags } = sync;
+
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
