@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { DndContext, DragOverlay } from "@dnd-kit/core";
 import { Plus } from "lucide-react";
@@ -14,6 +14,8 @@ import {
 } from "@/components/ui/select";
 import { TEAMS, type Team } from "@/lib/types";
 import type {
+  BoardData,
+  BoardMeta,
   BoardUser,
   ClientTask,
   ColumnMeta,
@@ -24,6 +26,7 @@ import { userColId, colTasks } from "@/lib/tasks/utils";
 import { useTaskDragDrop } from "@/hooks/tasks/use-task-drag-drop";
 import {
   taskKeys,
+  useBoardMetaQuery,
   useTasksQuery,
   useUpdateTaskMutation,
   useCreateTaskMutation,
@@ -49,7 +52,26 @@ export default function TasksBoard({
 }) {
   const queryClient = useQueryClient();
 
-  const { data: tasks = [] } = useTasksQuery(initialTasks);
+  // The board read carries users and tags too; fan them out so they refresh
+  // with every board refetch instead of staying frozen at the initial props.
+  const onBoard = useCallback(
+    (board: BoardData) => {
+      queryClient.setQueryData<BoardMeta>(taskKeys.meta, {
+        users: board.users,
+        tags: board.tags,
+      });
+    },
+    [queryClient]
+  );
+
+  const { data: tasks = [] } = useTasksQuery(initialTasks, onBoard);
+  // skipToken widens data to optional; the seed doubles as the fallback.
+  const { data: boardMeta = { users, tags } } = useBoardMetaQuery({
+    users,
+    tags,
+  });
+  const liveUsers = boardMeta.users;
+  const liveTags = boardMeta.tags;
 
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -58,18 +80,19 @@ export default function TasksBoard({
   const [teamFilter, setTeamFilter] = useState<Team | null>(defaultTeam);
 
   const userById = useMemo(
-    () => new Map(users.map((m) => [m.email, m])),
-    [users]
+    () => new Map(liveUsers.map((m) => [m.email, m])),
+    [liveUsers]
   );
   const tagIdByName = useMemo(
-    () => new Map(tags.map((t) => [t.name, t.id])),
-    [tags]
+    () => new Map(liveTags.map((t) => [t.name, t.id])),
+    [liveTags]
   );
-  const tagSuggestions = useMemo(() => tags.map((t) => t.name), [tags]);
+  const tagSuggestions = useMemo(() => liveTags.map((t) => t.name), [liveTags]);
 
   const visibleUsers = useMemo(
-    () => (teamFilter ? users.filter((m) => m.team === teamFilter) : users),
-    [users, teamFilter]
+    () =>
+      teamFilter ? liveUsers.filter((m) => m.team === teamFilter) : liveUsers,
+    [liveUsers, teamFilter]
   );
   const visibleTasks = useMemo(
     () =>
@@ -264,12 +287,12 @@ export default function TasksBoard({
           })
         }
         tagSuggestions={tagSuggestions}
-        users={users}
+        users={liveUsers}
       />
       <TagManagerDialog
         open={tagManagerOpen}
         onOpenChange={setTagManagerOpen}
-        tags={tags}
+        tags={liveTags}
         onChanged={() =>
           queryClient.invalidateQueries({ queryKey: taskKeys.all })
         }
@@ -281,7 +304,7 @@ export default function TasksBoard({
         onSave={(updated) => updateMutation.mutate({ next: updated })}
         onDelete={(id) => deleteMutation.mutate(id)}
         tagSuggestions={tagSuggestions}
-        users={users}
+        users={liveUsers}
       />
     </div>
   );
