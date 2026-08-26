@@ -22,19 +22,21 @@ import type {
 
 const DONE_RETENTION_DAYS = 30;
 
-export async function listTasks(): Promise<TaskView[]> {
-  const doneCutoff = new Date(
-    Date.now() - DONE_RETENTION_DAYS * 24 * 60 * 60 * 1000
+const doneCutoff = () =>
+  new Date(Date.now() - DONE_RETENTION_DAYS * 24 * 60 * 60 * 1000);
+
+// Shared by both readers so the visible-set predicate cannot drift.
+const visibleTasksWhere = (cutoff: Date) =>
+  and(
+    isNull(task.deletedAt),
+    or(sql`${task.status} <> 'done'`, gte(task.completedAt, cutoff))
   );
+
+export async function listTasks(): Promise<TaskView[]> {
   const rows = await db
     .select()
     .from(task)
-    .where(
-      and(
-        isNull(task.deletedAt),
-        or(sql`${task.status} <> 'done'`, gte(task.completedAt, doneCutoff))
-      )
-    )
+    .where(visibleTasksWhere(doneCutoff()))
     .orderBy(
       sql`${task.priority} desc nulls last`,
       sql`${task.dueDate} asc nulls last`,
@@ -121,4 +123,17 @@ export async function listUsers(team?: Team): Promise<BoardUser[]> {
       .orderBy(asc(profile.name));
   }
   return base.where(eq(profile.kind, "personal")).orderBy(asc(profile.name));
+}
+
+// Cheap change signature for the board poll. Compare with equality, never `>`:
+// a soft delete or done-retention fall-off can move `max` backwards.
+export async function getBoardVersion(): Promise<string> {
+  const [row] = await db
+    .select({
+      count: sql<number>`count(*)::int`,
+      max: sql<Date | null>`max(${task.updatedAt})`,
+    })
+    .from(task)
+    .where(visibleTasksWhere(doneCutoff()));
+  return `${row?.count ?? 0}:${row?.max ? new Date(row.max).getTime() : 0}`;
 }

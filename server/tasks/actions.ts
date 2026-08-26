@@ -16,19 +16,25 @@ import {
   softDeleteTask,
   updateTask,
 } from "@/server/tasks/mutations/task";
-import { listTasks, listUsers } from "@/server/tasks/queries";
+import { getBoardVersion, listTasks, listUsers } from "@/server/tasks/queries";
 import { listTags } from "@/server/tags/queries";
 
 // The board's only published read: one round trip instead of three, so a
 // refetch after a mutation does not waterfall.
 export async function getBoardAction(): Promise<BoardData> {
   await requireUser();
-  const [tasks, users, tags] = await Promise.all([
+  const [tasks, users, tags, version] = await Promise.all([
     listTasks(),
     listUsers(),
     listTags(),
+    getBoardVersion(),
   ]);
-  return { tasks, users, tags };
+  return { tasks, users, tags, version };
+}
+
+export async function getBoardVersionAction(): Promise<string> {
+  await requireUser();
+  return getBoardVersion();
 }
 
 export async function createTaskAction(raw: unknown) {

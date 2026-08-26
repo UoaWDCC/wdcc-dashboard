@@ -66,6 +66,7 @@ export type BoardData = {
   tasks: TaskView[];
   users: BoardUser[];
   tags: TagView[];
+  version: string;
 };
 
 export type BoardUser = {
