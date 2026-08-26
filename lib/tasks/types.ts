@@ -101,6 +101,7 @@ export type ClientTask = {
   assignees: ClientAssignee[];
   position: number;
   dueDate: string | null;
+  completedAt: string | null;
 };
 
 export type ColumnMeta = {

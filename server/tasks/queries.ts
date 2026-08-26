@@ -1,6 +1,6 @@
 import "server-only";
 
-import { and, asc, eq, gte, inArray, isNull, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, isNull, or, sql } from "drizzle-orm";
 import { db } from "@/server/db";
 import {
   task,
@@ -35,7 +35,11 @@ export async function listTasks(): Promise<TaskView[]> {
         or(sql`${task.status} <> 'done'`, gte(task.completedAt, doneCutoff))
       )
     )
-    .orderBy(asc(task.position));
+    .orderBy(
+      sql`${task.priority} desc nulls last`,
+      sql`${task.dueDate} asc nulls last`,
+      desc(task.number)
+    );
 
   if (rows.length === 0) return [];
   const ids = rows.map((r) => r.id);
