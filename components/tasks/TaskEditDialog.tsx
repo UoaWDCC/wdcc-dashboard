@@ -45,7 +45,7 @@ export function TaskEditDialog({
   users: BoardUser[];
 }) {
   const initial = useMemo(() => (task ? taskToValues(task) : null), [task]);
-  const form = useTaskForm(initial, task?.id);
+  const form = useTaskForm(initial, open ? task?.id : null);
   const { values, finalLinks } = form;
 
   function handleSave() {

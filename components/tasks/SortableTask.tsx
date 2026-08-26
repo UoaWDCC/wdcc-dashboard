@@ -1,7 +1,6 @@
 "use client";
 
-import { useSortable } from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
+import { useDraggable } from "@dnd-kit/core";
 import type { BoardUser, ClientTask } from "@/lib/tasks/types";
 import { sortableId } from "@/lib/tasks/utils";
 import { TaskCard } from "./TaskCard";
@@ -17,14 +16,7 @@ export function SortableTask({
   userById: Map<string, BoardUser>;
   onEdit: (task: ClientTask) => void;
 }) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: sortableId(columnId, task.id),
     data: { type: "task", columnId, taskId: task.id },
   });
@@ -32,10 +24,6 @@ export function SortableTask({
   return (
     <div
       ref={setNodeRef}
-      style={{
-        transform: CSS.Transform.toString(transform),
-        transition,
-      }}
       {...attributes}
       {...listeners}
       onClick={() => {
