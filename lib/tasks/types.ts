@@ -69,6 +69,11 @@ export type BoardData = {
   version: string;
 };
 
+export type BoardMeta = {
+  users: BoardUser[];
+  tags: TagView[];
+};
+
 export type BoardUser = {
   email: string;
   name: string;
