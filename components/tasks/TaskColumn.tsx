@@ -1,11 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
 import { useDroppable } from "@dnd-kit/core";
-import {
-  SortableContext,
-  verticalListSortingStrategy,
-} from "@dnd-kit/sortable";
 import { cn } from "@/lib/utils";
 import type { BoardUser, ClientTask, ColumnMeta } from "@/lib/tasks/types";
 import { sortableId } from "@/lib/tasks/utils";
@@ -56,10 +51,6 @@ export function TaskColumn({
     data: { type: "column", columnId: meta.id },
   });
   const styles = accentMap[meta.accent];
-  const taskIds = useMemo(
-    () => tasks.map((t) => sortableId(meta.id, t.id)),
-    [tasks, meta.id]
-  );
 
   return (
     <div
@@ -86,19 +77,17 @@ export function TaskColumn({
           {tasks.length}
         </span>
       </div>
-      <SortableContext items={taskIds} strategy={verticalListSortingStrategy}>
-        <div className="flex flex-col gap-2 p-2 min-h-24">
-          {tasks.map((t) => (
-            <SortableTask
-              key={sortableId(meta.id, t.id)}
-              task={t}
-              columnId={meta.id}
-              userById={userById}
-              onEdit={onEditTask}
-            />
-          ))}
-        </div>
-      </SortableContext>
+      <div className="flex flex-col gap-2 p-2 min-h-24">
+        {tasks.map((t) => (
+          <SortableTask
+            key={sortableId(meta.id, t.id)}
+            task={t}
+            columnId={meta.id}
+            userById={userById}
+            onEdit={onEditTask}
+          />
+        ))}
+      </div>
     </div>
   );
 }

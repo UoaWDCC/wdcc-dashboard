@@ -22,6 +22,8 @@ export function useTaskDragDrop({
   onMove: (input: ClientMoveTask) => void;
 }) {
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
+  const [activeWidth, setActiveWidth] = useState<number | null>(null);
+  const [activeColumnId, setActiveColumnId] = useState<string | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
@@ -46,18 +48,24 @@ export function useTaskDragDrop({
 
   function handleDragStart(e: DragStartEvent) {
     const data = e.active.data.current as
-      | { type: "task"; taskId: string }
+      | { type: "task"; columnId: string; taskId: string }
       | undefined;
     if (data?.taskId) setActiveTaskId(data.taskId);
+    setActiveColumnId(data?.columnId ?? null);
+    setActiveWidth(e.active.rect.current.initial?.width ?? null);
   }
 
   function handleDragCancel() {
     setActiveTaskId(null);
+    setActiveWidth(null);
+    setActiveColumnId(null);
   }
 
   function handleDragEnd(e: DragEndEvent) {
     const { active, over } = e;
     setActiveTaskId(null);
+    setActiveWidth(null);
+    setActiveColumnId(null);
     if (!over) return;
 
     const aData = active.data.current as
@@ -65,17 +73,12 @@ export function useTaskDragDrop({
       | undefined;
     if (!aData) return;
 
+    // Cards are draggables only, so the drop target is always a column.
     const oData = over.data.current as
-      | { type: "task"; columnId: string; taskId: string }
       | { type: "column"; columnId: string }
       | undefined;
 
-    const toCol =
-      oData?.type === "task"
-        ? oData.columnId
-        : oData?.type === "column"
-          ? oData.columnId
-          : String(over.id);
+    const toCol = oData?.columnId ?? String(over.id);
 
     onMove({
       taskId: aData.taskId,
@@ -88,6 +91,8 @@ export function useTaskDragDrop({
     sensors,
     collisionDetection,
     activeTask,
+    activeWidth,
+    activeColumnId,
     handleDragStart,
     handleDragEnd,
     handleDragCancel,

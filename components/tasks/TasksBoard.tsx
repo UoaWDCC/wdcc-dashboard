@@ -114,6 +114,8 @@ export default function TasksBoard({
     sensors,
     collisionDetection,
     activeTask,
+    activeWidth,
+    activeColumnId,
     handleDragStart,
     handleDragEnd,
     handleDragCancel,
@@ -231,7 +233,13 @@ export default function TasksBoard({
         </div>
         <DragOverlay>
           {activeTask ? (
-            <TaskCard task={activeTask} userById={userById} />
+            <div style={{ width: activeWidth ?? undefined }}>
+              <TaskCard
+                task={activeTask}
+                columnId={activeColumnId ?? undefined}
+                userById={userById}
+              />
+            </div>
           ) : null}
         </DragOverlay>
       </DndContext>
