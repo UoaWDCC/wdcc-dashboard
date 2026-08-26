@@ -1,4 +1,9 @@
+import { TASK_PRIORITIES, type TaskPriority } from "@/lib/types";
 import type { ClientTask, ColumnId, TaskView } from "./types";
+
+const priorityRank = (p: TaskPriority | null): number => {
+  return p ? TASK_PRIORITIES.indexOf(p) : -1;
+};
 
 export const userColId = (email: string) => `user-${email}`;
 
@@ -32,6 +37,7 @@ export function fromServer(tasks: TaskView[]): ClientTask[] {
       .sort((a, b) => a.position - b.position),
     position: t.position,
     dueDate: t.dueDate,
+    completedAt: t.completedAt ? t.completedAt.toISOString() : null,
   }));
 }
 
@@ -49,19 +55,42 @@ export function belongsTo(task: ClientTask, colId: string): boolean {
 
 export function colTasks(tasks: ClientTask[], colId: string): ClientTask[] {
   const list = tasks.filter((t) => belongsTo(t, colId));
-  const email = userFromCol(colId);
-  if (email) {
-    return list.sort((a, b) => {
-      const ap =
-        a.assignees.find((x) => x.profileEmail === email)?.position ?? 0;
-      const bp =
-        b.assignees.find((x) => x.profileEmail === email)?.position ?? 0;
-      return ap - bp;
-    });
-  }
-  return list.sort((a, b) => a.position - b.position);
+  const comparisonFn = colId === "done" ? compareDoneTasks : compareTasks;
+  return list.sort((a, b) => comparisonFn(a, b));
 }
 
+export function compareTasks(a: ClientTask, b: ClientTask): number {
+  // first is priority
+  const rankA = priorityRank(a.priority);
+  const rankB = priorityRank(b.priority);
+  if (rankA !== rankB) {
+    return rankB - rankA;
+  }
+
+  if (a.dueDate !== b.dueDate) {
+    if (!a.dueDate) return 1;
+    if (!b.dueDate) return -1;
+    if (a.dueDate < b.dueDate) {
+      return -1;
+    } else {
+      return 1;
+    }
+  }
+
+  return b.number - a.number;
+}
+
+export function compareDoneTasks(a: ClientTask, b: ClientTask): number {
+  const at = a.completedAt ? Date.parse(a.completedAt) : 0;
+  const bt = b.completedAt ? Date.parse(b.completedAt) : 0;
+  if (at !== bt) {
+    return bt - at;
+  }
+
+  return b.number - a.number;
+}
+
+// below will be deleted later
 export function positionFor(task: ClientTask, colId: string): number {
   if (colId === "backlog" || colId === "done") return task.position;
   const m = userFromCol(colId);

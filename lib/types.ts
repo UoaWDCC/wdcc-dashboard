@@ -1,4 +1,7 @@
 export const TASK_STATUSES = ["backlog", "active", "done"] as const;
+// Order is load-bearing: the pg enum is generated from this array, so Postgres
+// enum ordering is declaration order. Ascending urgency — insert new values in
+// the right slot or `ORDER BY priority DESC` silently breaks.
 export const TASK_PRIORITIES = ["low", "med", "high"] as const;
 export const TEAMS = [
   "Admin",
