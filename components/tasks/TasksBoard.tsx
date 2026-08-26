@@ -73,6 +73,7 @@ export default function TasksBoard({
   const liveUsers = boardMeta.users;
   const liveTags = boardMeta.tags;
 
+  const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
@@ -145,6 +146,8 @@ export default function TasksBoard({
   } = useTaskDragDrop({
     tasks,
     onMove: moveMutation.mutate,
+    activeTaskId,
+    setActiveTaskId,
   });
 
   const backlogTasks = useMemo(

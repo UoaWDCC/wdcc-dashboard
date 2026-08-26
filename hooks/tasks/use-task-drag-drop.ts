@@ -14,14 +14,19 @@ import {
 } from "@dnd-kit/core";
 import type { ClientMoveTask, ClientTask } from "@/lib/tasks/types";
 
+// activeTaskId is owned by the caller: the board poll pauses while dragging,
+// and that gate has to be reactive one level up.
 export function useTaskDragDrop({
   tasks,
   onMove,
+  activeTaskId,
+  setActiveTaskId,
 }: {
   tasks: ClientTask[];
   onMove: (input: ClientMoveTask) => void;
+  activeTaskId: string | null;
+  setActiveTaskId: (id: string | null) => void;
 }) {
-  const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
   const [activeWidth, setActiveWidth] = useState<number | null>(null);
   const [activeColumnId, setActiveColumnId] = useState<string | null>(null);
 
