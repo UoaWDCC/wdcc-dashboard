@@ -3,11 +3,11 @@ import type { Team } from "@/lib/types";
 
 export type MyTask = {
   id: string;
+  number: number;
   title: string;
   priority: TaskView["priority"];
   team: TaskView["team"];
   dueDate: string | null;
-  position: number;
   otherAssignees: number;
 };
 

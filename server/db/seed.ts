@@ -34,32 +34,27 @@ const DEMO_TASKS: Array<{
   priority?: "low" | "med" | "high";
   team?: "Admin" | "Projects" | "Tech" | "Marketing" | "Industry" | "Social";
   tags?: string[];
-  position: number;
 }> = [
   {
     title: "Design auth flow",
     tags: ["design", "auth"],
     team: "Tech",
     priority: "high",
-    position: 1,
   },
   {
     title: "Set up CI",
     tags: ["infra"],
     team: "Tech",
     priority: "med",
-    position: 2,
   },
   {
     title: "Write onboarding doc",
     tags: ["docs"],
     team: "Admin",
-    position: 3,
   },
   {
     title: "Sprint planning notes",
     team: "Projects",
-    position: 4,
   },
 ];
 
@@ -102,7 +97,6 @@ async function main() {
         description: dt.description,
         priority: dt.priority,
         team: dt.team,
-        position: dt.position,
         status: "backlog",
       })
       .returning({ id: task.id });

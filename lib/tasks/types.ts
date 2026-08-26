@@ -9,7 +9,6 @@ export type ColumnId =
 export type TaskAssigneeView = {
   profileEmail: string;
   name: string;
-  position: number;
 };
 
 export type TaskLinkView = {
@@ -27,7 +26,6 @@ export type TaskView = {
   priority: TaskPriority | null;
   team: Team | null;
   dueDate: string | null;
-  position: number;
   completedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
@@ -62,8 +60,6 @@ export type MoveTaskInput = {
   taskId: string;
   to: ColumnId;
   from: ColumnId;
-  beforeId: string | null;
-  afterId: string | null;
 };
 
 export type BoardData = {
@@ -79,13 +75,12 @@ export type BoardUser = {
   team: Team | null;
 };
 
-export type ClientAssignee = { profileEmail: string; position: number };
+export type ClientAssignee = { profileEmail: string };
 
 export type ClientMoveTask = {
   taskId: string;
   fromCol: string;
   toCol: string;
-  overTaskId: string | null;
 };
 
 export type ClientTask = {
@@ -99,7 +94,6 @@ export type ClientTask = {
   tags: string[];
   links: { id?: string; url: string; title: string | null }[];
   assignees: ClientAssignee[];
-  position: number;
   dueDate: string | null;
   completedAt: string | null;
 };

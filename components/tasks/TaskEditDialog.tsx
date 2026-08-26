@@ -61,11 +61,8 @@ export function TaskEditDialog({
       dueDate: values.dueDate || null,
       priority: values.priority || null,
       team: values.team || null,
-      assignees: values.assigneeEmails.map((email, i) => ({
+      assignees: values.assigneeEmails.map((email) => ({
         profileEmail: email,
-        position:
-          task.assignees.find((a) => a.profileEmail === email)?.position ??
-          i + 1,
       })),
     });
     onOpenChange(false);

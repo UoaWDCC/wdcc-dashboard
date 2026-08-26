@@ -1,5 +1,6 @@
 import { BoardPulse, HomeSummary, MyTask } from "@/lib/home/types";
 import { TaskView } from "@/lib/tasks/types";
+import { compareTasks } from "@/lib/tasks/utils";
 import { Team } from "@/lib/types";
 
 const DONE_WINDOW_DAYS = 7;
@@ -37,20 +38,20 @@ export function buildHomeSummary(
     if (t.dueDate && t.dueDate < today) pulse.overdue++;
     if (t.status != "active") continue;
 
-    const mine = t.assignees.find((a) => a.profileEmail === email);
+    const mine = t.assignees.some((a) => a.profileEmail === email);
     if (!mine) continue;
 
     pulse.mine++;
     myTasks.push({
       id: t.id,
+      number: t.number,
       title: t.title,
       priority: t.priority,
       team: t.team,
       dueDate: t.dueDate,
-      position: mine.position,
       otherAssignees: t.assignees.length - 1,
     });
   }
-  myTasks.sort((a, b) => a.position - b.position);
+  myTasks.sort(compareTasks);
   return { myTasks, pulse, today, team };
 }
