@@ -3,7 +3,6 @@ import "server-only";
 import {
   pgTable,
   text,
-  doublePrecision,
   timestamp,
   date,
   index,
@@ -29,7 +28,6 @@ export const task = pgTable(
     priority: taskPriority("priority"),
     team: taskTeam("team"),
     dueDate: date("due_date"),
-    position: doublePrecision("position").notNull().default(0),
     completedAt: timestamp("completed_at"),
     deletedAt: timestamp("deleted_at"),
     createdBy: text("created_by").references(() => user.id, {
@@ -63,7 +61,6 @@ export const taskAssignee = pgTable(
         onDelete: "cascade",
         onUpdate: "cascade",
       }),
-    position: doublePrecision("position").notNull().default(0),
     assignedAt: timestamp("assigned_at").notNull().defaultNow(),
     assignedBy: text("assigned_by").references(() => user.id, {
       onDelete: "set null",
@@ -71,7 +68,7 @@ export const taskAssignee = pgTable(
   },
   (t) => [
     primaryKey({ columns: [t.taskId, t.profileEmail] }),
-    index("task_assignee_profile_pos_idx").on(t.profileEmail, t.position),
+    index("task_assignee_profile_idx").on(t.profileEmail),
   ]
 );
 
