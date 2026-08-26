@@ -75,14 +75,6 @@ export async function removeProfileAction(formData: FormData) {
     if (!affected.length) return;
     const affectedIds = [...new Set(affected.map((r) => r.taskId))];
 
-    // Tail position for backlog so demoted tasks land at the end with a fresh
-    // monotonic position (active rows store position=0; reusing that collides).
-    const tailRow = await tx
-      .select({ max: sql<number>`coalesce(max(${task.position}), 0)` })
-      .from(task)
-      .where(and(eq(task.status, "backlog"), isNull(task.deletedAt)));
-    let nextPos = Number(tailRow[0]?.max ?? 0);
-
     const toDemote = await tx
       .select({ id: task.id })
       .from(task)
@@ -96,10 +88,9 @@ export async function removeProfileAction(formData: FormData) {
       );
 
     for (const row of toDemote) {
-      nextPos += 1;
       await tx
         .update(task)
-        .set({ status: "backlog", position: nextPos })
+        .set({ status: "backlog" })
         .where(eq(task.id, row.id));
     }
   });

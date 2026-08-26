@@ -47,6 +47,4 @@ export const moveTaskSchema = z.object({
   taskId: z.string().min(1),
   to: columnIdSchema,
   from: columnIdSchema,
-  beforeId: z.string().min(1).nullable(),
-  afterId: z.string().min(1).nullable(),
 });

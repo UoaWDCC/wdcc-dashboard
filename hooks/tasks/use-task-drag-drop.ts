@@ -77,13 +77,10 @@ export function useTaskDragDrop({
           ? oData.columnId
           : String(over.id);
 
-    const overTaskId = oData?.type === "task" ? oData.taskId : null;
-
     onMove({
       taskId: aData.taskId,
       fromCol: aData.columnId,
       toCol,
-      overTaskId,
     });
   }
 

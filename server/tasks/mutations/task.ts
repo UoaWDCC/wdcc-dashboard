@@ -1,6 +1,6 @@
 import "server-only";
 
-import { and, eq, inArray, isNull, sql } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { db, type Tx } from "@/server/db";
 import {
   task,
@@ -49,12 +49,6 @@ export async function createTask(data: CreateTaskInput, userId: string) {
     await assertProfilesExist(tx, assigneeEmails);
     const status = assigneeEmails.length ? "active" : "backlog";
 
-    const tailRow = await tx
-      .select({ max: sql<number>`coalesce(max(${task.position}), 0)` })
-      .from(task)
-      .where(and(isNull(task.deletedAt), eq(task.status, status)));
-    const newPosition = (tailRow[0]?.max ?? 0) + 1;
-
     const [inserted] = await tx
       .insert(task)
       .values({
@@ -64,7 +58,6 @@ export async function createTask(data: CreateTaskInput, userId: string) {
         priority: data.priority,
         team: data.team,
         dueDate: data.dueDate,
-        position: newPosition,
         createdBy: userId,
         updatedBy: userId,
       })
@@ -85,24 +78,13 @@ export async function createTask(data: CreateTaskInput, userId: string) {
       );
     }
     if (assigneeEmails.length) {
-      const maxRows = await tx
-        .select({
-          profileEmail: taskAssignee.profileEmail,
-          max: sql<number>`coalesce(max(${taskAssignee.position}), 0)`,
-        })
-        .from(taskAssignee)
-        .where(inArray(taskAssignee.profileEmail, assigneeEmails))
-        .groupBy(taskAssignee.profileEmail);
-      const maxByEmail = new Map(
-        maxRows.map((r) => [r.profileEmail, Number(r.max)])
+      await tx.insert(taskAssignee).values(
+        assigneeEmails.map((email) => ({
+          taskId: inserted.id,
+          profileEmail: email,
+          assignedBy: userId,
+        }))
       );
-      const assigneeValues = assigneeEmails.map((email, i) => ({
-        taskId: inserted.id,
-        profileEmail: email,
-        position: (maxByEmail.get(email) ?? 0) + 1 + i,
-        assignedBy: userId,
-      }));
-      await tx.insert(taskAssignee).values(assigneeValues);
     }
 
     return inserted;
@@ -174,22 +156,10 @@ export async function updateTask(
           );
       }
       if (toAdd.length) {
-        const maxRows = await tx
-          .select({
-            profileEmail: taskAssignee.profileEmail,
-            max: sql<number>`coalesce(max(${taskAssignee.position}), 0)`,
-          })
-          .from(taskAssignee)
-          .where(inArray(taskAssignee.profileEmail, toAdd))
-          .groupBy(taskAssignee.profileEmail);
-        const maxByEmail = new Map(
-          maxRows.map((r) => [r.profileEmail, Number(r.max)])
-        );
         await tx.insert(taskAssignee).values(
           toAdd.map((email) => ({
             taskId: id,
             profileEmail: email,
-            position: (maxByEmail.get(email) ?? 0) + 1,
             assignedBy: userId,
           }))
         );

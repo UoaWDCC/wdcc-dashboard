@@ -49,13 +49,11 @@ export async function listTasks(): Promise<TaskView[]> {
       .select({
         taskId: taskAssignee.taskId,
         profileEmail: taskAssignee.profileEmail,
-        position: taskAssignee.position,
         name: profile.name,
       })
       .from(taskAssignee)
       .innerJoin(profile, eq(profile.email, taskAssignee.profileEmail))
-      .where(inArray(taskAssignee.taskId, ids))
-      .orderBy(asc(taskAssignee.position)),
+      .where(inArray(taskAssignee.taskId, ids)),
     db
       .select({
         taskId: taskTag.taskId,
@@ -72,11 +70,7 @@ export async function listTasks(): Promise<TaskView[]> {
   const assigneesByTask = new Map<string, TaskAssigneeView[]>();
   for (const a of assigneeRows) {
     const list = assigneesByTask.get(a.taskId) ?? [];
-    list.push({
-      profileEmail: a.profileEmail,
-      name: a.name,
-      position: a.position,
-    });
+    list.push({ profileEmail: a.profileEmail, name: a.name });
     assigneesByTask.set(a.taskId, list);
   }
   const tagsByTask = new Map<string, TagView[]>();
@@ -101,7 +95,6 @@ export async function listTasks(): Promise<TaskView[]> {
     priority: r.priority,
     team: r.team,
     dueDate: r.dueDate,
-    position: r.position,
     completedAt: r.completedAt,
     createdAt: r.createdAt,
     updatedAt: r.updatedAt,

@@ -14,11 +14,7 @@ import type {
   CreateTaskInput,
   TaskView,
 } from "@/lib/tasks/types";
-import {
-  applyDragLocal,
-  colIdToColumnId,
-  neighborsOf,
-} from "@/lib/tasks/utils";
+import { applyDragLocal, colIdToColumnId } from "@/lib/tasks/utils";
 import { boardQuery, taskKeys } from "./query-options";
 
 export { taskKeys };
@@ -127,27 +123,17 @@ export function useMoveTaskMutation() {
         snapshot,
         input.taskId,
         input.fromCol,
-        input.toCol,
-        input.overTaskId
+        input.toCol
       );
       queryClient.setQueryData<ClientTask[]>(taskKeys.all, next);
       await queryClient.cancelQueries({ queryKey: taskKeys.all });
       return { snapshot };
     },
     mutationFn: async (input) => {
-      const current =
-        queryClient.getQueryData<ClientTask[]>(taskKeys.all) ?? [];
-      const { beforeId, afterId } = neighborsOf(
-        current,
-        input.taskId,
-        input.toCol
-      );
       await moveTaskAction({
         taskId: input.taskId,
         from: colIdToColumnId(input.fromCol),
         to: colIdToColumnId(input.toCol),
-        beforeId,
-        afterId,
       });
     },
     onError: (err, _input, ctx) => {
