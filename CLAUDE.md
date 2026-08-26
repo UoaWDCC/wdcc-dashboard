@@ -86,7 +86,10 @@ Column identity is derived, not stored (`lib/tasks/utils.ts`, `lib/tasks/types.t
 - `backlog` = status `backlog`, zero assignees (invariant).
 - per-user column = status `active` and that email in `task_assignee`.
 - `done` = status `done`; `completedAt` set on entry, cleared on exit; `listTasks` drops done tasks older than 30 days and any `deletedAt` row.
-- Ordering: `task.position` for backlog/done; `task_assignee.position` for user columns. Active rows have `task.position` zeroed. Positions are fractional midpoints; `moveTask` (`server/tasks/mutations/move.ts`) takes `pg_advisory_xact_lock` on both columns and rebalances when the gap falls under `1e-6`. Task record writes live in `mutations/task.ts`; the two files share no helper.
+- Ordering is derived, never stored: `compareTasks` in `lib/tasks/utils.ts` sorts every column but `done` by priority (high first, unset last), then due date ascending (unset last), then `number` descending. `done` uses `compareDoneTasks` — `completedAt` descending, then `number` descending. `lib/home/summary.ts` sorts "My Day" with the same `compareTasks`, so the board and the home page never disagree.
+- `task.number` is a `generatedByDefaultAsIdentity` integer, unique and immutable — the user-facing `#42` handle and the stable final tiebreak. Never reuse or renumber it.
+- **`TASK_PRIORITIES` order is load-bearing.** `priorityRank` is `TASK_PRIORITIES.indexOf(p)`, so the array must stay in ascending urgency (`low`, `med`, `high`); a new value goes at its urgency position, not the end. Reordering it silently reorders every board column, and nothing fails to compile.
+- Drag-and-drop moves a task between columns only — there is no within-column position. `moveTask` (`server/tasks/mutations/move.ts`) just reconciles `status`, `task_assignee` rows and `completedAt`; task record writes live in `mutations/task.ts` and the two files share no helper. Cards are dnd-kit `useDraggable`, not sortables.
 - Mutations flow through TanStack Query hooks in `hooks/tasks/use-tasks.ts` with optimistic updates plus a snapshot rollback; server actions revalidate `/tasks`.
 
 ## Conventions
