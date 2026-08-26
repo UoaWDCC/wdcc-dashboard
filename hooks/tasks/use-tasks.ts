@@ -10,14 +10,13 @@ import {
 } from "@/server/tasks/actions";
 import type {
   BoardData,
-  BoardMeta,
   ClientMoveTask,
   ClientTask,
   CreateTaskInput,
   TaskView,
 } from "@/lib/tasks/types";
 import { applyDragLocal, colIdToColumnId } from "@/lib/tasks/utils";
-import { boardMetaQuery, boardQuery, taskKeys } from "./query-options";
+import { boardQuery, taskKeys } from "./query-options";
 
 export { taskKeys };
 
@@ -26,10 +25,6 @@ export function useTasksQuery(
   onBoard: (board: BoardData) => void
 ) {
   return useQuery(boardQuery(initialTasks, onBoard));
-}
-
-export function useBoardMetaQuery(initial: BoardMeta) {
-  return useQuery(boardMetaQuery(initial));
 }
 
 export function useUpdateTaskMutation(tagIdByName: Map<string, string>) {
