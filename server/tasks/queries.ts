@@ -125,6 +125,17 @@ export async function listUsers(team?: Team): Promise<BoardUser[]> {
   return base.where(eq(profile.kind, "personal")).orderBy(asc(profile.name));
 }
 
+// Derived from an already-fetched visible set, so count and max can never
+// describe a different snapshot than the tasks handed out beside them.
+export function boardVersionOf(tasks: TaskView[]): string {
+  let max = 0;
+  for (const t of tasks) {
+    const ms = t.updatedAt.getTime();
+    if (ms > max) max = ms;
+  }
+  return `${tasks.length}:${max}`;
+}
+
 // Cheap change signature for the board poll. Compare with equality, never `>`:
 // a soft delete or done-retention fall-off can move `max` backwards.
 export async function getBoardVersion(): Promise<string> {
