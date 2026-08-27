@@ -171,7 +171,8 @@ export default function TasksView({
           </div>
           <BoardSyncStatus probe={sync.probe} />
           <p className="text-muted-foreground text-xs">
-            {visibleTasks.length} tasks · {visibleUsers.length} users
+            {visibleTasks.length} tasks
+            {view === "board" && ` · ${visibleUsers.length} users`}
           </p>
           <Button
             size="sm"
