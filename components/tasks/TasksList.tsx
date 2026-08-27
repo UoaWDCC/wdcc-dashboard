@@ -18,6 +18,7 @@ function Section({
   label,
   tasks,
   userById,
+  pendingTaskIds,
   onOpenDetail,
   onToggleDone,
   onMoveTo,
@@ -25,6 +26,7 @@ function Section({
   label: string;
   tasks: ClientTask[];
   userById: Map<string, BoardUser>;
+  pendingTaskIds: Set<string>;
   onOpenDetail: (task: ClientTask) => void;
   onToggleDone: (task: ClientTask) => void;
   onMoveTo: (task: ClientTask, toCol: string) => void;
@@ -53,6 +55,7 @@ function Section({
                 key={t.id}
                 task={t}
                 userById={userById}
+                pending={pendingTaskIds.has(t.id)}
                 onOpenDetail={onOpenDetail}
                 onToggleDone={onToggleDone}
                 onMoveTo={onMoveTo}
@@ -71,12 +74,14 @@ function Section({
 export function TasksList({
   tasks,
   users,
+  pendingTaskIds,
   onOpenDetail,
   onToggleDone,
   onMoveTo,
 }: {
   tasks: ClientTask[];
   users: BoardUser[];
+  pendingTaskIds: Set<string>;
   onOpenDetail: (task: ClientTask) => void;
   onToggleDone: (task: ClientTask) => void;
   onMoveTo: (task: ClientTask, toCol: string) => void;
@@ -101,6 +106,7 @@ export function TasksList({
             label={s.label}
             tasks={s.tasks}
             userById={userById}
+            pendingTaskIds={pendingTaskIds}
             onOpenDetail={onOpenDetail}
             onToggleDone={onToggleDone}
             onMoveTo={onMoveTo}

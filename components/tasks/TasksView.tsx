@@ -23,6 +23,7 @@ import {
   useCreateTaskMutation,
   useDeleteTaskMutation,
   useMoveTaskMutation,
+  usePendingMoveTaskIds,
 } from "@/hooks/tasks/use-tasks";
 import { BoardSyncStatus } from "@/components/tasks/BoardSyncStatus";
 import { TasksKanban } from "@/components/tasks/TasksKanban";
@@ -92,6 +93,7 @@ export default function TasksView({
   const createMutation = useCreateTaskMutation();
   const deleteMutation = useDeleteTaskMutation();
   const moveMutation = useMoveTaskMutation();
+  const pendingMoveTaskIds = usePendingMoveTaskIds();
 
   // A done row reopens into its first assignee's column, or the backlog when
   // it has none.
@@ -184,6 +186,7 @@ export default function TasksView({
         <TasksList
           tasks={visibleTasks}
           users={liveUsers}
+          pendingTaskIds={pendingMoveTaskIds}
           onOpenDetail={openDetail}
           onToggleDone={toggleDone}
           onMoveTo={moveTo}
