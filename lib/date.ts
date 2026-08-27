@@ -29,6 +29,13 @@ export function dueLabel(dueDate: string, today: string): string {
   return state === "overdue" ? `Overdue ${stamp}` : `Due ${stamp}`;
 }
 
+// completedAt is an instant, not a date column: format it in the club's zone so
+// a late-night completion never renders as the next day.
+export function dayMonth(instant: string): string {
+  const [, m, d] = isoFormatter.format(new Date(instant)).split("-");
+  return `${Number(d)}/${Number(m)}`;
+}
+
 export const DUE_CLASS: Record<DueState, string> = {
   overdue: "border-red-500/40 text-red-600 dark:text-red-400",
   today: "border-amber-500/40 text-amber-600 dark:text-amber-400",

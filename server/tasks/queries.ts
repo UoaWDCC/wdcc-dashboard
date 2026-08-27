@@ -139,12 +139,16 @@ export function boardVersionOf(tasks: TaskView[]): string {
 // Cheap change signature for the board poll. Compare with equality, never `>`:
 // a soft delete or done-retention fall-off can move `max` backwards.
 export async function getBoardVersion(): Promise<string> {
+  // Built in SQL, not from a mapped Date: `updated_at` is `timestamp` without a
+  // zone, and a raw `sql` expression skips drizzle's column mapper, so the
+  // driver's naive string would parse as local time here and as UTC in
+  // boardVersionOf — a constant offset apart, and the probe would never match.
+  // floor() matches Date.getTime()'s truncation of sub-millisecond digits.
   const [row] = await db
     .select({
-      count: sql<number>`count(*)::int`,
-      max: sql<Date | null>`max(${task.updatedAt})`,
+      version: sql<string>`count(*)::text || ':' || coalesce(floor(extract(epoch from max(${task.updatedAt})) * 1000), 0)::bigint::text`,
     })
     .from(task)
     .where(visibleTasksWhere(doneCutoff()));
-  return `${row?.count ?? 0}:${row?.max ? new Date(row.max).getTime() : 0}`;
+  return row?.version ?? "0:0";
 }

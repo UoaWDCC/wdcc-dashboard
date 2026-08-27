@@ -9,12 +9,12 @@ export function SortableTask({
   task,
   columnId,
   userById,
-  onEdit,
+  onOpenDetail,
 }: {
   task: ClientTask;
   columnId: string;
   userById: Map<string, BoardUser>;
-  onEdit: (task: ClientTask) => void;
+  onOpenDetail: (task: ClientTask) => void;
 }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: sortableId(columnId, task.id),
@@ -28,12 +28,12 @@ export function SortableTask({
       {...listeners}
       onClick={() => {
         if (isDragging) return;
-        onEdit(task);
+        onOpenDetail(task);
       }}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
-          onEdit(task);
+          onOpenDetail(task);
         }
       }}
     >

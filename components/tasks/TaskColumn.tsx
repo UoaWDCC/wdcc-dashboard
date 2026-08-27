@@ -38,13 +38,13 @@ export function TaskColumn({
   tasks,
   className,
   userById,
-  onEditTask,
+  onOpenDetail,
 }: {
   meta: ColumnMeta;
   tasks: ClientTask[];
   className?: string;
   userById: Map<string, BoardUser>;
-  onEditTask: (task: ClientTask) => void;
+  onOpenDetail: (task: ClientTask) => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({
     id: meta.id,
@@ -84,7 +84,7 @@ export function TaskColumn({
             task={t}
             columnId={meta.id}
             userById={userById}
-            onEdit={onEditTask}
+            onOpenDetail={onOpenDetail}
           />
         ))}
       </div>
