@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Plus } from "lucide-react";
+import { LayoutGrid, List, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -14,6 +14,7 @@ import {
 import { TEAMS, type Team } from "@/lib/types";
 import type { BoardUser, ClientTask, TaskView } from "@/lib/tasks/types";
 import type { TagView } from "@/lib/tags/types";
+import { taskColId, userColId } from "@/lib/tasks/utils";
 import { useBoardSync } from "@/hooks/tasks/use-board-sync";
 import {
   taskKeys,
@@ -25,6 +26,7 @@ import {
 } from "@/hooks/tasks/use-tasks";
 import { BoardSyncStatus } from "@/components/tasks/BoardSyncStatus";
 import { TasksKanban } from "@/components/tasks/TasksKanban";
+import { TasksList } from "@/components/tasks/TasksList";
 import { TagManagerDialog } from "@/components/tasks/TagManagerDialog";
 import { TaskCreateDialog } from "@/components/tasks/TaskCreateDialog";
 import { TaskDetailDialog } from "@/components/tasks/TaskDetailDialog";
@@ -60,6 +62,7 @@ export default function TasksView({
   const [createOpen, setCreateOpen] = useState(false);
   const [tagManagerOpen, setTagManagerOpen] = useState(false);
   const [teamFilter, setTeamFilter] = useState<Team | null>(defaultTeam);
+  const [view, setView] = useState<"list" | "board">("board");
 
   const tagIdByName = useMemo(
     () => new Map(liveTags.map((t) => [t.name, t.id])),
@@ -89,6 +92,27 @@ export default function TasksView({
   const createMutation = useCreateTaskMutation();
   const deleteMutation = useDeleteTaskMutation();
   const moveMutation = useMoveTaskMutation();
+
+  // A done row reopens into its first assignee's column, or the backlog when
+  // it has none.
+  function toggleDone(t: ClientTask) {
+    const fromCol = taskColId(t);
+    const toCol =
+      t.status === "done"
+        ? t.assignees[0]
+          ? userColId(t.assignees[0].profileEmail)
+          : "backlog"
+        : "done";
+    moveMutation.mutate({ taskId: t.id, fromCol, toCol });
+  }
+
+  // `from: backlog` on purpose: a user `from` would only drop that one
+  // assignee, leaving a multi-assignee task active. The list means "send it
+  // back", so the non-user branch wipes them all.
+  function moveTo(t: ClientTask, toCol: string) {
+    const fromCol = toCol === "backlog" ? "backlog" : taskColId(t);
+    moveMutation.mutate({ taskId: t.id, fromCol, toCol });
+  }
 
   const detailTask = useMemo(
     () => tasks.find((t) => t.id === detailTaskId) ?? null,
@@ -120,6 +144,25 @@ export default function TasksView({
           </Select>
         </div>
         <div className="flex items-center gap-3">
+          <div className="flex items-center rounded-md border p-0.5">
+            {[
+              { id: "list" as const, Icon: List, label: "List view" },
+              { id: "board" as const, Icon: LayoutGrid, label: "Board view" },
+            ].map(({ id, Icon, label }) => (
+              <Button
+                key={id}
+                size="sm"
+                variant={view === id ? "secondary" : "ghost"}
+                aria-label={label}
+                aria-pressed={view === id}
+                disabled={activeTaskId !== null}
+                onClick={() => setView(id)}
+                className="size-7 p-0"
+              >
+                <Icon className="size-4" />
+              </Button>
+            ))}
+          </div>
           <BoardSyncStatus probe={sync.probe} />
           <p className="text-muted-foreground text-xs">
             {visibleTasks.length} tasks · {visibleUsers.length} users
@@ -137,14 +180,24 @@ export default function TasksView({
           </Button>
         </div>
       </div>
-      <TasksKanban
-        tasks={visibleTasks}
-        users={visibleUsers}
-        onMove={moveMutation.mutate}
-        onOpenDetail={openDetail}
-        activeTaskId={activeTaskId}
-        setActiveTaskId={setActiveTaskId}
-      />
+      {view === "list" ? (
+        <TasksList
+          tasks={visibleTasks}
+          users={liveUsers}
+          onOpenDetail={openDetail}
+          onToggleDone={toggleDone}
+          onMoveTo={moveTo}
+        />
+      ) : (
+        <TasksKanban
+          tasks={visibleTasks}
+          users={visibleUsers}
+          onMove={moveMutation.mutate}
+          onOpenDetail={openDetail}
+          activeTaskId={activeTaskId}
+          setActiveTaskId={setActiveTaskId}
+        />
+      )}
       <TaskCreateDialog
         open={createOpen}
         onOpenChange={setCreateOpen}
