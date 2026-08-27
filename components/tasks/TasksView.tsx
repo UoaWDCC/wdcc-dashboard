@@ -16,6 +16,8 @@ import type { BoardUser, ClientTask, TaskView } from "@/lib/tasks/types";
 import type { TagView } from "@/lib/tags/types";
 import { taskColId, userColId } from "@/lib/tasks/utils";
 import { useBoardSync } from "@/hooks/tasks/use-board-sync";
+import type { ViewMode } from "@/lib/tasks/view";
+import { useViewMode } from "@/hooks/tasks/use-view-mode";
 import {
   taskKeys,
   useTasksQuery,
@@ -38,12 +40,14 @@ export default function TasksView({
   users,
   tags,
   defaultTeam = null,
+  defaultView,
 }: {
   initialTasks: TaskView[];
   initialVersion: string;
   users: BoardUser[];
   tags: TagView[];
   defaultTeam?: Team | null;
+  defaultView: ViewMode;
 }) {
   const queryClient = useQueryClient();
 
@@ -63,7 +67,7 @@ export default function TasksView({
   const [createOpen, setCreateOpen] = useState(false);
   const [tagManagerOpen, setTagManagerOpen] = useState(false);
   const [teamFilter, setTeamFilter] = useState<Team | null>(defaultTeam);
-  const [view, setView] = useState<"list" | "board">("board");
+  const [view, setView] = useViewMode(defaultView);
 
   const tagIdByName = useMemo(
     () => new Map(liveTags.map((t) => [t.name, t.id])),
