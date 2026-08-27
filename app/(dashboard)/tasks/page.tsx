@@ -1,6 +1,6 @@
 import { boardVersionOf, listTasks, listUsers } from "@/server/tasks/queries";
 import { listTags } from "@/server/tags/queries";
-import TasksBoard from "@/components/tasks/TasksBoard";
+import TasksView from "@/components/tasks/TasksView";
 import { requireUser } from "@/server/auth/access";
 import { getProfile } from "@/server/profile/queries";
 
@@ -14,7 +14,7 @@ export default async function TasksPage() {
   ]);
 
   return (
-    <TasksBoard
+    <TasksView
       initialTasks={tasks}
       initialVersion={boardVersionOf(tasks)}
       users={users}

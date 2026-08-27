@@ -2,7 +2,6 @@
 
 import { useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { DndContext, DragOverlay } from "@dnd-kit/core";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,15 +12,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { TEAMS, type Team } from "@/lib/types";
-import type {
-  BoardUser,
-  ClientTask,
-  ColumnMeta,
-  TaskView,
-} from "@/lib/tasks/types";
+import type { BoardUser, ClientTask, TaskView } from "@/lib/tasks/types";
 import type { TagView } from "@/lib/tags/types";
-import { userColId, colTasks } from "@/lib/tasks/utils";
-import { useTaskDragDrop } from "@/hooks/tasks/use-task-drag-drop";
 import { useBoardSync } from "@/hooks/tasks/use-board-sync";
 import {
   taskKeys,
@@ -32,13 +24,12 @@ import {
   useMoveTaskMutation,
 } from "@/hooks/tasks/use-tasks";
 import { BoardSyncStatus } from "@/components/tasks/BoardSyncStatus";
-import { TaskCard } from "@/components/tasks/TaskCard";
-import { TaskColumn } from "@/components/tasks/TaskColumn";
+import { TasksKanban } from "@/components/tasks/TasksKanban";
 import { TagManagerDialog } from "@/components/tasks/TagManagerDialog";
 import { TaskCreateDialog } from "@/components/tasks/TaskCreateDialog";
 import { TaskDetailDialog } from "@/components/tasks/TaskDetailDialog";
 
-export default function TasksBoard({
+export default function TasksView({
   initialTasks,
   initialVersion,
   users,
@@ -70,10 +61,6 @@ export default function TasksBoard({
   const [tagManagerOpen, setTagManagerOpen] = useState(false);
   const [teamFilter, setTeamFilter] = useState<Team | null>(defaultTeam);
 
-  const userById = useMemo(
-    () => new Map(liveUsers.map((m) => [m.email, m])),
-    [liveUsers]
-  );
   const tagIdByName = useMemo(
     () => new Map(liveTags.map((t) => [t.name, t.id])),
     [liveTags]
@@ -93,22 +80,6 @@ export default function TasksBoard({
     [tasks, teamFilter]
   );
 
-  const userMeta: ColumnMeta[] = useMemo(
-    () =>
-      visibleUsers.map((m) => ({
-        id: userColId(m.email),
-        label: m.name,
-        accent: "neutral" as const,
-      })),
-    [visibleUsers]
-  );
-  const backlogMeta: ColumnMeta = {
-    id: "backlog",
-    label: "Backlog",
-    accent: "blue",
-  };
-  const doneMeta: ColumnMeta = { id: "done", label: "Done", accent: "green" };
-
   function openDetail(t: ClientTask) {
     setDetailTaskId(t.id);
     setDialogOpen(true);
@@ -122,41 +93,6 @@ export default function TasksBoard({
   const detailTask = useMemo(
     () => tasks.find((t) => t.id === detailTaskId) ?? null,
     [tasks, detailTaskId]
-  );
-
-  const {
-    sensors,
-    collisionDetection,
-    activeTask,
-    activeWidth,
-    activeColumnId,
-    handleDragStart,
-    handleDragEnd,
-    handleDragCancel,
-  } = useTaskDragDrop({
-    tasks,
-    onMove: moveMutation.mutate,
-    activeTaskId,
-    setActiveTaskId,
-  });
-
-  const backlogTasks = useMemo(
-    () => colTasks(visibleTasks, "backlog"),
-    [visibleTasks]
-  );
-  const doneTasksList = useMemo(
-    () => colTasks(visibleTasks, "done"),
-    [visibleTasks]
-  );
-  const userTasksByCol = useMemo(() => {
-    const m: Record<string, ClientTask[]> = {};
-    for (const meta of userMeta) m[meta.id] = colTasks(visibleTasks, meta.id);
-    return m;
-  }, [visibleTasks, userMeta]);
-  const ongoingTasksCount = useMemo(
-    () =>
-      Object.values(userTasksByCol).reduce((sum, list) => sum + list.length, 0),
-    [userTasksByCol]
   );
 
   return (
@@ -201,65 +137,14 @@ export default function TasksBoard({
           </Button>
         </div>
       </div>
-      <DndContext
-        id="tasks"
-        sensors={sensors}
-        collisionDetection={collisionDetection}
-        onDragStart={handleDragStart}
-        onDragEnd={handleDragEnd}
-        onDragCancel={handleDragCancel}
-      >
-        <div className="flex flex-1 min-h-0 gap-3">
-          <TaskColumn
-            meta={backlogMeta}
-            tasks={backlogTasks}
-            className="w-64 shrink-0"
-            userById={userById}
-            onOpenDetail={openDetail}
-          />
-          <section className="flex min-w-0 flex-1 flex-col rounded-lg ring-1 ring-brand-blue/50 bg-brand-blue/10">
-            <div className="flex items-center justify-between px-3 py-2.5 border-b border-brand-blue/30">
-              <h2 className="text-sm font-semibold tracking-tight text-brand-blue">
-                Ongoing Tasks
-              </h2>
-              <span className="bg-brand-blue text-white text-xs tabular-nums rounded-md px-1.5 py-0.5">
-                {ongoingTasksCount}
-              </span>
-            </div>
-            <div className="flex-1 overflow-y-auto p-2">
-              <div className="grid gap-2 grid-cols-[repeat(auto-fit,minmax(180px,1fr))]">
-                {userMeta.map((m) => (
-                  <TaskColumn
-                    key={m.id}
-                    meta={m}
-                    tasks={userTasksByCol[m.id] ?? []}
-                    userById={userById}
-                    onOpenDetail={openDetail}
-                  />
-                ))}
-              </div>
-            </div>
-          </section>
-          <TaskColumn
-            meta={doneMeta}
-            tasks={doneTasksList}
-            className="w-64 shrink-0"
-            userById={userById}
-            onOpenDetail={openDetail}
-          />
-        </div>
-        <DragOverlay>
-          {activeTask ? (
-            <div style={{ width: activeWidth ?? undefined }}>
-              <TaskCard
-                task={activeTask}
-                columnId={activeColumnId ?? undefined}
-                userById={userById}
-              />
-            </div>
-          ) : null}
-        </DragOverlay>
-      </DndContext>
+      <TasksKanban
+        tasks={visibleTasks}
+        users={visibleUsers}
+        onMove={moveMutation.mutate}
+        onOpenDetail={openDetail}
+        activeTaskId={activeTaskId}
+        setActiveTaskId={setActiveTaskId}
+      />
       <TaskCreateDialog
         open={createOpen}
         onOpenChange={setCreateOpen}
