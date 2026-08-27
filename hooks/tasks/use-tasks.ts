@@ -1,6 +1,11 @@
 "use client";
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  useMutation,
+  useMutationState,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
   createTaskAction,
@@ -152,4 +157,14 @@ export function useMoveTaskMutation() {
       }
     },
   });
+}
+
+// onMutate snapshots before applying, so a second move on the same row would
+// roll back to the first one's optimistic state on failure.
+export function usePendingMoveTaskIds(): Set<string> {
+  const ids = useMutationState({
+    filters: { mutationKey: moveMutationKey, status: "pending" },
+    select: (m) => (m.state.variables as ClientMoveTask | undefined)?.taskId,
+  });
+  return new Set(ids.filter((id): id is string => !!id));
 }

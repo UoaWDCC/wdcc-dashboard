@@ -23,12 +23,14 @@ import type { BoardUser, ClientTask } from "@/lib/tasks/types";
 export function TaskRow({
   task,
   userById,
+  pending = false,
   onOpenDetail,
   onToggleDone,
   onMoveTo,
 }: {
   task: ClientTask;
   userById: Map<string, BoardUser>;
+  pending?: boolean;
   onOpenDetail: (task: ClientTask) => void;
   onToggleDone: (task: ClientTask) => void;
   onMoveTo: (task: ClientTask, toCol: string) => void;
@@ -55,12 +57,13 @@ export function TaskRow({
         type="button"
         aria-label={done ? "Reopen task" : "Mark done"}
         aria-pressed={done}
+        disabled={pending}
         onClick={(e) => {
           e.stopPropagation();
           onToggleDone(task);
         }}
         className={cn(
-          "border-foreground/25 hover:border-foreground/50 flex size-4 shrink-0 items-center justify-center rounded-full border",
+          "border-foreground/25 hover:border-foreground/50 flex size-4 shrink-0 items-center justify-center rounded-full border disabled:opacity-50",
           done && "border-emerald-500 bg-emerald-500 text-white"
         )}
       >
@@ -183,13 +186,13 @@ export function TaskRow({
         <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
           <DropdownMenuLabel>Move to</DropdownMenuLabel>
           <DropdownMenuItem
-            disabled={task.status === "backlog"}
+            disabled={pending || task.status === "backlog"}
             onSelect={() => onMoveTo(task, "backlog")}
           >
             Backlog
           </DropdownMenuItem>
           <DropdownMenuItem
-            disabled={done}
+            disabled={pending || done}
             onSelect={() => onMoveTo(task, "done")}
           >
             Done
