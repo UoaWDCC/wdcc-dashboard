@@ -32,7 +32,7 @@ export function BoardSyncStatus({
   probe: UseQueryResult<string, Error>;
 }) {
   const hidden = useTabHidden();
-  const stalled = probe.isError && probe.errorUpdateCount >= 2;
+  const stalled = probe.isError && probe.failureCount >= 2;
 
   const dot = stalled
     ? "bg-destructive"
