@@ -1,4 +1,8 @@
-import { TASK_PRIORITIES, type TaskPriority } from "@/lib/types";
+import {
+  TASK_PRIORITIES,
+  type TaskPriority,
+  type TaskStatus,
+} from "@/lib/types";
 import type { ClientTask, ColumnId, TaskView } from "./types";
 
 // Board sort key: priority band, then due date, then task number.
@@ -57,6 +61,25 @@ export function colTasks(tasks: ClientTask[], colId: string): ClientTask[] {
   const list = tasks.filter((t) => belongsTo(t, colId));
   const comparisonFn = colId === "done" ? compareDoneTasks : compareTasks;
   return list.sort((a, b) => comparisonFn(a, b));
+}
+
+export function statusTasks(
+  tasks: ClientTask[],
+  status: TaskStatus
+): ClientTask[] {
+  const list = tasks.filter((t) => t.status === status);
+  const comparisonFn = status === "done" ? compareDoneTasks : compareTasks;
+  return list.sort((a, b) => comparisonFn(a, b));
+}
+
+// The column a task sits in now, for a move's `from`. An active task with no
+// assignees is not structurally impossible, and "user-undefined" would fail
+// moveTaskSchema's email check — fall back to backlog.
+export function taskColId(task: ClientTask): string {
+  if (task.status === "done") return "done";
+  const first = task.assignees[0]?.profileEmail;
+  if (task.status === "active" && first) return userColId(first);
+  return "backlog";
 }
 
 export function compareTasks(a: SortableTask, b: SortableTask): number {
