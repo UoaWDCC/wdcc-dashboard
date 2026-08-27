@@ -25,7 +25,7 @@ export default async function TasksPage() {
       users={users}
       tags={tags}
       defaultTeam={profile?.team ?? null}
-      defaultView={isViewMode(saved) ? saved : "board"}
+      defaultView={isViewMode(saved) ? saved : "list"}
     />
   );
 }

@@ -130,6 +130,7 @@ the list. Only the shell is a default export, imported by the page.
   (`usePendingMoveTaskIds`, reading pending move mutations' `variables`).
   `onMutate` snapshots before applying, so a second move on the same row would
   roll back to the first one's optimistic state.
+- **List is the default**; the board is opt-in. An unset or unrecognised cookie value falls back to `list`.
 - View choice persists in the `tasks_view` cookie (`lib/tasks/view.ts`, written
   by `useViewMode`, read by the page and passed down as `defaultView`) — seeded
   server-side, so there is no post-hydration flash. `lib/tasks/view.ts` is not
