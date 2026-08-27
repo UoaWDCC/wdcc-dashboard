@@ -36,7 +36,7 @@ import { TaskCard } from "@/components/tasks/TaskCard";
 import { TaskColumn } from "@/components/tasks/TaskColumn";
 import { TagManagerDialog } from "@/components/tasks/TagManagerDialog";
 import { TaskCreateDialog } from "@/components/tasks/TaskCreateDialog";
-import { TaskEditDialog } from "@/components/tasks/TaskEditDialog";
+import { TaskDetailDialog } from "@/components/tasks/TaskDetailDialog";
 
 export default function TasksBoard({
   initialTasks,
@@ -64,7 +64,7 @@ export default function TasksBoard({
   const { data: tasks = [] } = useTasksQuery(initialTasks, sync.onBoard);
   const { users: liveUsers, tags: liveTags } = sync;
 
-  const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
+  const [detailTaskId, setDetailTaskId] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [tagManagerOpen, setTagManagerOpen] = useState(false);
@@ -109,8 +109,8 @@ export default function TasksBoard({
   };
   const doneMeta: ColumnMeta = { id: "done", label: "Done", accent: "green" };
 
-  function openEdit(t: ClientTask) {
-    setEditingTaskId(t.id);
+  function openDetail(t: ClientTask) {
+    setDetailTaskId(t.id);
     setDialogOpen(true);
   }
 
@@ -119,9 +119,9 @@ export default function TasksBoard({
   const deleteMutation = useDeleteTaskMutation();
   const moveMutation = useMoveTaskMutation();
 
-  const editingTask = useMemo(
-    () => tasks.find((t) => t.id === editingTaskId) ?? null,
-    [tasks, editingTaskId]
+  const detailTask = useMemo(
+    () => tasks.find((t) => t.id === detailTaskId) ?? null,
+    [tasks, detailTaskId]
   );
 
   const {
@@ -215,7 +215,7 @@ export default function TasksBoard({
             tasks={backlogTasks}
             className="w-64 shrink-0"
             userById={userById}
-            onEditTask={openEdit}
+            onOpenDetail={openDetail}
           />
           <section className="flex min-w-0 flex-1 flex-col rounded-lg ring-1 ring-brand-blue/50 bg-brand-blue/10">
             <div className="flex items-center justify-between px-3 py-2.5 border-b border-brand-blue/30">
@@ -234,7 +234,7 @@ export default function TasksBoard({
                     meta={m}
                     tasks={userTasksByCol[m.id] ?? []}
                     userById={userById}
-                    onEditTask={openEdit}
+                    onOpenDetail={openDetail}
                   />
                 ))}
               </div>
@@ -245,7 +245,7 @@ export default function TasksBoard({
             tasks={doneTasksList}
             className="w-64 shrink-0"
             userById={userById}
-            onEditTask={openEdit}
+            onOpenDetail={openDetail}
           />
         </div>
         <DragOverlay>
@@ -291,8 +291,8 @@ export default function TasksBoard({
           queryClient.invalidateQueries({ queryKey: taskKeys.all })
         }
       />
-      <TaskEditDialog
-        task={editingTask}
+      <TaskDetailDialog
+        task={detailTask}
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         onSave={(updated) => updateMutation.mutate({ next: updated })}
