@@ -124,5 +124,18 @@ export function applyDragLocal(
     }
   }
 
-  return tasks.map((x) => (x.id === taskId ? { ...x, status, assignees } : x));
+  // Mirror the server's completedAt handling so a done row sorts by
+  // compareDoneTasks immediately instead of jumping on the refetch.
+  const isDone = status === "done";
+  const wasDone = t.status === "done";
+  const completedAt =
+    isDone && !wasDone
+      ? new Date().toISOString()
+      : !isDone && wasDone
+        ? null
+        : t.completedAt;
+
+  return tasks.map((x) =>
+    x.id === taskId ? { ...x, status, assignees, completedAt } : x
+  );
 }
