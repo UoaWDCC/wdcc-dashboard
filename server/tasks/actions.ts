@@ -16,20 +16,25 @@ import {
   softDeleteTask,
   updateTask,
 } from "@/server/tasks/mutations/task";
-import { getBoardVersion, listTasks, listUsers } from "@/server/tasks/queries";
+import {
+  boardVersionOf,
+  getBoardVersion,
+  listTasks,
+  listUsers,
+} from "@/server/tasks/queries";
 import { listTags } from "@/server/tags/queries";
 
 // The board's only published read: one round trip instead of three, so a
 // refetch after a mutation does not waterfall.
 export async function getBoardAction(): Promise<BoardData> {
   await requireUser();
-  const [tasks, users, tags, version] = await Promise.all([
+  const [tasks, users, tags] = await Promise.all([
     listTasks(),
     listUsers(),
     listTags(),
-    getBoardVersion(),
   ]);
-  return { tasks, users, tags, version };
+  // Derived, not queried: a second count/max SELECT races this one's snapshot.
+  return { tasks, users, tags, version: boardVersionOf(tasks) };
 }
 
 export async function getBoardVersionAction(): Promise<string> {
