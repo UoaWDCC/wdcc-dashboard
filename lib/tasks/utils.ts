@@ -3,7 +3,7 @@ import {
   type TaskPriority,
   type TaskStatus,
 } from "@/lib/types";
-import type { ClientTask, ColumnId, TaskView } from "./types";
+import type { BoardUser, ClientTask, ColumnId, TaskView } from "./types";
 
 // Board sort key: priority band, then due date, then task number.
 type SortableTask = Pick<ClientTask, "priority" | "dueDate" | "number">;
@@ -11,6 +11,9 @@ type SortableTask = Pick<ClientTask, "priority" | "dueDate" | "number">;
 const priorityRank = (p: TaskPriority | null): number => {
   return p ? TASK_PRIORITIES.indexOf(p) : -1;
 };
+
+export const usersById = (users: BoardUser[]) =>
+  new Map(users.map((m) => [m.email, m]));
 
 export const userColId = (email: string) => `user-${email}`;
 

@@ -8,7 +8,7 @@ import type {
   ClientTask,
   ColumnMeta,
 } from "@/lib/tasks/types";
-import { userColId, colTasks } from "@/lib/tasks/utils";
+import { userColId, colTasks, usersById } from "@/lib/tasks/utils";
 import { useTaskDragDrop } from "@/hooks/tasks/use-task-drag-drop";
 import { TaskCard } from "@/components/tasks/TaskCard";
 import { TaskColumn } from "@/components/tasks/TaskColumn";
@@ -32,10 +32,7 @@ export function TasksKanban({
   // activeTaskId would pin the sync poll's pause gate on forever.
   useEffect(() => () => setActiveTaskId(null), [setActiveTaskId]);
 
-  const userById = useMemo(
-    () => new Map(users.map((m) => [m.email, m])),
-    [users]
-  );
+  const userById = useMemo(() => usersById(users), [users]);
 
   const userMeta: ColumnMeta[] = useMemo(
     () =>

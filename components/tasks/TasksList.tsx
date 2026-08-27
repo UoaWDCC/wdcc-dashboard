@@ -5,7 +5,7 @@ import { ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { BoardUser, ClientTask } from "@/lib/tasks/types";
 import type { TaskStatus } from "@/lib/types";
-import { statusTasks } from "@/lib/tasks/utils";
+import { statusTasks, usersById } from "@/lib/tasks/utils";
 import { TaskRow } from "@/components/tasks/TaskRow";
 
 const SECTIONS: { status: TaskStatus; label: string }[] = [
@@ -86,10 +86,7 @@ export function TasksList({
   onToggleDone: (task: ClientTask) => void;
   onMoveTo: (task: ClientTask, toCol: string) => void;
 }) {
-  const userById = useMemo(
-    () => new Map(users.map((m) => [m.email, m])),
-    [users]
-  );
+  const userById = useMemo(() => usersById(users), [users]);
   const byStatus = useMemo(
     () => SECTIONS.map((s) => ({ ...s, tasks: statusTasks(tasks, s.status) })),
     [tasks]
