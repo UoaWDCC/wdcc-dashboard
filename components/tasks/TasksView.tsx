@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { TEAMS, type Team } from "@/lib/types";
 import type { BoardUser, ClientTask, TaskView } from "@/lib/tasks/types";
 import type { TagView } from "@/lib/tags/types";
-import { taskColId, userColId } from "@/lib/tasks/utils";
+import { filterTasks, taskColId, userColId } from "@/lib/tasks/utils";
 import { useBoardSync } from "@/hooks/tasks/use-board-sync";
 import type { ViewMode } from "@/lib/tasks/view";
 import { useViewMode } from "@/hooks/tasks/use-view-mode";
@@ -63,6 +63,8 @@ export default function TasksView({
   const [createOpen, setCreateOpen] = useState(false);
   const [tagManagerOpen, setTagManagerOpen] = useState(false);
   const [teams, setTeams] = useState<Team[]>(defaultTeam ? [defaultTeam] : []);
+  const [tagFilter, setTagFilter] = useState<string[]>([]);
+  const [peopleFilter, setPeopleFilter] = useState<string[]>([]);
   const [view, setView] = useViewMode(defaultView);
 
   const tagIdByName = useMemo(
@@ -70,22 +72,40 @@ export default function TasksView({
     [liveTags]
   );
   const tagSuggestions = useMemo(() => liveTags.map((t) => t.name), [liveTags]);
+  const tagOptions = useMemo(
+    () => tagSuggestions.map((name) => ({ value: name, label: name })),
+    [tagSuggestions]
+  );
+  const activeTags = useMemo(
+    () => tagFilter.filter((name) => tagIdByName.has(name)),
+    [tagFilter, tagIdByName]
+  );
+  const peopleOptions = useMemo(
+    () => liveUsers.map((m) => ({ value: m.email, label: m.name })),
+    [liveUsers]
+  );
+  const activePeople = useMemo(
+    () => peopleFilter.filter((e) => liveUsers.some((m) => m.email === e)),
+    [peopleFilter, liveUsers]
+  );
 
+  // Teams and people both narrow the board's columns, and they intersect —
+  // filtering to a team plus someone outside it legitimately leaves no user
+  // columns at all.
   const visibleUsers = useMemo(
     () =>
-      teams.length
-        ? liveUsers.filter((m) => m.team && teams.includes(m.team))
-        : liveUsers,
-    [liveUsers, teams]
+      !teams.length && !activePeople.length
+        ? liveUsers
+        : liveUsers.filter(
+            (m) =>
+              (!teams.length || (m.team && teams.includes(m.team))) &&
+              (!activePeople.length || activePeople.includes(m.email))
+          ),
+    [liveUsers, teams, activePeople]
   );
-  // An untriaged task (`team === null`) stays visible under any filter — it is
-  // nobody's yet, and hiding it is how it gets forgotten.
   const visibleTasks = useMemo(
-    () =>
-      teams.length
-        ? tasks.filter((t) => t.team === null || teams.includes(t.team))
-        : tasks,
-    [tasks, teams]
+    () => filterTasks(tasks, { teams, tags: activeTags, people: activePeople }),
+    [tasks, teams, activeTags, activePeople]
   );
 
   function openDetail(t: ClientTask) {
@@ -154,6 +174,20 @@ export default function TasksView({
             options={TEAM_OPTIONS}
             selected={teams}
             onChange={setTeams}
+          />
+          {tagOptions.length > 0 && (
+            <FilterSelect
+              label="Tags"
+              options={tagOptions}
+              selected={activeTags}
+              onChange={setTagFilter}
+            />
+          )}
+          <FilterSelect
+            label="People"
+            options={peopleOptions}
+            selected={activePeople}
+            onChange={setPeopleFilter}
           />
         </div>
         <div className="flex items-center gap-3">

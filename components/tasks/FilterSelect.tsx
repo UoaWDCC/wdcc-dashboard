@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Popover as PopoverPrimitive } from "radix-ui";
 import { ChevronDownIcon, XIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 // Searchable multi-select. Empty `selected` means "no filter", so a cleared
 // list and an all-selected list are deliberately the same thing to callers.
@@ -47,10 +48,13 @@ export function FilterSelect<T extends string>({
         <Button
           size="sm"
           variant="outline"
-          className="w-40 justify-between font-normal"
+          className="w-36 justify-between font-normal"
         >
           <span
-            className={selected.length ? undefined : "text-muted-foreground"}
+            className={cn(
+              "truncate",
+              selected.length ? undefined : "text-muted-foreground"
+            )}
           >
             {trigger}
           </span>

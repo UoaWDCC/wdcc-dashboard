@@ -97,7 +97,7 @@ Column identity is derived, not stored (`lib/tasks/utils.ts`, `lib/tasks/types.t
 
 `/tasks` renders one of two views, both fed by the same `taskKeys.all` cache —
 no extra action, query or round trip. `TasksView.tsx` is the shell (state,
-mutations, team filter, dialogs, the view toggle); `TasksKanban.tsx` owns
+mutations, header filters, dialogs, the view toggle); `TasksKanban.tsx` owns
 `DndContext` / `DragOverlay` / columns / `useTaskDragDrop`, `TasksList.tsx` owns
 the list. Only the shell is a default export, imported by the page.
 
@@ -106,6 +106,22 @@ the list. Only the shell is a default export, imported by the page.
   mirrors `colTasks`. A team filter therefore shows every matching active task,
   including ones assigned to someone off that team, which the kanban renders in
   no column at all.
+- Three header filters — Teams, Tags, People — are `FilterSelect` (searchable
+  multi-select over Radix `Popover` + native checkboxes) driving `filterTasks`
+  (`lib/tasks/utils.ts`). An empty selection means "not filtering by this", and
+  all three intersect. Teams keep untriaged tasks (`team === null`) visible;
+  tags and people get no such escape hatch, and both are ANY-match.
+- Teams and people narrow the board's columns through `visibleUsers` (also
+  intersecting, so a team plus someone outside it legitimately leaves no user
+  columns); tags never touch columns. A people filter empties the Backlog
+  column, which is zero assignees by invariant — **that column stays rendered
+  on purpose**, an empty Backlog is the honest answer, not a missing column.
+- Tag and people options come from the live `taskKeys.meta` lists, and both
+  selections are pruned on read (`activeTags`, `activePeople`) rather than in an
+  effect. A tag deleted in the tag manager or a profile removed by an admin
+  would otherwise keep filtering from state nobody can see, and the board would
+  look empty for no visible reason. `FilterSelect` gets the pruned array as
+  `selected`, so the next toggle drops the stale value from state too.
 - Rows share one CSS grid across all three sections through nested
   `grid-cols-subgrid`, so the badge columns line up down the whole list. Below
   `sm` the badge cluster wraps to a second line (`sm:contents` on its wrapper).

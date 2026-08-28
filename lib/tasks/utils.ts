@@ -2,6 +2,7 @@ import {
   TASK_PRIORITIES,
   type TaskPriority,
   type TaskStatus,
+  type Team,
 } from "@/lib/types";
 import type { BoardUser, ClientTask, ColumnId, TaskView } from "./types";
 
@@ -73,6 +74,25 @@ export function statusTasks(
   const list = tasks.filter((t) => t.status === status);
   const comparisonFn = status === "done" ? compareDoneTasks : compareTasks;
   return list.sort((a, b) => comparisonFn(a, b));
+}
+
+export function filterTasks(
+  tasks: ClientTask[],
+  filters: {
+    teams: readonly Team[];
+    tags: readonly string[];
+    people: readonly string[];
+  }
+): ClientTask[] {
+  const { teams, tags, people } = filters;
+  if (!teams.length && !tags.length && !people.length) return tasks;
+  return tasks.filter(
+    (t) =>
+      (!teams.length || t.team === null || teams.includes(t.team)) &&
+      (!tags.length || tags.some((name) => t.tags.includes(name))) &&
+      (!people.length ||
+        t.assignees.some((a) => people.includes(a.profileEmail)))
+  );
 }
 
 // The column a task sits in now, for a move's `from`. An active task with no
