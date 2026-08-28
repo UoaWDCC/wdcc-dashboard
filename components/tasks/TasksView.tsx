@@ -4,13 +4,6 @@ import { useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { LayoutGrid, List, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { TEAMS, type Team } from "@/lib/types";
 import type { BoardUser, ClientTask, TaskView } from "@/lib/tasks/types";
 import type { TagView } from "@/lib/tags/types";
@@ -28,11 +21,14 @@ import {
   usePendingMoveTaskIds,
 } from "@/hooks/tasks/use-tasks";
 import { BoardSyncStatus } from "@/components/tasks/BoardSyncStatus";
+import { FilterSelect } from "@/components/tasks/FilterSelect";
 import { TasksKanban } from "@/components/tasks/TasksKanban";
 import { TasksList } from "@/components/tasks/TasksList";
 import { TagManagerDialog } from "@/components/tasks/TagManagerDialog";
 import { TaskCreateDialog } from "@/components/tasks/TaskCreateDialog";
 import { TaskDetailDialog } from "@/components/tasks/TaskDetailDialog";
+
+const TEAM_OPTIONS = TEAMS.map((t) => ({ value: t, label: t }));
 
 export default function TasksView({
   initialTasks,
@@ -66,7 +62,7 @@ export default function TasksView({
   const [dialogOpen, setDialogOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [tagManagerOpen, setTagManagerOpen] = useState(false);
-  const [teamFilter, setTeamFilter] = useState<Team | null>(defaultTeam);
+  const [teams, setTeams] = useState<Team[]>(defaultTeam ? [defaultTeam] : []);
   const [view, setView] = useViewMode(defaultView);
 
   const tagIdByName = useMemo(
@@ -77,15 +73,19 @@ export default function TasksView({
 
   const visibleUsers = useMemo(
     () =>
-      teamFilter ? liveUsers.filter((m) => m.team === teamFilter) : liveUsers,
-    [liveUsers, teamFilter]
+      teams.length
+        ? liveUsers.filter((m) => m.team && teams.includes(m.team))
+        : liveUsers,
+    [liveUsers, teams]
   );
+  // An untriaged task (`team === null`) stays visible under any filter — it is
+  // nobody's yet, and hiding it is how it gets forgotten.
   const visibleTasks = useMemo(
     () =>
-      teamFilter
-        ? tasks.filter((t) => t.team === teamFilter || t.team === null)
+      teams.length
+        ? tasks.filter((t) => t.team === null || teams.includes(t.team))
         : tasks,
-    [tasks, teamFilter]
+    [tasks, teams]
   );
 
   function openDetail(t: ClientTask) {
@@ -149,24 +149,12 @@ export default function TasksView({
               </Button>
             ))}
           </div>
-          <Select
-            value={teamFilter ?? "all"}
-            onValueChange={(v) =>
-              setTeamFilter(v === "all" ? null : (v as Team))
-            }
-          >
-            <SelectTrigger size="sm" className="w-40">
-              <SelectValue placeholder="All teams" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All teams</SelectItem>
-              {TEAMS.map((t) => (
-                <SelectItem key={t} value={t}>
-                  {t}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <FilterSelect
+            label="Teams"
+            options={TEAM_OPTIONS}
+            selected={teams}
+            onChange={setTeams}
+          />
         </div>
         <div className="flex items-center gap-3">
           <BoardSyncStatus probe={sync.probe} />
