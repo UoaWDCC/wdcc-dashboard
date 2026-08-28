@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { DUE_CLASS, dueLabel, dueState, getTodayIso } from "@/lib/date";
-import { PRIORITY_DOT, PRIORITY_LABEL } from "@/lib/types";
+import { PRIORITY_DOT, PRIORITY_LABEL, TEAM_BADGE } from "@/lib/types";
 import type { BoardUser, ClientTask } from "@/lib/tasks/types";
 import { userFromCol } from "@/lib/tasks/utils";
 
@@ -80,7 +80,10 @@ export function TaskCard({
                 </Badge>
               )}
               {task.team && (
-                <Badge variant="outline" className="text-[10px]">
+                <Badge
+                  variant="outline"
+                  className={cn("text-[10px]", TEAM_BADGE[task.team])}
+                >
                   {task.team}
                 </Badge>
               )}

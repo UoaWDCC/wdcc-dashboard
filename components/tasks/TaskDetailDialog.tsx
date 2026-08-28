@@ -19,7 +19,13 @@ import {
   dueState,
   getTodayIso,
 } from "@/lib/date";
-import { PRIORITY_DOT, PRIORITY_LABEL, type TaskStatus } from "@/lib/types";
+import {
+  PRIORITY_DOT,
+  PRIORITY_LABEL,
+  STATUS_BADGE,
+  TEAM_BADGE,
+  type TaskStatus,
+} from "@/lib/types";
 import type { BoardUser, ClientTask } from "@/lib/tasks/types";
 import { useTaskForm, type TaskFormValues } from "@/hooks/tasks/use-task-form";
 import { TaskFormFields } from "./TaskFormFields";
@@ -151,7 +157,9 @@ export function TaskDetailDialog({
         ) : task ? (
           <div className="flex flex-col gap-4">
             <div className="flex flex-wrap items-center gap-1">
-              <Badge variant="outline">{STATUS_LABEL[task.status]}</Badge>
+              <Badge variant="outline" className={STATUS_BADGE[task.status]}>
+                {STATUS_LABEL[task.status]}
+              </Badge>
               {task.priority && (
                 <Badge variant="outline" className="gap-1.5">
                   <span
@@ -163,7 +171,11 @@ export function TaskDetailDialog({
                   {PRIORITY_LABEL[task.priority]}
                 </Badge>
               )}
-              {task.team && <Badge variant="outline">{task.team}</Badge>}
+              {task.team && (
+                <Badge variant="outline" className={TEAM_BADGE[task.team]}>
+                  {task.team}
+                </Badge>
+              )}
               {task.dueDate && (
                 <Badge
                   variant="outline"

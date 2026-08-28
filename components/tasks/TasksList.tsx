@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { BoardUser, ClientTask } from "@/lib/tasks/types";
-import type { TaskStatus } from "@/lib/types";
+import { STATUS_TEXT, type TaskStatus } from "@/lib/types";
 import { statusTasks, usersById } from "@/lib/tasks/utils";
 import { TaskRow } from "@/components/tasks/TaskRow";
 
@@ -15,6 +15,7 @@ const SECTIONS: { status: TaskStatus; label: string }[] = [
 ];
 
 function Section({
+  status,
   label,
   tasks,
   userById,
@@ -23,6 +24,7 @@ function Section({
   onToggleDone,
   onMoveTo,
 }: {
+  status: TaskStatus;
   label: string;
   tasks: ClientTask[];
   userById: Map<string, BoardUser>;
@@ -39,7 +41,10 @@ function Section({
         type="button"
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
-        className="text-muted-foreground hover:text-foreground col-span-full flex items-center gap-1.5 px-2 py-1 text-xs font-semibold tracking-wide uppercase"
+        className={cn(
+          "col-span-full flex items-center gap-1.5 px-2 py-1 text-xs font-semibold tracking-wide uppercase",
+          STATUS_TEXT[status]
+        )}
       >
         <ChevronDown
           className={cn("size-3.5 transition-transform", !open && "-rotate-90")}
@@ -100,6 +105,7 @@ export function TasksList({
         {byStatus.map((s) => (
           <Section
             key={s.status}
+            status={s.status}
             label={s.label}
             tasks={s.tasks}
             userById={userById}
