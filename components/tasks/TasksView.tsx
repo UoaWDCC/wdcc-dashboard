@@ -130,6 +130,25 @@ export default function TasksView({
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <h1 className="text-2xl font-semibold">Tasks</h1>
+          <div className="flex items-center rounded-md border p-0.5">
+            {[
+              { id: "list" as const, Icon: List, label: "List view" },
+              { id: "board" as const, Icon: LayoutGrid, label: "Board view" },
+            ].map(({ id, Icon, label }) => (
+              <Button
+                key={id}
+                size="sm"
+                variant={view === id ? "secondary" : "ghost"}
+                aria-label={label}
+                aria-pressed={view === id}
+                disabled={activeTaskId !== null}
+                onClick={() => setView(id)}
+                className="size-7 p-0"
+              >
+                <Icon className="size-4" />
+              </Button>
+            ))}
+          </div>
           <Select
             value={teamFilter ?? "all"}
             onValueChange={(v) =>
@@ -150,25 +169,6 @@ export default function TasksView({
           </Select>
         </div>
         <div className="flex items-center gap-3">
-          <div className="flex items-center rounded-md border p-0.5">
-            {[
-              { id: "list" as const, Icon: List, label: "List view" },
-              { id: "board" as const, Icon: LayoutGrid, label: "Board view" },
-            ].map(({ id, Icon, label }) => (
-              <Button
-                key={id}
-                size="sm"
-                variant={view === id ? "secondary" : "ghost"}
-                aria-label={label}
-                aria-pressed={view === id}
-                disabled={activeTaskId !== null}
-                onClick={() => setView(id)}
-                className="size-7 p-0"
-              >
-                <Icon className="size-4" />
-              </Button>
-            ))}
-          </div>
           <BoardSyncStatus probe={sync.probe} />
           <p className="text-muted-foreground text-xs">
             {visibleTasks.length} tasks
