@@ -122,6 +122,28 @@ the list. Only the shell is a default export, imported by the page.
   would otherwise keep filtering from state nobody can see, and the board would
   look empty for no visible reason. `FilterSelect` gets the pruned array as
   `selected`, so the next toggle drops the stale value from state too.
+- Teams and tags live in the URL, so a filtered board is a shareable link:
+  `/tasks?teams=Tech&tags=urgent` (`ShareableFilters`). `parseFilters` seeds
+  state server-side from the page's `searchParams` prop (no `useSearchParams`,
+  no Suspense boundary, no post-hydration flash, same reasoning as
+  `defaultView`), and one effect mirrors state back with
+  **`window.history.replaceState`** — `router.replace` would re-run the page's
+  server queries on every checkbox, and `pushState` would bury the back button
+  under one entry per toggle.
+- **Keys repeat, values are never comma-joined** (`?tags=a&tags=b`): `tag.name`
+  is free text under a lowercase check, so a tag called `a,b` is legal and has
+  to survive the round trip.
+- **People are deliberately not in the URL.** Encoding them means either leaking
+  exec addresses into chat and proxy logs, or carrying a handle-to-email
+  resolution table (with its own collision and re-serialisation traps) for a
+  filter the recipient re-applies with one click. `peopleFilter` therefore seeds
+  from `[]`, and the type keeps it out: the codec is typed on
+  `ShareableFilters`, not `TaskFilters`, so nothing can pass people to it and
+  silently lose them.
+- The viewer's own `profile.team`, passed to `parseFilters` as its fallback (the
+  `defaultTeam` prop is gone), seeds a visit that carries **no** filter params
+  at all. Any filter in the link makes the link authoritative — otherwise a
+  shared URL would render a different board for the recipient than the sender.
 - Rows share one CSS grid across all three sections through nested
   `grid-cols-subgrid`, so the badge columns line up down the whole list. Below
   `sm` the badge cluster wraps to a second line (`sm:contents` on its wrapper).

@@ -1,13 +1,19 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { LayoutGrid, List, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { TEAMS, type Team } from "@/lib/types";
 import type { BoardUser, ClientTask, TaskView } from "@/lib/tasks/types";
 import type { TagView } from "@/lib/tags/types";
-import { filterTasks, taskColId, userColId } from "@/lib/tasks/utils";
+import {
+  filterQuery,
+  filterTasks,
+  taskColId,
+  userColId,
+  type ShareableFilters,
+} from "@/lib/tasks/utils";
 import { useBoardSync } from "@/hooks/tasks/use-board-sync";
 import type { ViewMode } from "@/lib/tasks/view";
 import { useViewMode } from "@/hooks/tasks/use-view-mode";
@@ -35,14 +41,14 @@ export default function TasksView({
   initialVersion,
   users,
   tags,
-  defaultTeam = null,
+  defaultFilters,
   defaultView,
 }: {
   initialTasks: TaskView[];
   initialVersion: string;
   users: BoardUser[];
   tags: TagView[];
-  defaultTeam?: Team | null;
+  defaultFilters: ShareableFilters;
   defaultView: ViewMode;
 }) {
   const queryClient = useQueryClient();
@@ -62,8 +68,8 @@ export default function TasksView({
   const [dialogOpen, setDialogOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [tagManagerOpen, setTagManagerOpen] = useState(false);
-  const [teams, setTeams] = useState<Team[]>(defaultTeam ? [defaultTeam] : []);
-  const [tagFilter, setTagFilter] = useState<string[]>([]);
+  const [teams, setTeams] = useState<Team[]>(defaultFilters.teams);
+  const [tagFilter, setTagFilter] = useState<string[]>(defaultFilters.tags);
   const [peopleFilter, setPeopleFilter] = useState<string[]>([]);
   const [view, setView] = useViewMode(defaultView);
 
@@ -107,6 +113,21 @@ export default function TasksView({
     () => filterTasks(tasks, { teams, tags: activeTags, people: activePeople }),
     [tasks, teams, activeTags, activePeople]
   );
+
+  // Mirror the shareable filters into the URL so a filtered board is a link you
+  // can paste. `history.replaceState` on purpose: `router.replace` would re-run
+  // the page's server queries on every checkbox, and `pushState` would bury the
+  // back button under one entry per toggle. The people filter is deliberately
+  // absent — see `parseFilters`.
+  useEffect(() => {
+    const query = filterQuery({ teams, tags: activeTags });
+    if (query === window.location.search.replace(/^\?/, "")) return;
+    window.history.replaceState(
+      null,
+      "",
+      query ? `?${query}` : window.location.pathname
+    );
+  }, [teams, activeTags]);
 
   function openDetail(t: ClientTask) {
     setDetailTaskId(t.id);

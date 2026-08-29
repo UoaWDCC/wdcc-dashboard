@@ -1,5 +1,6 @@
 import {
   TASK_PRIORITIES,
+  TEAMS,
   type TaskPriority,
   type TaskStatus,
   type Team,
@@ -76,13 +77,15 @@ export function statusTasks(
   return list.sort((a, b) => comparisonFn(a, b));
 }
 
+export type TaskFilters = {
+  teams: Team[];
+  tags: string[];
+  people: string[];
+};
+
 export function filterTasks(
   tasks: ClientTask[],
-  filters: {
-    teams: readonly Team[];
-    tags: readonly string[];
-    people: readonly string[];
-  }
+  filters: TaskFilters
 ): ClientTask[] {
   const { teams, tags, people } = filters;
   if (!teams.length && !tags.length && !people.length) return tasks;
@@ -93,6 +96,38 @@ export function filterTasks(
       (!people.length ||
         t.assignees.some((a) => people.includes(a.profileEmail)))
   );
+}
+
+const isTeam = (v: string): v is Team =>
+  (TEAMS as readonly string[]).includes(v);
+
+export type ShareableFilters = Pick<TaskFilters, "teams" | "tags">;
+
+export function parseFilters(
+  params: Record<string, string | string[] | undefined>,
+  fallbackTeam: Team | null
+): ShareableFilters {
+  const list = (v: string | string[] | undefined): string[] =>
+    (Array.isArray(v) ? v : v ? [v] : []).filter(Boolean);
+
+  const filters: ShareableFilters = {
+    teams: list(params.teams).filter(isTeam),
+    tags: list(params.tags),
+  };
+  // The viewer's own team seeds an unfiltered visit only. A link that carries
+  // any filter is authoritative, or the recipient would see a different board
+  // than the sender.
+  if (fallbackTeam && !filters.teams.length && !filters.tags.length) {
+    filters.teams = [fallbackTeam];
+  }
+  return filters;
+}
+
+export function filterQuery(filters: ShareableFilters): string {
+  const params = new URLSearchParams();
+  for (const team of filters.teams) params.append("teams", team);
+  for (const tag of filters.tags) params.append("tags", tag);
+  return params.toString();
 }
 
 // The column a task sits in now, for a move's `from`. An active task with no
