@@ -5,15 +5,21 @@ import { requireUser } from "@/server/auth/access";
 import { getProfile } from "@/server/profile/queries";
 import { cookies } from "next/headers";
 import { VIEW_COOKIE, isViewMode } from "@/lib/tasks/view";
+import { parseFilters } from "@/lib/tasks/utils";
 
-export default async function TasksPage() {
+export default async function TasksPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const session = await requireUser("/tasks");
-  const [tasks, users, tags, profile, cookieStore] = await Promise.all([
+  const [tasks, users, tags, profile, cookieStore, params] = await Promise.all([
     listTasks(),
     listUsers(),
     listTags(),
     getProfile(session.user.email),
     cookies(),
+    searchParams,
   ]);
 
   const saved = cookieStore.get(VIEW_COOKIE)?.value;
@@ -24,7 +30,7 @@ export default async function TasksPage() {
       initialVersion={boardVersionOf(tasks)}
       users={users}
       tags={tags}
-      defaultTeam={profile?.team ?? null}
+      defaultFilters={parseFilters(params, profile?.team ?? null)}
       defaultView={isViewMode(saved) ? saved : "list"}
     />
   );
