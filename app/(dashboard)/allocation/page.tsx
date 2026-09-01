@@ -1,4 +1,4 @@
-import { AllocationClient } from "./AllocationClient";
+import { AllocationClient } from "@/components/allocation/AllocationClient";
 
 export default function AllocationPage() {
   return (

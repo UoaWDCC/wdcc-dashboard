@@ -4,8 +4,8 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableHeader, TableRow } from "@/components/ui/table";
 import type { Applicant } from "@/lib/allocation/types";
 
-import { textPopup, useExpandableCell } from "./useExpandableCell";
-import { useSortableRows } from "./useSortableRows";
+import { textPopup, useExpandableCell } from "@/hooks/use-expandable-cell";
+import { useSortableRows } from "@/hooks/use-sortable-rows";
 
 function skillsList(skills: string[]) {
   return (
