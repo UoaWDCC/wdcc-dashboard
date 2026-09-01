@@ -1,13 +1,13 @@
-import { deriveAppState, machineTypeLabel, uniqueRegions } from "@/lib/flyio/utils";
-import { STATE_META } from "@/lib/flyio/styles";
+import {
+  deriveAppState,
+  machineTypeLabel,
+  uniqueRegions,
+} from "@/lib/flyio/utils";
+import { STATE_META } from "@/components/tech/state-meta";
 import { UtilBar } from "./UtilBar";
 import type { FlyAppWithMachinesAndMetrics } from "@/lib/flyio/types";
 
-export function FlyAppCard({
-  app,
-}: {
-  app: FlyAppWithMachinesAndMetrics;
-}) {
+export function FlyAppCard({ app }: { app: FlyAppWithMachinesAndMetrics }) {
   const appStatus = deriveAppState(app);
   const regions = uniqueRegions(app);
   const machineType = machineTypeLabel(app);
@@ -24,7 +24,9 @@ export function FlyAppCard({
 
       <div className="flex justify-between items-start gap-2">
         <div className="min-w-0">
-          <div className="font-heading font-semibold text-[15px] truncate">{app.name}</div>
+          <div className="font-heading font-semibold text-[15px] truncate">
+            {app.name}
+          </div>
           <div className="flex flex-wrap gap-1 mt-1">
             {regions.length > 0 ? (
               regions.map((r) => (

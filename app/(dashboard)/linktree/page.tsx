@@ -1,11 +1,9 @@
 import { after } from "next/server";
-import {
-  hideExpiredGoLinks,
-  listGoLinks,
-  listGoRedirects,
-} from "@/lib/linktree";
+import { listGoLinks, listGoRedirects } from "@/server/linktree/queries";
+import { hideExpiredGoLinks } from "@/server/linktree/mutations";
+import { revalidateGoSite } from "@/server/go";
 import { getTodayIso } from "@/lib/date";
-import { requireUser } from "@/lib/access";
+import { requireUser } from "@/server/auth/access";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -15,7 +13,7 @@ import {
   removeGoRedirectAction,
   toggleGoRedirectHiddenAction,
 } from "@/server/linktree/actions";
-import GoLinksManager from "./GoLinksManager";
+import GoLinksManager from "@/components/linktree/GoLinksManager";
 
 export default async function LinktreePage() {
   // The layout gate renders concurrently with this page, and `after` callbacks
@@ -23,7 +21,16 @@ export default async function LinktreePage() {
   await requireUser("/linktree");
 
   // Runs after the response is sent, so the render itself stays read-only.
-  after(hideExpiredGoLinks);
+  after(async () => {
+    // Auto-hiding an expired link changes what the go app serves, so purge its
+    // cache too — but only when a row actually flipped.
+    if ((await hideExpiredGoLinks()) === 0) return;
+    try {
+      await revalidateGoSite();
+    } catch (err) {
+      console.error("[hideExpiredGoLinks] revalidateGoSite failed:", err);
+    }
+  });
 
   const today = getTodayIso();
   const [links, redirects] = await Promise.all([
@@ -79,7 +86,9 @@ export default async function LinktreePage() {
                 <tr className="border-b text-left text-muted-foreground">
                   <th className="pb-2 font-medium">Key</th>
                   <th className="pb-2 font-medium">Destination</th>
-                  <th className="pb-2 font-medium hidden sm:table-cell">Flags</th>
+                  <th className="pb-2 font-medium hidden sm:table-cell">
+                    Flags
+                  </th>
                   <th className="pb-2" />
                 </tr>
               </thead>
@@ -92,7 +101,9 @@ export default async function LinktreePage() {
                       row.hidden && "opacity-50"
                     )}
                   >
-                    <td className="py-2 pr-4 font-mono font-medium">{row.key}</td>
+                    <td className="py-2 pr-4 font-mono font-medium">
+                      {row.key}
+                    </td>
                     <td className="py-2 pr-4 max-w-[280px]">
                       <a
                         href={row.destinationUrl}

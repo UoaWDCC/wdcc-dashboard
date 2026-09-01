@@ -1,6 +1,14 @@
-import { QueryClient, dehydrate, HydrationBoundary } from "@tanstack/react-query";
-import { orgSlugs } from "@/lib/flyio/config";
-import { appsQuery, machinesQuery, metricsQuery } from "@/lib/flyio/queries";
+import {
+  QueryClient,
+  dehydrate,
+  HydrationBoundary,
+} from "@tanstack/react-query";
+import { orgSlugs } from "@/server/flyio/config";
+import {
+  appsQuery,
+  machinesQuery,
+  metricsQuery,
+} from "@/hooks/flyio/query-options";
 import { FlyMetrics } from "@/components/tech/FlyDashboard";
 import type { FlyApp } from "@/lib/flyio/types";
 
@@ -24,9 +32,12 @@ export default async function TechPage() {
     const metrics = queryClient.prefetchQuery(metricsQuery(slug));
 
     await queryClient.prefetchQuery(appsQuery(slug));
-    const apps = queryClient.getQueryData<FlyApp[]>(["fly", "apps", slug]) ?? [];
+    const apps =
+      queryClient.getQueryData<FlyApp[]>(["fly", "apps", slug]) ?? [];
     const machines = Promise.all(
-      apps.map((app) => queryClient.prefetchQuery(machinesQuery(slug, app.name)))
+      apps.map((app) =>
+        queryClient.prefetchQuery(machinesQuery(slug, app.name))
+      )
     );
 
     await Promise.all([machines, metrics]);

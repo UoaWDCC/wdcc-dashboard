@@ -1,152 +1,222 @@
-import type { ClientTask, ColumnId, TaskView } from "./types";
+import {
+  TASK_PRIORITIES,
+  TEAMS,
+  type TaskPriority,
+  type TaskStatus,
+  type Team,
+} from "@/lib/types";
+import type { BoardUser, ClientTask, ColumnId, TaskView } from "./types";
+
+// Board sort key: priority band, then due date, then task number.
+type SortableTask = Pick<ClientTask, "priority" | "dueDate" | "number">;
+
+const priorityRank = (p: TaskPriority | null): number => {
+  return p ? TASK_PRIORITIES.indexOf(p) : -1;
+};
+
+export const usersById = (users: BoardUser[]) =>
+  new Map(users.map((m) => [m.email, m]));
 
 export const userColId = (email: string) => `user-${email}`;
 
 export const userFromCol = (colId: string) =>
-	colId.startsWith("user-") ? colId.slice("user-".length) : null;
+  colId.startsWith("user-") ? colId.slice("user-".length) : null;
 
 export function colIdToColumnId(colId: string): ColumnId {
-	if (colId === "backlog") return { kind: "backlog" };
-	if (colId === "done") return { kind: "done" };
-	const profileEmail = userFromCol(colId);
-	if (profileEmail) return { kind: "user", profileEmail };
-	throw new Error(`Unknown column id: ${colId}`);
+  if (colId === "backlog") return { kind: "backlog" };
+  if (colId === "done") return { kind: "done" };
+  const profileEmail = userFromCol(colId);
+  if (profileEmail) return { kind: "user", profileEmail };
+  throw new Error(`Unknown column id: ${colId}`);
 }
 
 export const sortableId = (colId: string, taskId: string) =>
-	`${colId}::${taskId}`;
+  `${colId}::${taskId}`;
 
 export function fromServer(tasks: TaskView[]): ClientTask[] {
-	return tasks.map((t) => ({
-		id: t.id,
-		title: t.title,
-		description: t.description,
-		status: t.status,
-		priority: t.priority,
-		team: t.team,
-		tags: t.tags.map((tg) => tg.name),
-		links: t.links.map((l) => ({ id: l.id, url: l.url, title: l.title })),
-		assignees: t.assignees
-			.map((a) => ({ profileEmail: a.profileEmail, position: a.position }))
-			.sort((a, b) => a.position - b.position),
-		position: t.position,
-		dueDate: t.dueDate,
-	}));
+  return tasks.map((t) => ({
+    id: t.id,
+    number: t.number,
+    title: t.title,
+    description: t.description,
+    status: t.status,
+    priority: t.priority,
+    team: t.team,
+    tags: t.tags.map((tg) => tg.name),
+    links: t.links.map((l) => ({ id: l.id, url: l.url, title: l.title })),
+    assignees: t.assignees.map((a) => ({ profileEmail: a.profileEmail })),
+    dueDate: t.dueDate,
+    completedAt: t.completedAt ? t.completedAt.toISOString() : null,
+  }));
 }
 
 export function belongsTo(task: ClientTask, colId: string): boolean {
-	if (colId === "backlog") return task.status === "backlog";
-	if (colId === "done") return task.status === "done";
-	const email = userFromCol(colId);
-	if (email)
-		return (
-			task.status === "active" &&
-			task.assignees.some((a) => a.profileEmail === email)
-		);
-	return false;
+  if (colId === "backlog") return task.status === "backlog";
+  if (colId === "done") return task.status === "done";
+  const email = userFromCol(colId);
+  if (email)
+    return (
+      task.status === "active" &&
+      task.assignees.some((a) => a.profileEmail === email)
+    );
+  return false;
 }
 
 export function colTasks(tasks: ClientTask[], colId: string): ClientTask[] {
-	const list = tasks.filter((t) => belongsTo(t, colId));
-	const email = userFromCol(colId);
-	if (email) {
-		return list.sort((a, b) => {
-			const ap = a.assignees.find((x) => x.profileEmail === email)?.position ?? 0;
-			const bp = b.assignees.find((x) => x.profileEmail === email)?.position ?? 0;
-			return ap - bp;
-		});
-	}
-	return list.sort((a, b) => a.position - b.position);
+  const list = tasks.filter((t) => belongsTo(t, colId));
+  const comparisonFn = colId === "done" ? compareDoneTasks : compareTasks;
+  return list.sort((a, b) => comparisonFn(a, b));
 }
 
-export function positionFor(task: ClientTask, colId: string): number {
-	if (colId === "backlog" || colId === "done") return task.position;
-	const m = userFromCol(colId);
-	if (!m) return 0;
-	return task.assignees.find((a) => a.profileEmail === m)?.position ?? 0;
+export function statusTasks(
+  tasks: ClientTask[],
+  status: TaskStatus
+): ClientTask[] {
+  const list = tasks.filter((t) => t.status === status);
+  const comparisonFn = status === "done" ? compareDoneTasks : compareTasks;
+  return list.sort((a, b) => comparisonFn(a, b));
 }
 
-export function neighborsOf(
-	tasks: ClientTask[],
-	movedId: string,
-	colId: string,
-): { beforeId: string | null; afterId: string | null } {
-	const ordered = tasks
-		.filter((t) => belongsTo(t, colId))
-		.sort((a, b) => positionFor(a, colId) - positionFor(b, colId));
-	const idx = ordered.findIndex((t) => t.id === movedId);
-	if (idx < 0) return { beforeId: null, afterId: null };
-	return {
-		beforeId: idx > 0 ? ordered[idx - 1].id : null,
-		afterId: idx < ordered.length - 1 ? ordered[idx + 1].id : null,
-	};
+export type TaskFilters = {
+  teams: Team[];
+  tags: string[];
+  people: string[];
+};
+
+export function filterTasks(
+  tasks: ClientTask[],
+  filters: TaskFilters
+): ClientTask[] {
+  const { teams, tags, people } = filters;
+  if (!teams.length && !tags.length && !people.length) return tasks;
+  return tasks.filter(
+    (t) =>
+      (!teams.length || t.team === null || teams.includes(t.team)) &&
+      (!tags.length || tags.some((name) => t.tags.includes(name))) &&
+      (!people.length ||
+        t.assignees.some((a) => people.includes(a.profileEmail)))
+  );
+}
+
+const isTeam = (v: string): v is Team =>
+  (TEAMS as readonly string[]).includes(v);
+
+export type ShareableFilters = Pick<TaskFilters, "teams" | "tags">;
+
+export function parseFilters(
+  params: Record<string, string | string[] | undefined>,
+  fallbackTeam: Team | null
+): ShareableFilters {
+  const list = (v: string | string[] | undefined): string[] =>
+    (Array.isArray(v) ? v : v ? [v] : []).filter(Boolean);
+
+  const filters: ShareableFilters = {
+    teams: list(params.teams).filter(isTeam),
+    tags: list(params.tags),
+  };
+  // The viewer's own team seeds an unfiltered visit only. A link that carries
+  // any filter is authoritative, or the recipient would see a different board
+  // than the sender.
+  if (fallbackTeam && !filters.teams.length && !filters.tags.length) {
+    filters.teams = [fallbackTeam];
+  }
+  return filters;
+}
+
+export function filterQuery(filters: ShareableFilters): string {
+  const params = new URLSearchParams();
+  for (const team of filters.teams) params.append("teams", team);
+  for (const tag of filters.tags) params.append("tags", tag);
+  return params.toString();
+}
+
+// The column a task sits in now, for a move's `from`. An active task with no
+// assignees is not structurally impossible, and "user-undefined" would fail
+// moveTaskSchema's email check — fall back to backlog.
+export function taskColId(task: ClientTask): string {
+  if (task.status === "done") return "done";
+  const first = task.assignees[0]?.profileEmail;
+  if (task.status === "active" && first) return userColId(first);
+  return "backlog";
+}
+
+export function compareTasks(a: SortableTask, b: SortableTask): number {
+  // first is priority
+  const rankA = priorityRank(a.priority);
+  const rankB = priorityRank(b.priority);
+  if (rankA !== rankB) {
+    return rankB - rankA;
+  }
+
+  if (a.dueDate !== b.dueDate) {
+    if (!a.dueDate) return 1;
+    if (!b.dueDate) return -1;
+    if (a.dueDate < b.dueDate) {
+      return -1;
+    } else {
+      return 1;
+    }
+  }
+
+  return b.number - a.number;
+}
+
+export function compareDoneTasks(a: ClientTask, b: ClientTask): number {
+  const at = a.completedAt ? Date.parse(a.completedAt) : 0;
+  const bt = b.completedAt ? Date.parse(b.completedAt) : 0;
+  if (at !== bt) {
+    return bt - at;
+  }
+
+  return b.number - a.number;
 }
 
 export function applyDragLocal(
-	tasks: ClientTask[],
-	taskId: string,
-	fromCol: string,
-	toCol: string,
-	overTaskId: string | null,
+  tasks: ClientTask[],
+  taskId: string,
+  fromCol: string,
+  toCol: string
 ): ClientTask[] {
-	const t = tasks.find((x) => x.id === taskId);
-	if (!t) return tasks;
+  const t = tasks.find((x) => x.id === taskId);
+  if (!t) return tasks;
 
-	let status = t.status;
-	let assignees = [...t.assignees];
-	const oldEmail = userFromCol(fromCol);
-	const newEmail = userFromCol(toCol);
+  let status = t.status;
+  let assignees = [...t.assignees];
+  const oldEmail = userFromCol(fromCol);
+  const newEmail = userFromCol(toCol);
 
-	if (toCol === "backlog") {
-		if (oldEmail) {
-			assignees = assignees.filter((a) => a.profileEmail !== oldEmail);
-			if (assignees.length === 0) status = "backlog";
-		} else {
-			status = "backlog";
-			assignees = [];
-		}
-	} else if (toCol === "done") {
-		status = "done";
-	} else if (newEmail) {
-		status = "active";
-		if (oldEmail && oldEmail !== newEmail) {
-			assignees = assignees.filter((a) => a.profileEmail !== oldEmail);
-		}
-		if (!assignees.some((a) => a.profileEmail === newEmail)) {
-			assignees.push({ profileEmail: newEmail, position: 0 });
-		}
-	}
+  if (toCol === "backlog") {
+    if (oldEmail) {
+      assignees = assignees.filter((a) => a.profileEmail !== oldEmail);
+      if (assignees.length === 0) status = "backlog";
+    } else {
+      status = "backlog";
+      assignees = [];
+    }
+  } else if (toCol === "done") {
+    status = "done";
+  } else if (newEmail) {
+    status = "active";
+    if (oldEmail && oldEmail !== newEmail) {
+      assignees = assignees.filter((a) => a.profileEmail !== oldEmail);
+    }
+    if (!assignees.some((a) => a.profileEmail === newEmail)) {
+      assignees.push({ profileEmail: newEmail });
+    }
+  }
 
-	const mutated = tasks.map((x) =>
-		x.id === taskId ? { ...x, status, assignees } : x,
-	);
-	const moved = mutated.find((x) => x.id === taskId)!;
-	const taskBelongsToDest = belongsTo(moved, toCol);
+  // Mirror the server's completedAt handling so a done row sorts by
+  // compareDoneTasks immediately instead of jumping on the refetch.
+  const isDone = status === "done";
+  const wasDone = t.status === "done";
+  const completedAt =
+    isDone && !wasDone
+      ? new Date().toISOString()
+      : !isDone && wasDone
+        ? null
+        : t.completedAt;
 
-	const destOrdered = mutated
-		.filter((x) => x.id !== taskId && belongsTo(x, toCol))
-		.sort((a, b) => positionFor(a, toCol) - positionFor(b, toCol));
-	let insertIdx = destOrdered.length;
-	if (overTaskId && overTaskId !== taskId) {
-		const idx = destOrdered.findIndex((x) => x.id === overTaskId);
-		if (idx >= 0) insertIdx = idx;
-	}
-	if (taskBelongsToDest) destOrdered.splice(insertIdx, 0, moved);
-
-	return mutated.map((x) => {
-		if (!belongsTo(x, toCol)) return x;
-		const i = destOrdered.findIndex((y) => y.id === x.id);
-		if (i < 0) return x;
-		const newPos = i + 1;
-		if (toCol === "backlog" || toCol === "done") {
-			return { ...x, position: newPos };
-		}
-		const assigneeEmail = userFromCol(toCol)!;
-		return {
-			...x,
-			assignees: x.assignees.map((a) =>
-				a.profileEmail === assigneeEmail ? { ...a, position: newPos } : a,
-			),
-		};
-	});
+  return tasks.map((x) =>
+    x.id === taskId ? { ...x, status, assignees, completedAt } : x
+  );
 }

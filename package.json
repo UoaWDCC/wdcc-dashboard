@@ -9,11 +9,12 @@
     "lint": "eslint",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate",
-    "db:push": "drizzle-kit push",
-    "db:studio": "drizzle-kit studio",
-    "db:seed": "tsx --env-file=.env lib/db/seed.ts"
+    "db:generate": "NODE_OPTIONS=--conditions=react-server drizzle-kit generate",
+    "db:check": "NODE_OPTIONS=--conditions=react-server drizzle-kit check",
+    "db:migrate": "NODE_OPTIONS=--conditions=react-server drizzle-kit migrate",
+    "db:push": "NODE_OPTIONS=--conditions=react-server drizzle-kit push",
+    "db:studio": "NODE_OPTIONS=--conditions=react-server drizzle-kit studio",
+    "db:seed": "tsx --conditions=react-server --env-file=.env server/db/seed.ts"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
@@ -32,6 +33,7 @@
     "radix-ui": "^1.4.3",
     "react": "19.2.4",
     "react-dom": "19.2.4",
+    "server-only": "^0.0.1",
     "shadcn": "^4.6.0",
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.5.0",

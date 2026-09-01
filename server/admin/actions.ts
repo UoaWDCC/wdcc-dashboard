@@ -1,13 +1,16 @@
 "use server";
 
+import "server-only";
+
 import { revalidatePath } from "next/cache";
 import { after } from "next/server";
 import { and, eq, inArray, isNull, sql } from "drizzle-orm";
-import { db } from "@/lib/db";
-import { profile, task, taskAssignee } from "@/lib/db/schema";
-import { requireUser } from "@/lib/access";
-import { upsertProfile, normalizeEmail } from "@/lib/profile";
-import { syncDocsAccessGroup } from "@/lib/cloudflare";
+import { db } from "@/server/db";
+import { profile, task, taskAssignee } from "@/server/db/schema";
+import { requireUser } from "@/server/auth/access";
+import { normalizeEmail } from "@/lib/profile";
+import { upsertProfile } from "@/server/profile/mutations";
+import { syncDocsAccessGroup } from "@/server/cloudflare";
 import { TEAMS, PROFILE_KINDS } from "@/lib/types";
 import {
   parseEmail,
@@ -72,14 +75,6 @@ export async function removeProfileAction(formData: FormData) {
     if (!affected.length) return;
     const affectedIds = [...new Set(affected.map((r) => r.taskId))];
 
-    // Tail position for backlog so demoted tasks land at the end with a fresh
-    // monotonic position (active rows store position=0; reusing that collides).
-    const tailRow = await tx
-      .select({ max: sql<number>`coalesce(max(${task.position}), 0)` })
-      .from(task)
-      .where(and(eq(task.status, "backlog"), isNull(task.deletedAt)));
-    let nextPos = Number(tailRow[0]?.max ?? 0);
-
     const toDemote = await tx
       .select({ id: task.id })
       .from(task)
@@ -93,10 +88,9 @@ export async function removeProfileAction(formData: FormData) {
       );
 
     for (const row of toDemote) {
-      nextPos += 1;
       await tx
         .update(task)
-        .set({ status: "backlog", position: nextPos })
+        .set({ status: "backlog" })
         .where(eq(task.id, row.id));
     }
   });
@@ -119,6 +113,9 @@ export async function resyncDocsAccessGroupAction(): Promise<ResyncResult> {
   } catch (err) {
     // Return the error text instead of throwing: Next masks thrown server-action
     // errors in production, so the client would otherwise show a generic message.
-    return { ok: false, error: err instanceof Error ? err.message : "Sync failed" };
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : "Sync failed",
+    };
   }
 }

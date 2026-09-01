@@ -96,4 +96,3 @@ export function ProfileRow({ email, name, team, kind, note }: Props) {
     </tr>
   );
 }
-
