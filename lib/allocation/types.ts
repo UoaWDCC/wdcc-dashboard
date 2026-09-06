@@ -39,3 +39,33 @@ export type Project = {
   designersNeeded: string; // free text, e.g. "1 dedicated designer."
   notes: string;
 };
+
+export type TeamAllocation = {
+  project: Project;
+  applicants: Applicant[];
+  teamSize: number;
+};
+
+export type TeamScore = {
+  objectiveScore: number;
+  projectPrefScore: number;
+  rolePrefScore: number;
+  beExpScore: number;
+  feExpScore: number;
+  bePrefSum: number;
+  targetBePrefSum: number;
+  designers: number;
+  backenders: number;
+  frontenders: number;
+};
+
+export type AllocationRun = {
+  teams: TeamAllocation[];
+  unmatched: Applicant[];
+  teamSize: number;
+  targetSize: number;
+  totalUtility: number;
+  baselineUtility: number;
+  redistributionLog: string[];
+  warnings: string[];
+};
