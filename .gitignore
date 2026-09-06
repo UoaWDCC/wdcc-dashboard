@@ -45,3 +45,6 @@ next-env.d.ts
 
 # form export CSVs contain applicant PII — never commit
 /*.csv
+
+# AI planning scratch — not part of the repo
+/.claude/

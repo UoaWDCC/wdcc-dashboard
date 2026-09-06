@@ -8,6 +8,9 @@ importers:
 
   .:
     dependencies:
+      '@datastructures-js/priority-queue':
+        specifier: 6.3.2
+        version: 6.3.2
       '@dnd-kit/core':
         specifier: ^6.3.1
         version: 6.3.1(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
@@ -334,6 +337,12 @@ packages:
 
   '@better-fetch/fetch@1.1.21':
     resolution: {integrity: sha512-/ImESw0sskqlVR94jB+5+Pxjf+xBwDZF/N5+y2/q4EqD7IARUTSpPfIo8uf39SYpCxyOCtbyYpUrZ3F/k0zT4A==}
+
+  '@datastructures-js/heap@4.3.7':
+    resolution: {integrity: sha512-Dx4un7Uj0dVxkfoq4RkpzsY2OrvNJgQYZ3n3UlGdl88RxxdHd7oTi21/l3zoxUUe0sXFuNUrfmWqlHzqnoN6Ug==}
+
+  '@datastructures-js/priority-queue@6.3.2':
+    resolution: {integrity: sha512-hPmWlbmYRegOkZsWJuOzZw+BYcrOJ9B5xwy8Sz/QtEtLUPHtJbX9OpPpCB+KQPgOVb1QonqFqiddVDud/i5afw==}
 
   '@dnd-kit/accessibility@3.1.1':
     resolution: {integrity: sha512-2P+YgaXF+gRsIihwwY1gCsQSYnu9Zyj2py8kY5fFvUM1qm2WA2u639R6YNVfU4GWr+ZM5mqEsfHZZLoRONbemw==}
@@ -4914,6 +4923,12 @@ snapshots:
       '@noble/hashes': 2.2.0
 
   '@better-fetch/fetch@1.1.21': {}
+
+  '@datastructures-js/heap@4.3.7': {}
+
+  '@datastructures-js/priority-queue@6.3.2':
+    dependencies:
+      '@datastructures-js/heap': 4.3.7
 
   '@dnd-kit/accessibility@3.1.1(react@19.2.4)':
     dependencies:

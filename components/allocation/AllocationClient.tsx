@@ -41,6 +41,11 @@ async function readCsv<T>(
   }
 }
 
+// Held back for exec review. A blank blurb is not flagged — only a short one is,
+// so someone who skipped the question still goes through to allocation.
+const isFlagged = (applicant: Applicant) =>
+  applicant.passionBlurb.length > 0 && applicant.passionBlurb.length < 100;
+
 export function AllocationClient() {
   const [applicants, setApplicants] = useState<Applicant[] | null>(null);
   const [applicantsFileName, setApplicantsFileName] = useState<string | null>(
@@ -72,10 +77,13 @@ export function AllocationClient() {
     setProjectsFileName(file.name);
   }
 
-  const developers =
-    applicants?.filter((a) => a.rolePreference !== "Designer") ?? [];
   const designers =
     applicants?.filter((a) => a.rolePreference === "Designer") ?? [];
+  const flagged = applicants?.filter(isFlagged) ?? [];
+  const pool =
+    applicants?.filter(
+      (a) => !isFlagged(a) && a.rolePreference !== "Designer"
+    ) ?? [];
 
   return (
     <div className="space-y-6">
@@ -96,8 +104,9 @@ export function AllocationClient() {
           {applicants && (
             <div className="flex flex-wrap items-center gap-2">
               <Badge variant="secondary">{applicants.length} applicants</Badge>
-              <Badge variant="secondary">{developers.length} developers</Badge>
+              <Badge variant="secondary">{pool.length} pool</Badge>
               <Badge variant="secondary">{designers.length} designers</Badge>
+              <Badge variant="secondary">{flagged.length} flagged</Badge>
               {applicantsSkipped > 0 && (
                 <Badge variant="outline">
                   {applicantsSkipped} rows skipped (missing name/email)
@@ -150,23 +159,27 @@ export function AllocationClient() {
       {(applicants || projects) && (
         <Card>
           <CardContent className="pt-6">
-            <Tabs defaultValue="developers">
+            <Tabs defaultValue="pool">
               <TabsList>
-                <TabsTrigger value="developers">
-                  Developers ({developers.length})
-                </TabsTrigger>
+                <TabsTrigger value="pool">Pool ({pool.length})</TabsTrigger>
                 <TabsTrigger value="designers">
                   Designers ({designers.length})
+                </TabsTrigger>
+                <TabsTrigger value="flagged">
+                  Flagged ({flagged.length})
                 </TabsTrigger>
                 <TabsTrigger value="projects">
                   Projects ({projects?.length ?? 0})
                 </TabsTrigger>
               </TabsList>
-              <TabsContent value="developers">
-                <ApplicantsTable applicants={developers} />
+              <TabsContent value="pool">
+                <ApplicantsTable applicants={pool} />
               </TabsContent>
               <TabsContent value="designers">
                 <ApplicantsTable applicants={designers} />
+              </TabsContent>
+              <TabsContent value="flagged">
+                <ApplicantsTable applicants={flagged} />
               </TabsContent>
               <TabsContent value="projects">
                 <ProjectsTable projects={projects ?? []} />
