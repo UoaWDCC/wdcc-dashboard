@@ -133,7 +133,8 @@ export function TagInput({
       )}
       {open && noMatch && (
         <div className="bg-popover text-muted-foreground absolute z-50 mt-1 w-full rounded-md border px-2 py-1 text-xs shadow-md">
-          No matching tag — ask an admin to create &ldquo;{draftLower}&rdquo;.
+          No matching tag — create &ldquo;{draftLower}&rdquo; in the Manage Tags
+          dialog.
         </div>
       )}
     </div>
