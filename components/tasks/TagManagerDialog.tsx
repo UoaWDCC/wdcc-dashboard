@@ -11,7 +11,11 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { deleteTagAction, updateTagAction } from "@/server/tags/actions";
+import {
+  createTagAction,
+  deleteTagAction,
+  updateTagAction,
+} from "@/server/tags/actions";
 import { toast } from "sonner";
 import type { TagView } from "@/lib/tags/types";
 
@@ -27,6 +31,7 @@ export function TagManagerDialog({
   onChanged: () => void;
 }) {
   const [pending, startTransition] = useTransition();
+  const [newName, setNewName] = useState("");
   const [drafts, setDrafts] = useState<Record<string, { name: string }>>({});
   const [editingId, setEditingId] = useState<string | null>(null);
 
@@ -37,6 +42,7 @@ export function TagManagerDialog({
     // Seed drafts from server tags when dialog opens.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setDrafts(next);
+    setNewName("");
     setEditingId(null);
   }, [open, tags]);
 
@@ -52,6 +58,22 @@ export function TagManagerDialog({
   function cancelEdit(t: TagView) {
     setDrafts((d) => ({ ...d, [t.id]: { name: t.name } }));
     setEditingId(null);
+  }
+
+  function create() {
+    const name = newName.trim().toLowerCase();
+    if (!name) return;
+    startTransition(async () => {
+      try {
+        const created = await createTagAction({ name });
+        setNewName("");
+        onChanged();
+        toast.success(created ? "Tag created" : "Tag already exists");
+      } catch (e) {
+        console.error("createTagAction failed", e);
+        toast.error("Failed to create tag");
+      }
+    });
   }
 
   function save(t: TagView) {
@@ -97,6 +119,27 @@ export function TagManagerDialog({
         <DialogHeader>
           <DialogTitle>Manage tags</DialogTitle>
         </DialogHeader>
+        <div className="flex gap-2">
+          <Input
+            value={newName}
+            onChange={(e) => setNewName(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                create();
+              }
+            }}
+            placeholder="New tag name"
+            disabled={pending}
+          />
+          <Button
+            type="button"
+            disabled={!newName.trim() || pending}
+            onClick={create}
+          >
+            Create
+          </Button>
+        </div>
         <div className="max-h-[60vh] space-y-2 overflow-y-auto">
           {tags.length === 0 && (
             <p className="text-muted-foreground text-sm">No tags yet.</p>
