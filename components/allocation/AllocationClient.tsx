@@ -229,7 +229,14 @@ export function AllocationClient() {
             <Button onClick={handleRun} disabled={running}>
               <Play /> {running ? "Allocating…" : "Run allocation"}
             </Button>
-            {result && <AllocationResults run={result} />}
+            {result && (
+              <AllocationResults
+                run={result}
+                pool={pool}
+                designers={designers}
+                flagged={flagged}
+              />
+            )}
           </CardContent>
         </Card>
       )}
