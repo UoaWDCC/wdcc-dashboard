@@ -467,19 +467,80 @@ export function randomlyAllocate(
   return allocations;
 }
 
+/**
+ * Blocking problems with the uploaded pair of CSVs. The two forms are edited
+ * independently each year, so a mismatch between them is expected eventually —
+ * and every case here would otherwise crash mid-run or silently lose a team.
+ */
+export function preflightAllocation(
+  pool: Applicant[],
+  projects: Project[]
+): string[] {
+  const problems: string[] = [];
+
+  if (projects.length === 0) problems.push("No projects were loaded.");
+  if (pool.length === 0) {
+    problems.push(
+      "No applicants are left to allocate once designers and flagged applicants are held back."
+    );
+  }
+
+  const names = new Set<string>();
+  const duplicated = new Set<string>();
+  for (const project of projects) {
+    if (names.has(project.name)) duplicated.add(project.name);
+    names.add(project.name);
+  }
+  for (const name of duplicated) {
+    problems.push(
+      `Two projects are both named "${name}" — one of them would silently end up with no team.`
+    );
+  }
+
+  const unknown = new Set<string>();
+  for (const applicant of pool) {
+    for (const choice of applicant.projectChoices) {
+      if (!names.has(choice)) unknown.add(choice);
+    }
+  }
+  const unknownList = [...unknown];
+  for (const choice of unknownList.slice(0, 5)) {
+    problems.push(
+      `Applicants chose "${choice}", but no project has that name.`
+    );
+  }
+  if (unknownList.length > 5) {
+    problems.push(
+      `…and ${unknownList.length - 5} more project names that appear in applicant choices but not in the projects file. The two exports are probably from different years.`
+    );
+  }
+
+  return problems;
+}
+
 export function runAllocation(
   pool: Applicant[],
   projects: Project[]
 ): AllocationRun {
   const stable = stableMatching(pool, projects);
+
+  // The ascent indexes with `% team.applicants.length`, so an empty team makes it
+  // read applicants[NaN] and throw. The script crashes here; skipping the ascent
+  // and returning the matching on its own is the one deliberate behaviour change.
+  const ascentSkipped = stable.teams.some(
+    (team) => team.applicants.length === 0
+  );
   // The generator returns the same array every call and the ascent only
   // shallow-copies, so each run continues the previous one instead of restarting
   // from the seed. That is the script's behaviour — making these independent
   // restarts would change the result.
-  const teams = heuristicAscent(() => stable.teams);
+  const teams = ascentSkipped
+    ? stable.teams
+    : heuristicAscent(() => stable.teams);
 
   return {
     teams,
+    ascentSkipped,
     unmatched: stable.unmatched,
     teamSize: stable.teamSize,
     targetSize: stable.targetSize,

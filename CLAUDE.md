@@ -42,18 +42,55 @@ files would fail `format:check` after the next `db:generate`.
 
 ## Layout
 
-| Path                     | Contents                                                                                                                                                                                                                                                                   |
-| ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `app/(dashboard)/`       | Authed pages: `/`, `/admin`, `/tasks`, `/linktree`, `/tech`, `/projects`. Layout calls `requireUser()`.                                                                                                                                                                    |
-| `app/(auth)/sign-in/`    | Server Component; reads `?error=` / `?from=` and renders `components/auth/`                                                                                                                                                                                                |
-| `app/api/auth/[...all]/` | Better Auth handler via `toNextJsHandler`                                                                                                                                                                                                                                  |
-| `proxy.ts`               | Next 16 proxy (NOT `middleware.ts`) — cookie-presence redirect, negative matcher; not enforcement                                                                                                                                                                          |
-| `server/`                | Server-only; every file starts `import "server-only"`. `env`, `cloudflare`, `db/`, `auth/` (`index`, `access`), `profile/` (`queries`, `mutations`), and the domains `admin`, `tasks`, `tags`, `linktree`, `flyio`; `go` (outbound cache purge)                            |
-| `lib/`                   | Browser-safe, pure: `auth-client`, `auth-errors`, `profile` (`normalizeEmail` only), `date`, `form-parser`, `types`, `utils`, `tasks/`, `tags/`, `home/`, `linktree/` (types), `flyio/` (types, utils). No value imports from `@/server/` (eslint `no-restricted-imports`) |
-| `components/`            | `ui/` is shadcn-generated; feature dirs `auth/`, `admin/`, `tasks/`, `tech/`, `linktree/`                                                                                                                                                                                  |
-| `hooks/`                 | `use-mobile`; `tasks/` (`query-options`, `use-tasks`, `use-board-sync`, `use-task-drag-drop`, `use-task-form`, `use-view-mode`); `flyio/` (`query-options`, `use-fly-queries`)                                                                                             |
+| Path                     | Contents                                                                                                                                                                                                                                                                                                                                            |
+| ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `app/(dashboard)/`       | Authed pages: `/`, `/admin`, `/tasks`, `/linktree`, `/tech`, `/projects`, `/allocation`. Layout calls `requireUser()`.                                                                                                                                                                                                                              |
+| `app/(auth)/sign-in/`    | Server Component; reads `?error=` / `?from=` and renders `components/auth/`                                                                                                                                                                                                                                                                         |
+| `app/api/auth/[...all]/` | Better Auth handler via `toNextJsHandler`                                                                                                                                                                                                                                                                                                           |
+| `proxy.ts`               | Next 16 proxy (NOT `middleware.ts`) — cookie-presence redirect, negative matcher; not enforcement                                                                                                                                                                                                                                                   |
+| `server/`                | Server-only; every file starts `import "server-only"`. `env`, `cloudflare`, `db/`, `auth/` (`index`, `access`), `profile/` (`queries`, `mutations`), and the domains `admin`, `tasks`, `tags`, `linktree`, `flyio`; `go` (outbound cache purge)                                                                                                     |
+| `lib/`                   | Browser-safe, pure: `auth-client`, `auth-errors`, `profile` (`normalizeEmail` only), `date`, `form-parser`, `types`, `utils`, `tasks/`, `tags/`, `home/`, `linktree/` (types), `flyio/` (types, utils), `allocation/` (types, csv-mappings, parse, objective, allocate, export). No value imports from `@/server/` (eslint `no-restricted-imports`) |
+| `components/`            | `ui/` is shadcn-generated; feature dirs `auth/`, `admin/`, `tasks/`, `tech/`, `linktree/`, `allocation/`                                                                                                                                                                                                                                            |
+| `hooks/`                 | `use-mobile`; `tasks/` (`query-options`, `use-tasks`, `use-board-sync`, `use-task-drag-drop`, `use-task-form`, `use-view-mode`); `flyio/` (`query-options`, `use-fly-queries`)                                                                                                                                                                      |
 
 Import alias: `@/*` -> repo root.
+
+## Project allocation (`/allocation`)
+
+Sorts project applicants into teams. Everything — parsing, allocating, CSV
+export — runs **in the browser and nowhere else**: the uploads are applicant PII,
+nothing is sent to the server or the database, and `/*.csv` is gitignored so the
+form exports are never committed. Keep it that way.
+
+`lib/allocation/allocate.ts` is a deliberate line-by-line port of
+`UoaWDCC/wdcc-internal-scripts/projects-allocation-script` at `f1a5d11`
+(`stableMatching` -> `heuristicAscent`). It reproduces that script's output
+exactly on the 2026 data: same 14 rosters in the same order, same 6 unmatched,
+total utility `8932.259999999998`. The algorithm is deterministic, so any change
+to these files is verifiable by re-running the script and diffing.
+
+**Its oddities are intentional fidelity, not bugs.** Do not "fix" them without
+re-verifying against the script:
+
+- `redistributeForBalance`'s `needed` is never decremented as members arrive, so
+  every over-target project donates the full amount and teams overshoot. On the
+  2026 data one project logs "needs 5" and receives 11.
+- `heuristicAscent`'s five "random restarts" all share one array, so they run
+  sequentially and continue each other rather than restarting.
+- The priority-queue comparator closes over live capacity counters and is scored
+  lazily, so the heap invariant is routinely violated and `front()` is not
+  necessarily the true minimum. Which applicant gets evicted depends on the
+  heap's exact array layout — which is why **`@datastructures-js/priority-queue`
+  is pinned to an exact `6.3.2`**, no caret. `^6.3.2` resolves to `6.4.0`, an
+  internals rewrite that would silently change every team.
+- `scoreAllocation`'s `objectiveScore` expression must keep its exact shape.
+  Float ordering decides which ascent run is kept, at the 1e-14 level.
+
+Two deliberate departures: `runAllocation` skips the ascent when a project ends
+up with nobody (the script throws on `% 0`), and `preflightAllocation` blocks the
+run on mismatched or duplicated project names rather than crashing mid-way. The
+two Google Forms are edited independently each year, so those inputs will drift
+eventually.
 
 ## Auth model
 

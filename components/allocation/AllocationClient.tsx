@@ -14,7 +14,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { runAllocation } from "@/lib/allocation/allocate";
+import { preflightAllocation, runAllocation } from "@/lib/allocation/allocate";
 import {
   parseApplicantsCsv,
   parseProjectsCsv,
@@ -94,8 +94,10 @@ export function AllocationClient() {
       (a) => !isFlagged(a) && a.rolePreference !== "Designer"
     ) ?? [];
 
+  const problems = projects ? preflightAllocation(pool, projects) : [];
+
   function handleRun() {
-    if (!projects) return;
+    if (!projects || problems.length > 0) return;
     setRunning(true);
     // Deferred so the pending state paints before the solve blocks the main
     // thread for a few hundred milliseconds.
@@ -226,7 +228,17 @@ export function AllocationClient() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            <Button onClick={handleRun} disabled={running}>
+            {problems.length > 0 && (
+              <ul className="border-destructive/40 bg-destructive/5 space-y-1 rounded-md border p-3 text-sm">
+                {problems.map((problem) => (
+                  <li key={problem}>{problem}</li>
+                ))}
+              </ul>
+            )}
+            <Button
+              onClick={handleRun}
+              disabled={running || problems.length > 0}
+            >
               <Play /> {running ? "Allocating…" : "Run allocation"}
             </Button>
             {result && (
