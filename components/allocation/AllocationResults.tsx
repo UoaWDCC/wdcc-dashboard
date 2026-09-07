@@ -274,6 +274,12 @@ export function AllocationResults({
       <div className="space-y-3">
         <h3 className="text-sm font-medium">Checks</h3>
         <ul className="space-y-1">
+          {run.ascentSkipped && (
+            <CheckRow
+              ok={false}
+              label="A project ended up with nobody, so the swap-optimisation pass was skipped. These are the raw stable-matching teams."
+            />
+          )}
           <CheckRow
             ok={duplicates === 0}
             label={

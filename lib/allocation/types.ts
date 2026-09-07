@@ -68,4 +68,5 @@ export type AllocationRun = {
   baselineUtility: number;
   redistributionLog: string[];
   warnings: string[];
+  ascentSkipped: boolean;
 };
