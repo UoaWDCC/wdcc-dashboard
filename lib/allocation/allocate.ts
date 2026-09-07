@@ -3,7 +3,17 @@ import {
   type IGetCompareValue,
 } from "@datastructures-js/priority-queue";
 
-import type { Applicant, Project, TeamAllocation } from "./types";
+import {
+  calculateTotalUtility,
+  NUM_ASCENTS,
+  scoreAllocation,
+} from "./objective";
+import type {
+  AllocationRun,
+  Applicant,
+  Project,
+  TeamAllocation,
+} from "./types";
 
 // Deferred-acceptance matching ported from
 // projects-allocation-script/allocation/algorithms/stableMatching.ts.
@@ -270,5 +280,212 @@ export function stableMatching(
     targetSize,
     redistributionLog,
     warnings,
+  };
+}
+
+// Local-search phase ported from
+// projects-allocation-script/allocation/algorithms/heuristicAscent.ts.
+
+type AnnotatedTeam = TeamAllocation & { utility: number };
+
+type Swap = {
+  alloc1: AnnotatedTeam;
+  i: number;
+  alloc2: AnnotatedTeam;
+  j: number;
+};
+
+function utilityOf(team: TeamAllocation): number {
+  return scoreAllocation(team).objectiveScore;
+}
+
+function countAllApplicants(teams: TeamAllocation[]): number {
+  let count = 0;
+  for (const team of teams) {
+    count += team.applicants.length;
+  }
+  return count;
+}
+
+function getMaxIgnores(numProjects: number, numApplicants: number): number {
+  if (numProjects === 0 || numApplicants === 0) return 0;
+  const maxApplicantsPerProject = Math.ceil(numApplicants / numProjects);
+  return (
+    maxApplicantsPerProject *
+    numProjects *
+    (maxApplicantsPerProject * (numProjects - 1))
+  );
+}
+
+/** @returns the net utility gain, or 0 if the swap was rejected and reverted */
+function swapApplicants(swap: Swap): number {
+  const { alloc1, i, alloc2, j } = swap;
+  const applicant1 = alloc1.applicants[i];
+  const applicant2 = alloc2.applicants[j];
+
+  // Hard constraint: each has to have listed the other's project.
+  if (
+    !applicant1.projectChoices.includes(alloc2.project.name) ||
+    !applicant2.projectChoices.includes(alloc1.project.name)
+  ) {
+    return 0;
+  }
+
+  const alloc1OldUtility = alloc1.utility;
+  const alloc2OldUtility = alloc2.utility;
+
+  [alloc1.applicants[i], alloc2.applicants[j]] = [
+    alloc2.applicants[j],
+    alloc1.applicants[i],
+  ];
+
+  const alloc1NewUtility = utilityOf(alloc1);
+  const alloc2NewUtility = utilityOf(alloc2);
+  const netChangeInUtility =
+    alloc1NewUtility + alloc2NewUtility - alloc1OldUtility - alloc2OldUtility;
+
+  if (netChangeInUtility > 0) {
+    alloc1.utility = alloc1NewUtility;
+    alloc2.utility = alloc2NewUtility;
+    return netChangeInUtility;
+  }
+
+  [alloc1.applicants[i], alloc2.applicants[j]] = [
+    alloc2.applicants[j],
+    alloc1.applicants[i],
+  ];
+  return 0;
+}
+
+function singleHeuristicAscent(
+  startingTeams: TeamAllocation[]
+): [AnnotatedTeam[], number] {
+  let totalUtility = 0;
+  const allocations: AnnotatedTeam[] = startingTeams.map((team) => {
+    const utility = utilityOf(team);
+    totalUtility += utility;
+    return { ...team, utility };
+  });
+
+  const swap = { alloc1Index: 0, i: 0, alloc2Index: 1, j: 0 };
+  let numIgnoresInRow = 0;
+  const maxIgnoresInRow = getMaxIgnores(
+    allocations.length,
+    countAllApplicants(allocations)
+  );
+  while (numIgnoresInRow < maxIgnoresInRow) {
+    const utilityChange = swapApplicants({
+      alloc1: allocations[swap.alloc1Index],
+      i: swap.i,
+      alloc2: allocations[swap.alloc2Index],
+      j: swap.j,
+    });
+
+    // Epsilon rather than > 0 because float noise would otherwise reset the
+    // counter forever and the loop would never terminate.
+    if (utilityChange < 1e-12) {
+      numIgnoresInRow++;
+    } else {
+      numIgnoresInRow = 0;
+      totalUtility += utilityChange;
+    }
+
+    const alloc1Len = allocations[swap.alloc1Index].applicants.length;
+    swap.i = (swap.i + 1) % alloc1Len;
+    if (swap.i === 0)
+      swap.alloc1Index = (swap.alloc1Index + 1) % allocations.length;
+    if (swap.i === 0 && swap.alloc1Index === 0) {
+      // The second pointer only advances once the first has swept everyone.
+      const alloc2Len = allocations[swap.alloc2Index].applicants.length;
+      swap.j = (swap.j + 1) % alloc2Len;
+      if (swap.j === 0)
+        swap.alloc2Index = (swap.alloc2Index + 1) % allocations.length;
+    }
+  }
+
+  return [allocations, totalUtility];
+}
+
+export function heuristicAscent(
+  generator: () => TeamAllocation[],
+  numAscents: number = NUM_ASCENTS
+): TeamAllocation[] {
+  let highestUtility = 0;
+  let bestAllocation: TeamAllocation[] = [];
+
+  for (let i = 0; i < numAscents; i++) {
+    const [allocation, utility] = singleHeuristicAscent(generator());
+    if (utility > highestUtility) {
+      highestUtility = utility;
+      bestAllocation = allocation;
+    }
+  }
+
+  return bestAllocation;
+}
+
+/** @see https://stackoverflow.com/a/12646864 */
+function shuffleArray<T>(array: T[]): T[] {
+  const arr = [...array];
+  for (let i = arr.length - 1; i >= 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+/** Even random split, used only as a quality baseline to compare the run against. */
+export function randomlyAllocate(
+  projects: Project[],
+  applicants: Applicant[]
+): TeamAllocation[] {
+  const numProjects = projects.length;
+  const numApplicants = applicants.length;
+  const applicantsPerProject = Math.floor(numApplicants / numProjects);
+  const leftOverApplicants = numApplicants % numProjects;
+
+  const allocations: TeamAllocation[] = projects.map((project) => ({
+    project,
+    applicants: [],
+    teamSize: applicantsPerProject,
+  }));
+
+  const shuffledApplicants = shuffleArray(applicants);
+  const shuffledAllocations = shuffleArray(allocations);
+
+  let nextApplicant = 0;
+  for (let i = 0; i < numProjects; i++) {
+    const numApplicantsToTake =
+      i < leftOverApplicants ? applicantsPerProject + 1 : applicantsPerProject;
+    shuffledAllocations[i].applicants = shuffledApplicants.slice(
+      nextApplicant,
+      nextApplicant + numApplicantsToTake
+    );
+    nextApplicant += numApplicantsToTake;
+  }
+
+  return allocations;
+}
+
+export function runAllocation(
+  pool: Applicant[],
+  projects: Project[]
+): AllocationRun {
+  const stable = stableMatching(pool, projects);
+  // The generator returns the same array every call and the ascent only
+  // shallow-copies, so each run continues the previous one instead of restarting
+  // from the seed. That is the script's behaviour — making these independent
+  // restarts would change the result.
+  const teams = heuristicAscent(() => stable.teams);
+
+  return {
+    teams,
+    unmatched: stable.unmatched,
+    teamSize: stable.teamSize,
+    targetSize: stable.targetSize,
+    totalUtility: calculateTotalUtility(teams),
+    baselineUtility: calculateTotalUtility(randomlyAllocate(projects, pool)),
+    redistributionLog: stable.redistributionLog,
+    warnings: stable.warnings,
   };
 }
