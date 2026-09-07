@@ -1,9 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import { Play } from "lucide-react";
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -12,13 +14,15 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { runAllocation } from "@/lib/allocation/allocate";
 import {
   parseApplicantsCsv,
   parseProjectsCsv,
   type ParseResult,
 } from "@/lib/allocation/parse";
-import type { Applicant, Project } from "@/lib/allocation/types";
+import type { AllocationRun, Applicant, Project } from "@/lib/allocation/types";
 
+import { AllocationResults } from "./AllocationResults";
 import { ApplicantsTable } from "./ApplicantsTable";
 import { FileField } from "./FileField";
 import { ProjectsTable } from "./ProjectsTable";
@@ -59,6 +63,9 @@ export function AllocationClient() {
   const [projectsSkipped, setProjectsSkipped] = useState(0);
   const [projectsWarnings, setProjectsWarnings] = useState(0);
 
+  const [result, setResult] = useState<AllocationRun | null>(null);
+  const [running, setRunning] = useState(false);
+
   async function handleApplicants(file: File) {
     const result = await readCsv(file, parseApplicantsCsv, "applicants");
     if (!result) return;
@@ -66,6 +73,7 @@ export function AllocationClient() {
     setApplicantsSkipped(result.skipped);
     setApplicantsWarnings(result.warnings);
     setApplicantsFileName(file.name);
+    setResult(null);
   }
 
   async function handleProjects(file: File) {
@@ -75,6 +83,7 @@ export function AllocationClient() {
     setProjectsSkipped(result.skipped);
     setProjectsWarnings(result.warnings);
     setProjectsFileName(file.name);
+    setResult(null);
   }
 
   const designers =
@@ -84,6 +93,24 @@ export function AllocationClient() {
     applicants?.filter(
       (a) => !isFlagged(a) && a.rolePreference !== "Designer"
     ) ?? [];
+
+  function handleRun() {
+    if (!projects) return;
+    setRunning(true);
+    // Deferred so the pending state paints before the solve blocks the main
+    // thread for a few hundred milliseconds.
+    setTimeout(() => {
+      try {
+        setResult(runAllocation(pool, projects));
+      } catch (e) {
+        toast.error(
+          `Could not allocate: ${e instanceof Error ? e.message : String(e)}`
+        );
+      } finally {
+        setRunning(false);
+      }
+    });
+  }
 
   return (
     <div className="space-y-6">
@@ -185,6 +212,24 @@ export function AllocationClient() {
                 <ProjectsTable projects={projects ?? []} />
               </TabsContent>
             </Tabs>
+          </CardContent>
+        </Card>
+      )}
+
+      {applicants && projects && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Allocation</CardTitle>
+            <CardDescription>
+              Sorts the {pool.length} pool applicants into {projects.length}{" "}
+              teams. Designers and flagged applicants are held back.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <Button onClick={handleRun} disabled={running}>
+              <Play /> {running ? "Allocating…" : "Run allocation"}
+            </Button>
+            {result && <AllocationResults run={result} />}
           </CardContent>
         </Card>
       )}

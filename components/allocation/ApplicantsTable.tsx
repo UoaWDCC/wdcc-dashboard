@@ -29,7 +29,16 @@ function choicesList(choices: string[]) {
   );
 }
 
-export function ApplicantsTable({ applicants }: { applicants: Applicant[] }) {
+// Sorts best-choice first, with "not chosen" last.
+const choiceOrder = (rank: number) => (rank === 0 ? 6 : 6 - rank);
+
+export function ApplicantsTable({
+  applicants,
+  choiceRankFor,
+}: {
+  applicants: Applicant[];
+  choiceRankFor?: (applicant: Applicant) => number;
+}) {
   const { cell, dialog } = useExpandableCell();
   const { head, sortedRows } = useSortableRows(applicants);
 
@@ -84,6 +93,13 @@ export function ApplicantsTable({ applicants }: { applicants: Applicant[] }) {
               a.projectChoices.join(", ")
             )}
             {head("Member", "isMember", (a) => (a.isMember ? 1 : 0))}
+            {choiceRankFor &&
+              head(
+                "Choice",
+                "choice",
+                (a) => choiceOrder(choiceRankFor(a)),
+                "text-center"
+              )}
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -123,6 +139,13 @@ export function ApplicantsTable({ applicants }: { applicants: Applicant[] }) {
                 className: "max-w-48",
               })}
               {cell(applicant.isMember ? "Yes" : "No")}
+              {choiceRankFor &&
+                cell(
+                  choiceRankFor(applicant) === 0
+                    ? "—"
+                    : String(choiceOrder(choiceRankFor(applicant))),
+                  { className: "text-center" }
+                )}
             </TableRow>
           ))}
         </TableBody>
