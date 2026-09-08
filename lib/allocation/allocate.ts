@@ -64,8 +64,8 @@ function calculateContribution(
         backMultiplier * backendExperience) +
     backendWeighting * backendPreference;
 
-  // Identical for every member of a queue, so it cancels out of every
-  // comparison. Kept because dropping it would be an unverified claim.
+  // Constant within a queue, so it cancels out of every comparison it takes part
+  // in and cannot affect the ordering.
   const balanceContribution = 10 * (teamSize - allocated.size());
 
   return skillContribution + balanceContribution;
@@ -171,7 +171,7 @@ function redistributeForBalance(
   return targetSize;
 }
 
-export type StableMatchingResult = {
+type StableMatchingResult = {
   teams: TeamAllocation[];
   unmatched: Applicant[];
   teamSize: number;
@@ -406,14 +406,11 @@ function singleHeuristicAscent(
   return [allocations, totalUtility];
 }
 
-export function heuristicAscent(
-  generator: () => TeamAllocation[],
-  numAscents: number = NUM_ASCENTS
-): TeamAllocation[] {
+function heuristicAscent(generator: () => TeamAllocation[]): TeamAllocation[] {
   let highestUtility = 0;
   let bestAllocation: TeamAllocation[] = [];
 
-  for (let i = 0; i < numAscents; i++) {
+  for (let i = 0; i < NUM_ASCENTS; i++) {
     const [allocation, utility] = singleHeuristicAscent(generator());
     if (utility > highestUtility) {
       highestUtility = utility;
@@ -435,7 +432,7 @@ function shuffleArray<T>(array: T[]): T[] {
 }
 
 /** Even random split, used only as a quality baseline to compare the run against. */
-export function randomlyAllocate(
+function randomlyAllocate(
   projects: Project[],
   applicants: Applicant[]
 ): TeamAllocation[] {
