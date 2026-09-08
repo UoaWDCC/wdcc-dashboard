@@ -20,13 +20,20 @@ export function toCsvRow(applicant: Applicant) {
   };
 }
 
-/** Team rows with the project and the member's choice rank prepended. */
+/**
+ * Team rows with the project and the member's choice prepended. `choice` is the
+ * place they gave the project (1 = first choice), matching the table column, not
+ * the 5-is-best rank the objective function scores with.
+ */
 export function teamRows(team: TeamAllocation) {
-  return team.applicants.map((applicant) => ({
-    project: team.project.name,
-    choice: choiceRank(applicant, team.project.name) || "",
-    ...toCsvRow(applicant),
-  }));
+  return team.applicants.map((applicant) => {
+    const rank = choiceRank(applicant, team.project.name);
+    return {
+      project: team.project.name,
+      choice: rank === 0 ? "" : 6 - rank,
+      ...toCsvRow(applicant),
+    };
+  });
 }
 
 export function buildCsv(rows: object[]): string {
