@@ -33,8 +33,13 @@ function downloadCsv(fileName: string, rows: object[]) {
   const link = document.createElement("a");
   link.href = url;
   link.download = fileName;
+  // The anchor has to be in the document for the click to count as user-initiated
+  // in Firefox and Safari, and the object URL has to outlive the click — revoking
+  // it synchronously cancels the download.
+  document.body.appendChild(link);
   link.click();
-  URL.revokeObjectURL(url);
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 0);
 }
 
 function CheckRow({ ok, label }: { ok: boolean; label: string }) {
