@@ -2,7 +2,7 @@
 // re-edited every recruitment cycle, so expect to update these each year.
 
 export const APPLICANT_HEADERS = {
-  timestamp: "Column 1",
+  timestamp: "Timestamp",
   isMember: "Are you a WDCC member?",
   name: "What is your full name?",
   email: "Email address?",
