@@ -31,13 +31,13 @@ function assertHeaders(
 ) {
   if (!row) {
     throw new Error(
-      `This doesn't look like the ${formName} export — the file has no rows.`
+      `This doesn't look like the ${formName} export. The file has no rows.`
     );
   }
   const missing = Object.values(headers).filter((header) => !(header in row));
   if (missing.length > 0) {
     throw new Error(
-      `This doesn't look like the ${formName} export — missing column${missing.length > 1 ? "s" : ""}: ${missing.join(", ")}.`
+      `This doesn't look like the ${formName} export. Missing column${missing.length > 1 ? "s" : ""}: ${missing.join(", ")}.`
     );
   }
 }

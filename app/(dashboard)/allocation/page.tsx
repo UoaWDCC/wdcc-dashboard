@@ -7,7 +7,7 @@ export default function AllocationPage() {
         <h1 className="text-2xl font-semibold">Project Allocation</h1>
         <p className="text-muted-foreground text-sm">
           Upload applicant and project CSV exports to review them ahead of
-          sorting into teams. Everything runs in your browser — nothing is
+          sorting into teams. Everything runs in your browser. Nothing is
           uploaded anywhere.
         </p>
       </div>

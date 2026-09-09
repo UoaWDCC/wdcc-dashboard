@@ -52,6 +52,8 @@ export type TeamScore = {
   rolePrefScore: number;
   beExpScore: number;
   feExpScore: number;
+  beExpSum: number;
+  feExpSum: number;
   bePrefSum: number;
   targetBePrefSum: number;
   designers: number;

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Play } from "lucide-react";
+import { ChevronRight, Play } from "lucide-react";
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
@@ -21,6 +21,7 @@ import {
   type ParseResult,
 } from "@/lib/allocation/parse";
 import type { AllocationRun, Applicant, Project } from "@/lib/allocation/types";
+import { cn } from "@/lib/utils";
 
 import { AllocationResults } from "./AllocationResults";
 import { ApplicantsTable } from "./ApplicantsTable";
@@ -45,7 +46,7 @@ async function readCsv<T>(
   }
 }
 
-// Held back for exec review. A blank blurb is not flagged — only a short one is,
+// Held back for exec review. A blank blurb is not flagged, only a short one is,
 // so someone who skipped the question still goes through to allocation.
 const isFlagged = (applicant: Applicant) =>
   applicant.passionBlurb.length > 0 && applicant.passionBlurb.length < 100;
@@ -65,6 +66,7 @@ export function AllocationClient() {
 
   const [result, setResult] = useState<AllocationRun | null>(null);
   const [running, setRunning] = useState(false);
+  const [showUploaded, setShowUploaded] = useState(false);
 
   async function handleApplicants(file: File) {
     const result = await readCsv(file, parseApplicantsCsv, "applicants");
@@ -143,7 +145,7 @@ export function AllocationClient() {
               )}
               {applicantsWarnings > 0 && (
                 <Badge variant="outline">
-                  {applicantsWarnings} rows may be misread — check for stray
+                  {applicantsWarnings} rows may be misread. Check for stray
                   quotes in a text answer
                 </Badge>
               )}
@@ -176,8 +178,8 @@ export function AllocationClient() {
               )}
               {projectsWarnings > 0 && (
                 <Badge variant="outline">
-                  {projectsWarnings} rows may be misread — check for stray
-                  quotes in a text answer
+                  {projectsWarnings} rows may be misread. Check for stray quotes
+                  in a text answer
                 </Badge>
               )}
             </div>
@@ -187,33 +189,50 @@ export function AllocationClient() {
 
       {(applicants || projects) && (
         <Card>
-          <CardContent className="pt-6">
-            <Tabs defaultValue="pool">
-              <TabsList>
-                <TabsTrigger value="pool">Pool ({pool.length})</TabsTrigger>
-                <TabsTrigger value="designers">
-                  Designers ({designers.length})
-                </TabsTrigger>
-                <TabsTrigger value="flagged">
-                  Flagged ({flagged.length})
-                </TabsTrigger>
-                <TabsTrigger value="projects">
-                  Projects ({projects?.length ?? 0})
-                </TabsTrigger>
-              </TabsList>
-              <TabsContent value="pool">
-                <ApplicantsTable applicants={pool} />
-              </TabsContent>
-              <TabsContent value="designers">
-                <ApplicantsTable applicants={designers} />
-              </TabsContent>
-              <TabsContent value="flagged">
-                <ApplicantsTable applicants={flagged} />
-              </TabsContent>
-              <TabsContent value="projects">
-                <ProjectsTable projects={projects ?? []} />
-              </TabsContent>
-            </Tabs>
+          <CardContent className="space-y-4 pt-6">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="-ml-2"
+              onClick={() => setShowUploaded((shown) => !shown)}
+              aria-expanded={showUploaded}
+            >
+              <ChevronRight
+                className={cn(
+                  "transition-transform",
+                  showUploaded && "rotate-90"
+                )}
+              />
+              {showUploaded ? "Hide" : "Show"} uploaded data
+            </Button>
+            {showUploaded && (
+              <Tabs defaultValue="pool">
+                <TabsList>
+                  <TabsTrigger value="pool">Pool ({pool.length})</TabsTrigger>
+                  <TabsTrigger value="designers">
+                    Designers ({designers.length})
+                  </TabsTrigger>
+                  <TabsTrigger value="flagged">
+                    Flagged ({flagged.length})
+                  </TabsTrigger>
+                  <TabsTrigger value="projects">
+                    Projects ({projects?.length ?? 0})
+                  </TabsTrigger>
+                </TabsList>
+                <TabsContent value="pool">
+                  <ApplicantsTable applicants={pool} />
+                </TabsContent>
+                <TabsContent value="designers">
+                  <ApplicantsTable applicants={designers} />
+                </TabsContent>
+                <TabsContent value="flagged">
+                  <ApplicantsTable applicants={flagged} />
+                </TabsContent>
+                <TabsContent value="projects">
+                  <ProjectsTable projects={projects ?? []} />
+                </TabsContent>
+              </Tabs>
+            )}
           </CardContent>
         </Card>
       )}

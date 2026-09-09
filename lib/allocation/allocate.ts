@@ -107,7 +107,7 @@ function redistributeForBalance(
 
     // Never decremented as members actually arrive, so every over-target project
     // donates up to this many and a team can overshoot both targetSize and its
-    // own capacity. Faithful to the script — correcting it changes the output.
+    // own capacity. Faithful to the script, and correcting it changes the output.
     const needed = Math.min(
       targetSize - underfilled.allocated.size(),
       underfilled.teamSize - underfilled.allocated.size()
@@ -466,8 +466,8 @@ function randomlyAllocate(
 
 /**
  * Blocking problems with the uploaded pair of CSVs. The two forms are edited
- * independently each year, so a mismatch between them is expected eventually —
- * and every case here would otherwise crash mid-run or silently lose a team.
+ * independently each year, so a mismatch between them is expected eventually.
+ * Every case here would otherwise crash mid-run or silently lose a team.
  */
 export function preflightAllocation(
   pool: Applicant[],
@@ -490,7 +490,7 @@ export function preflightAllocation(
   }
   for (const name of duplicated) {
     problems.push(
-      `Two projects are both named "${name}" — one of them would silently end up with no team.`
+      `Two projects are both named "${name}". One of them would end up with no team.`
     );
   }
 
@@ -508,7 +508,7 @@ export function preflightAllocation(
   }
   if (unknownList.length > 5) {
     problems.push(
-      `…and ${unknownList.length - 5} more project names that appear in applicant choices but not in the projects file. The two exports are probably from different years.`
+      `Plus ${unknownList.length - 5} more names that applicants chose but no project has. The two files are probably from different years.`
     );
   }
 
@@ -529,7 +529,7 @@ export function runAllocation(
   );
   // The generator returns the same array every call and the ascent only
   // shallow-copies, so each run continues the previous one instead of restarting
-  // from the seed. That is the script's behaviour — making these independent
+  // from the seed. That is the script's behaviour, and making these independent
   // restarts would change the result.
   const teams = ascentSkipped
     ? stable.teams
