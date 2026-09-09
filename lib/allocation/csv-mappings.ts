@@ -1,8 +1,12 @@
 // Column headers as they appear in the Google Forms CSV exports. The forms are
 // re-edited every recruitment cycle, so expect to update these each year.
 
+// Forms names its first column "Timestamp", but a responses sheet that has been
+// edited can export it as "Column 1". The value feeds nothing but the CSV export,
+// so accept either name rather than rejecting the whole file over it.
+export const TIMESTAMP_HEADERS = ["Timestamp", "Column 1"];
+
 export const APPLICANT_HEADERS = {
-  timestamp: "Timestamp",
   isMember: "Are you a WDCC member?",
   name: "What is your full name?",
   email: "Email address?",
@@ -42,7 +46,6 @@ export const APPLICANT_HEADERS = {
 } as const;
 
 export const PROJECT_HEADERS = {
-  timestamp: "Timestamp",
   name: "What is the name of your project?",
   backendWeighting: "What's the backend-frontend weighting of your project?",
   priority: "What's your preference for beginners vs experienced members?",

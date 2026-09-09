@@ -1,6 +1,10 @@
 import Papa from "papaparse";
 
-import { APPLICANT_HEADERS, PROJECT_HEADERS } from "./csv-mappings";
+import {
+  APPLICANT_HEADERS,
+  PROJECT_HEADERS,
+  TIMESTAMP_HEADERS,
+} from "./csv-mappings";
 import { mapExperience } from "./experience";
 import type { Applicant, Project } from "./types";
 
@@ -42,6 +46,13 @@ function assertHeaders(
 // Date's own parser misreads as MM/DD.
 const TIMESTAMP_PATTERN =
   /^(\d{1,2})\/(\d{1,2})\/(\d{4})\s+(\d{1,2}):(\d{2}):(\d{2})$/;
+
+function readTimestamp(row: Record<string, string>): string | undefined {
+  for (const header of TIMESTAMP_HEADERS) {
+    if (row[header] !== undefined) return row[header];
+  }
+  return undefined;
+}
 
 function parseTimestamp(value: string | undefined): Date | null {
   const match = TIMESTAMP_PATTERN.exec(value ?? "");
@@ -89,7 +100,7 @@ export function parseApplicantsCsv(content: string): ParseResult<Applicant> {
     }
     rows.push({
       id: index,
-      timestamp: parseTimestamp(row[APPLICANT_HEADERS.timestamp]),
+      timestamp: parseTimestamp(readTimestamp(row)),
       isMember: row[APPLICANT_HEADERS.isMember]?.trim().toLowerCase() === "yes",
       name,
       email,
@@ -147,7 +158,7 @@ export function parseProjectsCsv(content: string): ParseResult<Project> {
     }
     rows.push({
       id: index,
-      timestamp: parseTimestamp(row[PROJECT_HEADERS.timestamp]),
+      timestamp: parseTimestamp(readTimestamp(row)),
       name,
       backendWeighting: parseInteger(
         row[PROJECT_HEADERS.backendWeighting],
