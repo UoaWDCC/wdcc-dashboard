@@ -74,6 +74,8 @@ export function scoreAllocation(allocation: TeamAllocation): TeamScore {
     rolePrefScore,
     beExpScore,
     feExpScore,
+    beExpSum,
+    feExpSum,
     bePrefSum,
     targetBePrefSum,
     designers,
