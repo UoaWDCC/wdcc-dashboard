@@ -6,6 +6,7 @@ import {
   type Team,
 } from "@/lib/types";
 import type { BoardUser, ClientTask, ColumnId, TaskView } from "./types";
+import type { TaskListScope } from "./view";
 
 // Board sort key: priority band, then due date, then task number.
 type SortableTask = Pick<ClientTask, "priority" | "dueDate" | "number">;
@@ -114,19 +115,23 @@ export function parseFilters(
     teams: list(params.teams).filter(isTeam),
     tags: list(params.tags),
   };
-  // The viewer's own team seeds an unfiltered visit only. A link that carries
-  // any filter is authoritative, or the recipient would see a different board
-  // than the sender.
+  // The viewer's own team seeds a visit without team or tag filters. Explicit
+  // team/tag filters are authoritative, or the recipient would see a different
+  // task set than the sender.
   if (fallbackTeam && !filters.teams.length && !filters.tags.length) {
     filters.teams = [fallbackTeam];
   }
   return filters;
 }
 
-export function filterQuery(filters: ShareableFilters): string {
+export function filterQuery(
+  filters: ShareableFilters,
+  listScope?: TaskListScope
+): string {
   const params = new URLSearchParams();
   for (const team of filters.teams) params.append("teams", team);
   for (const tag of filters.tags) params.append("tags", tag);
+  if (listScope) params.set("status", listScope);
   return params.toString();
 }
 

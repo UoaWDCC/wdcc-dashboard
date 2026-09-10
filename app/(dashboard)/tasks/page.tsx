@@ -4,8 +4,14 @@ import TasksView from "@/components/tasks/TasksView";
 import { requireUser } from "@/server/auth/access";
 import { getProfile } from "@/server/profile/queries";
 import { cookies } from "next/headers";
-import { VIEW_COOKIE, isViewMode } from "@/lib/tasks/view";
+import {
+  DEFAULT_TASK_LIST_SCOPE,
+  VIEW_COOKIE,
+  isTaskListScope,
+  isViewMode,
+} from "@/lib/tasks/view";
 import { parseFilters } from "@/lib/tasks/utils";
+import { getFirstElement } from "@/lib/utils";
 
 export default async function TasksPage({
   searchParams,
@@ -23,6 +29,7 @@ export default async function TasksPage({
   ]);
 
   const saved = cookieStore.get(VIEW_COOKIE)?.value;
+  const statusParam = getFirstElement(params.status);
 
   return (
     <TasksView
@@ -32,6 +39,9 @@ export default async function TasksPage({
       tags={tags}
       defaultFilters={parseFilters(params, profile?.team ?? null)}
       defaultView={isViewMode(saved) ? saved : "list"}
+      defaultListScope={
+        isTaskListScope(statusParam) ? statusParam : DEFAULT_TASK_LIST_SCOPE
+      }
     />
   );
 }
