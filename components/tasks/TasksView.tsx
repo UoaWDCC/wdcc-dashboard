@@ -15,7 +15,7 @@ import {
   type ShareableFilters,
 } from "@/lib/tasks/utils";
 import { useBoardSync } from "@/hooks/tasks/use-board-sync";
-import type { ViewMode } from "@/lib/tasks/view";
+import type { TaskListScope, ViewMode } from "@/lib/tasks/view";
 import { useViewMode } from "@/hooks/tasks/use-view-mode";
 import {
   taskKeys,
@@ -28,6 +28,10 @@ import {
 } from "@/hooks/tasks/use-tasks";
 import { BoardSyncStatus } from "@/components/tasks/BoardSyncStatus";
 import { FilterSelect } from "@/components/tasks/FilterSelect";
+import {
+  TaskStatusTabs,
+  type TaskStatusCounts,
+} from "@/components/tasks/TaskStatusTabs";
 import { TasksKanban } from "@/components/tasks/TasksKanban";
 import { TasksList } from "@/components/tasks/TasksList";
 import { TagManagerDialog } from "@/components/tasks/TagManagerDialog";
@@ -43,6 +47,7 @@ export default function TasksView({
   tags,
   defaultFilters,
   defaultView,
+  defaultListScope,
 }: {
   initialTasks: TaskView[];
   initialVersion: string;
@@ -50,6 +55,7 @@ export default function TasksView({
   tags: TagView[];
   defaultFilters: ShareableFilters;
   defaultView: ViewMode;
+  defaultListScope: TaskListScope;
 }) {
   const queryClient = useQueryClient();
 
@@ -72,6 +78,7 @@ export default function TasksView({
   const [tagFilter, setTagFilter] = useState<string[]>(defaultFilters.tags);
   const [peopleFilter, setPeopleFilter] = useState<string[]>([]);
   const [view, setView] = useViewMode(defaultView);
+  const [listScope, setListScope] = useState<TaskListScope>(defaultListScope);
 
   const tagIdByName = useMemo(
     () => new Map(liveTags.map((t) => [t.name, t.id])),
@@ -113,21 +120,38 @@ export default function TasksView({
     () => filterTasks(tasks, { teams, tags: activeTags, people: activePeople }),
     [tasks, teams, activeTags, activePeople]
   );
+  const statusCounts = useMemo<TaskStatusCounts>(() => {
+    const counts: TaskStatusCounts = {
+      active: 0,
+      backlog: 0,
+      done: 0,
+    };
+    for (const task of visibleTasks) counts[task.status]++;
+    return counts;
+  }, [visibleTasks]);
+  const displayedTaskCount =
+    view === "list" && listScope !== "all"
+      ? statusCounts[listScope]
+      : visibleTasks.length;
 
-  // Mirror the shareable filters into the URL so a filtered board is a link you
-  // can paste. `history.replaceState` on purpose: `router.replace` would re-run
-  // the page's server queries on every checkbox, and `pushState` would bury the
+  // Mirror the shareable filters and list scope into the URL so the current
+  // task view is a link you can paste. `history.replaceState` on purpose:
+  // `router.replace` would re-run the page's server queries on every checkbox,
+  // and `pushState` would bury the
   // back button under one entry per toggle. The people filter is deliberately
   // absent — see `parseFilters`.
   useEffect(() => {
-    const query = filterQuery({ teams, tags: activeTags });
+    const query = filterQuery(
+      { teams, tags: activeTags },
+      view === "list" ? listScope : undefined
+    );
     if (query === window.location.search.replace(/^\?/, "")) return;
     window.history.replaceState(
       null,
       "",
       query ? `?${query}` : window.location.pathname
     );
-  }, [teams, activeTags]);
+  }, [teams, activeTags, view, listScope]);
 
   function openDetail(t: ClientTask) {
     setDetailTaskId(t.id);
@@ -168,8 +192,8 @@ export default function TasksView({
 
   return (
     <div className="flex h-full flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex min-w-0 flex-wrap items-center gap-3">
           <h1 className="text-2xl font-semibold">Tasks</h1>
           <div className="flex items-center rounded-md border p-0.5">
             {[
@@ -214,7 +238,7 @@ export default function TasksView({
         <div className="flex items-center gap-3">
           <BoardSyncStatus probe={sync.probe} />
           <p className="text-muted-foreground text-xs">
-            {visibleTasks.length} tasks
+            {displayedTaskCount} tasks
             {view === "board" && ` · ${visibleUsers.length} users`}
           </p>
           <Button
@@ -230,8 +254,16 @@ export default function TasksView({
           </Button>
         </div>
       </div>
+      {view === "list" && (
+        <TaskStatusTabs
+          value={listScope}
+          counts={statusCounts}
+          onChange={setListScope}
+        />
+      )}
       {view === "list" ? (
         <TasksList
+          scope={listScope}
           tasks={visibleTasks}
           users={liveUsers}
           pendingTaskIds={pendingMoveTaskIds}
