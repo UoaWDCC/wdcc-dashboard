@@ -10,6 +10,7 @@ import {
   Link2,
   ListTodo,
   Users,
+  ClipboardCheck,
 } from "lucide-react";
 import {
   Sidebar,
@@ -31,9 +32,15 @@ const nav = [
   { href: "/projects", label: "Projects", icon: Table2 },
   { href: "/allocation", label: "Project Allocation", icon: Users },
   { href: "/linktree", label: "Linktree", icon: Link2 },
+  {
+    href: "/check-ins",
+    label: "Check-ins",
+    icon: ClipboardCheck,
+    adminOnly: true,
+  },
 ];
 
-export function AppSidebar() {
+export function AppSidebar({ isAdmin }: { isAdmin: boolean }) {
   const pathname = usePathname();
   return (
     <Sidebar>
@@ -52,24 +59,26 @@ export function AppSidebar() {
           <SidebarGroupLabel>Teams</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {nav.map((item) => {
-                const Icon = item.icon;
-                const active =
-                  item.href === "/"
-                    ? pathname === "/"
-                    : pathname === item.href ||
-                      pathname.startsWith(item.href + "/");
-                return (
-                  <SidebarMenuItem key={item.href}>
-                    <SidebarMenuButton asChild isActive={active}>
-                      <Link href={item.href}>
-                        <Icon />
-                        <span>{item.label}</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                );
-              })}
+              {nav
+                .filter((item) => isAdmin || !item.adminOnly)
+                .map((item) => {
+                  const Icon = item.icon;
+                  const active =
+                    item.href === "/"
+                      ? pathname === "/"
+                      : pathname === item.href ||
+                        pathname.startsWith(item.href + "/");
+                  return (
+                    <SidebarMenuItem key={item.href}>
+                      <SidebarMenuButton asChild isActive={active}>
+                        <Link href={item.href}>
+                          <Icon />
+                          <span>{item.label}</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  );
+                })}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

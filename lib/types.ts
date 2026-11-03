@@ -12,11 +12,13 @@ export const TEAMS = [
   "Social",
 ] as const;
 export const PROFILE_KINDS = ["personal", "shared"] as const;
+export const CHECK_IN_FLAGS = ["follow_up", "inquire"] as const;
 
 export type TaskStatus = (typeof TASK_STATUSES)[number];
 export type TaskPriority = (typeof TASK_PRIORITIES)[number];
 export type Team = (typeof TEAMS)[number];
 export type ProfileKind = (typeof PROFILE_KINDS)[number];
+export type CheckInFlag = (typeof CHECK_IN_FLAGS)[number];
 
 export const PRIORITY_DOT: Record<TaskPriority, string> = {
   low: "bg-emerald-500",

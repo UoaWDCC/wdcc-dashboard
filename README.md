@@ -86,6 +86,14 @@ pnpm db:studio
 
 Add a row to `profile` with your lowercase Google email, a name, and `kind = personal`. After that, further members can be added from `/admin`.
 
+`/check-ins` is restricted to admins, and there is no UI to grant that yet. Sign in once so your `user` row exists, then run:
+
+```sql
+update "user" set is_admin = true where email = 'you@example.com';
+```
+
+The change can take up to 5 minutes to apply (the session cookie cache); signing out and back in applies it immediately.
+
 **6. Start the dev server**
 
 ```bash
@@ -112,9 +120,9 @@ Open http://localhost:3000.
 
 ## Auth
 
-Sign in with Google. Access is limited to emails in the `profile` table, managed from `/admin`. Every signed-in user has full access, including the admin page. Removing a profile signs that user out on their next request and revokes their Cloudflare docs access.
+Sign in with Google. Access is limited to emails in the `profile` table, managed from `/admin`. Every signed-in user has full access, including the admin page, except `/check-ins`, which only users with `is_admin` set can open. Removing a profile signs that user out on their next request and revokes their Cloudflare docs access.
 
-Profiles have two kinds, and both can sign in and reach every page, and both are synced to the Cloudflare access group for the docs site. The difference is the task board: `shared` mailboxes (e.g. `tech@wdcc.co.nz`) never appear as assignees or board columns, so a role account can read everything without adding a column nobody works out of.
+Profiles have two kinds, and both can sign in and reach every page (subject to the admin-only `/check-ins`), and both are synced to the Cloudflare access group for the docs site. The difference is the task board: `shared` mailboxes (e.g. `tech@wdcc.co.nz`) never appear as assignees or board columns, so a role account can read everything without adding a column nobody works out of.
 
 ## Deployment
 
