@@ -2,7 +2,7 @@ import "server-only";
 
 import { cache } from "react";
 import { headers } from "next/headers";
-import { redirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { AUTH_ERROR_CODES } from "@/lib/auth-errors";
 import { auth } from "@/server/auth";
 import { isAllowed } from "@/server/profile/queries";
@@ -51,4 +51,10 @@ export async function requireUser(from?: string) {
     redirect(query ? `/sign-in?${query}` : "/sign-in");
   }
   return resolved.session;
+}
+
+export async function requireAdmin(from?: string) {
+  const session = await requireUser(from);
+  if (session.user.isAdmin !== true) notFound();
+  return session;
 }

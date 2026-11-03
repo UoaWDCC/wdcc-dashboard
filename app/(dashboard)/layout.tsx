@@ -15,7 +15,7 @@ export default async function DashboardLayout({
   const session = await requireUser();
   return (
     <SidebarProvider>
-      <AppSidebar />
+      <AppSidebar isAdmin={session.user.isAdmin === true} />
       <SidebarInset>
         <header className="flex h-12 items-center justify-between gap-2 border-b border-b-brand-blue/20 shadow-[0_2px_0_0_var(--brand-blue)] px-3">
           <SidebarTrigger />
